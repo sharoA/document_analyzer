@@ -1,0 +1,87 @@
+# 虚拟环境
+analyDesign_env/
+venv/
+env/
+ENV/
+
+# Python 缓存文件
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 分发/打包
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# 单元测试/覆盖率报告
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# 环境变量文件
+.env
+.venv
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 日志文件
+*.log
+logs/*.log
+
+# 临时文件
+*.tmp
+*.temp
+
+# 输出文件
+outputs/*.pdf
+outputs/*.docx
+outputs/*.txt
+
+# 上传文件（根据需要调整）
+uploads/*
+!uploads/.gitkeep
+
+# 备份文件
+*.bak
+*.backup
+requirements_backup.txt 
