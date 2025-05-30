@@ -13,10 +13,24 @@ def test_imports():
     print("🔍 测试包导入...")
     
     try:
-        import streamlit
-        print("✅ Streamlit")
+        import flask
+        print("✅ Flask")
     except ImportError:
-        print("❌ Streamlit 未安装")
+        print("❌ Flask 未安装")
+        return False
+    
+    try:
+        import flask_socketio
+        print("✅ Flask-SocketIO")
+    except ImportError:
+        print("❌ Flask-SocketIO 未安装")
+        return False
+    
+    try:
+        import requests
+        print("✅ Requests")
+    except ImportError:
+        print("❌ Requests 未安装")
         return False
     
     try:
@@ -53,7 +67,7 @@ def test_directories():
     """测试目录结构"""
     print("\n📁 测试目录结构...")
     
-    required_dirs = ["src", "templates", "uploads", "outputs"]
+    required_dirs = ["src", "templates", "uploads", "outputs", "logs"]
     for directory in required_dirs:
         path = Path(directory)
         if path.exists():
@@ -69,27 +83,45 @@ def test_config():
     """测试配置文件"""
     print("\n⚙️ 测试配置...")
     
-    env_file = Path(".env")
-    if env_file.exists():
-        print("✅ .env 文件存在")
+    config_file = Path("src/simple_config.py")
+    if config_file.exists():
+        print("✅ 配置文件存在: src/simple_config.py")
     else:
-        print("⚠️ .env 文件不存在，请复制 .env.example 并配置")
+        print("⚠️ 配置文件不存在: src/simple_config.py")
     
     try:
-        from src.config import settings
+        from src.simple_config import settings
         print("✅ 配置加载成功")
-        print(f"   公司名称: {settings.COMPANY_NAME}")
-        print(f"   产品线: {settings.PRODUCT_LINE}")
         
-        if settings.DEEPSEEK_API_KEY and settings.DEEPSEEK_API_KEY != "your_deepseek_api_key_here":
-            print("✅ DeepSeek API Key 已配置")
+        if hasattr(settings, 'VOLCENGINE_API_KEY') and settings.VOLCENGINE_API_KEY:
+            print("✅ 火山引擎 API Key 已配置")
         else:
-            print("⚠️ DeepSeek API Key 未配置")
+            print("⚠️ 火山引擎 API Key 未配置")
         
         return True
     except Exception as e:
         print(f"❌ 配置加载失败: {e}")
         return False
+
+def test_backend_services():
+    """测试后端服务文件"""
+    print("\n🚀 测试后端服务文件...")
+    
+    service_files = [
+        "start_integrated_server.py",
+        "start_api_server.py",
+        "src/integrated_server.py",
+        "src/api_server.py"
+    ]
+    
+    for service_file in service_files:
+        path = Path(service_file)
+        if path.exists():
+            print(f"✅ {service_file}")
+        else:
+            print(f"❌ {service_file} 不存在")
+    
+    return True
 
 def test_templates():
     """测试模板文件"""
@@ -111,13 +143,14 @@ def test_templates():
 
 def main():
     """主测试函数"""
-    print("🤖 智能需求分析系统 - 配置测试")
+    print("🚀 analyDesign 后端服务 - 配置测试")
     print("=" * 50)
     
     tests = [
         ("包导入测试", test_imports),
         ("目录结构测试", test_directories),
         ("配置文件测试", test_config),
+        ("后端服务测试", test_backend_services),
         ("模板文件测试", test_templates)
     ]
     
@@ -133,11 +166,14 @@ def main():
     
     print("\n" + "=" * 50)
     if all_passed:
-        print("🎉 所有测试通过！系统配置正确。")
-        print("💡 现在可以运行 'python run.py' 启动系统")
+        print("🎉 所有测试通过！后端服务配置正确。")
+        print("💡 现在可以运行以下命令启动服务:")
+        print("   • python run.py")
+        print("   • start_backend_quick.bat")
+        print("   • start_backend.bat")
     else:
         print("⚠️ 部分测试失败，请检查配置")
-        print("💡 请参考 README.md 进行正确配置")
+        print("💡 请参考 后端启动说明.md 进行正确配置")
 
 if __name__ == "__main__":
     main() 

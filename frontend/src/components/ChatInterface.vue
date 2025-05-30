@@ -19,59 +19,17 @@
       
       <div class="chat-history">
         <div class="history-section">
-          <h3>需求文档智能体访谈提纲生成</h3>
-          <p class="section-subtitle">用户研究专家</p>
+          <h3>需求文档智能分析</h3>
+          <p class="section-subtitle">文档解析专家</p>
         </div>
         
         <div class="task-description">
-          <h4>问卷和访谈提纲编写</h4>
-          <p>我能结合产品信息和研究目的，编写问卷和访谈提纲。具体做法是：</p>
-          <ul>
-            <li>充分理解产品定位和功能，明确产品面向的用户画像和主要使用场景。</li>
-            <li>根据研究目的，设计针对性的问题。</li>
-            <li>如果没有特殊要求，问卷问题总数约为30题，访谈提纲约为10题，可在1小时左右完成访谈。</li>
-          </ul>
-          <p>已向您介绍了我的主要能力，包括问卷分析、访谈记录总结和问卷与访谈提纲编写。如果您有相关需求，可以随时告诉我。</p>
-        </div>
-        
-        <div class="task-status">
-          <el-tag type="success" size="small">
-            <el-icon><Check /></el-icon>
-            已完成本次任务
-          </el-tag>
-        </div>
-      </div>
-    </div>
-
-    <!-- 主聊天区域 -->
-    <div class="main-chat">
-      <!-- 顶部工具栏 -->
-      <div class="chat-header">
-        <div class="header-left">
-          <h3>Agent 的工作空间</h3>
-          <div class="connection-status">
-            <el-tag 
-              :type="connectionStatusType" 
-              size="small"
-              effect="plain"
-            >
-              <el-icon><Connection /></el-icon>
-              {{ connectionStatusText }}
-            </el-tag>
+          <h4>智能文档分析</h4>
+          <p>支持 Word、PDF、TXT、Markdown 格式文档分析</p>
+          
+          <div class="feature-tips">
+            <p>💡 点击下方"附件"按钮上传文档，自动开始分析</p>
           </div>
-        </div>
-        
-        <div class="header-right">
-          <el-button-group>
-            <el-button size="small" @click="toggleRealtime">
-              <el-icon><Microphone /></el-icon>
-              实时问答
-            </el-button>
-            <el-button size="small" @click="showFiles">
-              <el-icon><Document /></el-icon>
-              文件
-            </el-button>
-          </el-button-group>
         </div>
       </div>
 
@@ -94,39 +52,18 @@
             <div class="message-content">
               <div class="message-text" v-html="formatMessage(message.message)"></div>
               <div class="message-time">{{ formatTime(message.timestamp) }}</div>
-              <div v-if="message.analysis" class="analysis-info">
-                <el-tag size="small" type="info">
-                  置信度: {{ (message.analysis.confidence * 100).toFixed(1) }}%
-                </el-tag>
-              </div>
             </div>
           </div>
-          
-          <div v-else-if="message.type === 'processing'" class="processing-message">
-            <div class="bot-avatar">
-              <el-icon class="rotating"><Loading /></el-icon>
-            </div>
-            <div class="message-content">
-              <div class="message-text">{{ message.message }}</div>
-            </div>
+        </div>
+        
+        <div v-if="isTyping" class="typing-indicator">
+          <div class="bot-avatar">
+            <el-icon><User /></el-icon>
           </div>
-          
-          <div v-else-if="message.type === 'system'" class="system-message">
-            <el-alert 
-              :title="message.message" 
-              type="info" 
-              :closable="false"
-              show-icon
-            />
-          </div>
-          
-          <div v-else-if="message.type === 'error'" class="error-message">
-            <el-alert 
-              :title="message.message" 
-              type="error" 
-              :closable="false"
-              show-icon
-            />
+          <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
           </div>
         </div>
       </div>
@@ -134,25 +71,69 @@
       <!-- 输入区域 -->
       <div class="chat-input">
         <div class="input-container">
+          <!-- 隐藏的文件上传组件 -->
+          <el-upload
+            ref="uploadRef"
+            :auto-upload="false"
+            :on-change="handleFileChange"
+            :show-file-list="false"
+            accept=".doc,.docx,.pdf,.txt,.md"
+            style="display: none;"
+          />
+          
+          <!-- 显示已上传的文件 -->
+          <div v-if="uploadedFile" class="uploaded-file-info">
+            <div class="file-info-container">
+              <el-icon class="file-icon"><Document /></el-icon>
+              <div class="file-details">
+                <div class="file-name">{{ uploadedFile.name }}</div>
+                <div class="file-size">{{ formatFileSize(uploadedFile.size) }}</div>
+              </div>
+              <el-button 
+                type="text" 
+                size="small" 
+                @click="removeFile"
+                class="close-btn"
+              >
+                <el-icon><Close /></el-icon>
+              </el-button>
+            </div>
+            <el-button 
+              type="primary" 
+              size="small" 
+              @click="analyzeDocument"
+              :loading="isAnalyzing"
+              class="analyze-btn"
+            >
+              开始分析
+            </el-button>
+          </div>
+          
           <el-input
             v-model="currentMessage"
             type="textarea"
             :rows="3"
-            placeholder="请输入您的问题..."
+            placeholder="输入您的问题或需求..."
             @keydown.ctrl.enter="sendMessage"
-            :disabled="!isConnected"
-            class="message-input"
+            :disabled="isTyping"
+            resize="none"
           />
           <div class="input-actions">
-            <div class="input-tips">
-              <span>Ctrl + Enter 发送</span>
-            </div>
+            <el-button-group>
+              <el-button size="small" @click="attachFile">
+                <el-icon><Paperclip /></el-icon>
+                附件
+              </el-button>
+              <el-button size="small" @click="expandInput">
+                <el-icon><FullScreen /></el-icon>
+                展开
+              </el-button>
+            </el-button-group>
             <el-button 
               type="primary" 
-              :icon="Promotion"
               @click="sendMessage"
-              :loading="isSending"
-              :disabled="!isConnected || !currentMessage.trim()"
+              :disabled="!currentMessage.trim() || isTyping"
+              :loading="isTyping"
             >
               发送
             </el-button>
@@ -161,57 +142,288 @@
       </div>
     </div>
 
-    <!-- 右侧面板（可选） -->
-    <div class="right-panel" v-if="showRightPanel">
-      <div class="panel-header">
-        <h4>分析详情</h4>
-        <el-button 
-          size="small" 
-          text 
-          @click="showRightPanel = false"
-          :icon="Close"
-        />
+    <!-- 右侧 Agent 工作空间 -->
+    <div class="agent-workspace">
+      <!-- 工作空间头部 -->
+      <div class="workspace-header">
+        <h3>Agent 的工作空间</h3>
+        <div class="connection-status">
+          <el-tag 
+            :type="connectionStatusType" 
+            size="small"
+            effect="plain"
+          >
+            <el-icon><Connection /></el-icon>
+            {{ connectionStatusText }}
+          </el-tag>
+        </div>
       </div>
-      <div class="panel-content">
-        <!-- 这里可以显示详细的分析结果 -->
-      </div>
+
+      <!-- Tab 导航 -->
+      <el-tabs v-model="activeTab" class="workspace-tabs">
+        <!-- 实时处理状态 -->
+        <el-tab-pane label="实时跟随" name="realtime">
+          <div class="tab-content">
+            <div class="status-header">
+              <h4>处理状态</h4>
+              <el-tag :type="processingStatus.type" size="small">
+                {{ processingStatus.text }}
+              </el-tag>
+            </div>
+            
+            <div class="processing-steps">
+              <el-timeline>
+                <el-timeline-item
+                  v-for="step in processingSteps"
+                  :key="step.id"
+                  :type="step.status"
+                  :timestamp="step.timestamp"
+                >
+                  <div class="step-content">
+                    <h5>{{ step.title }}</h5>
+                    <p>{{ step.description }}</p>
+                    <div v-if="step.progress !== undefined" class="step-progress">
+                      <el-progress 
+                        :percentage="step.status === 'success' ? 100 : step.progress" 
+                        :status="step.status === 'success' ? 'success' : undefined"
+                      />
+                    </div>
+                  </div>
+                </el-timeline-item>
+              </el-timeline>
+            </div>
+            
+            <div v-if="currentProcessing" class="current-processing">
+              <el-card>
+                <template #header>
+                  <div class="card-header">
+                    <span>当前处理</span>
+                    <el-icon class="rotating"><Loading /></el-icon>
+                  </div>
+                </template>
+                <p>{{ currentProcessing }}</p>
+              </el-card>
+            </div>
+          </div>
+        </el-tab-pane>
+
+        <!-- 文件解析结果 -->
+        <el-tab-pane label="文件" name="files">
+          <div class="tab-content">
+            <div v-if="!analysisResult" class="empty-state">
+              <el-empty description="暂无解析结果">
+                <el-button type="primary" @click="activeTab = 'realtime'">
+                  上传文档开始分析
+                </el-button>
+              </el-empty>
+            </div>
+            
+            <div v-else class="analysis-result">
+              <div class="result-header">
+                <h4>{{ analysisResult.title || '需求文档分析报告' }}</h4>
+                <div class="result-meta">
+                  <el-tag size="small">{{ analysisResult.type || '需求分析' }}</el-tag>
+                  <span class="result-time">{{ formatTime(analysisResult.timestamp) }}</span>
+                </div>
+              </div>
+              
+              <el-scrollbar height="500px">
+                <div class="result-content">
+                  <!-- 基本信息 -->
+                  <el-card class="info-card" v-if="analysisResult.basicInfo">
+                    <template #header>
+                      <h5>基本信息</h5>
+                    </template>
+                    <el-descriptions :column="2" border>
+                      <el-descriptions-item 
+                        v-for="(value, key) in analysisResult.basicInfo" 
+                        :key="key"
+                        :label="key"
+                      >
+                        {{ value }}
+                      </el-descriptions-item>
+                    </el-descriptions>
+                  </el-card>
+                  
+                  <!-- 需求方信息 -->
+                  <el-card class="info-card" v-if="analysisResult.clientInfo">
+                    <template #header>
+                      <h5>需求方信息</h5>
+                    </template>
+                    <el-descriptions :column="2" border>
+                      <el-descriptions-item 
+                        v-for="(value, key) in analysisResult.clientInfo" 
+                        :key="key"
+                        :label="key"
+                      >
+                        {{ value }}
+                      </el-descriptions-item>
+                    </el-descriptions>
+                  </el-card>
+                  
+                  <!-- 详细分析 -->
+                  <el-card class="info-card" v-if="analysisResult.analysis">
+                    <template #header>
+                      <h5>详细分析</h5>
+                    </template>
+                    <div class="analysis-content" v-html="formatMessage(analysisResult.analysis)"></div>
+                  </el-card>
+                  
+                  <!-- 建议和改进 -->
+                  <el-card class="info-card" v-if="analysisResult.suggestions">
+                    <template #header>
+                      <h5>建议和改进</h5>
+                    </template>
+                    <div class="suggestions-content">
+                      <ul>
+                        <li v-for="suggestion in analysisResult.suggestions" :key="suggestion">
+                          {{ suggestion }}
+                        </li>
+                      </ul>
+                    </div>
+                  </el-card>
+                </div>
+              </el-scrollbar>
+            </div>
+          </div>
+        </el-tab-pane>
+
+        <!-- 导出功能 -->
+        <el-tab-pane label="终端" name="export">
+          <div class="tab-content">
+            <div class="export-options">
+              <h4>导出选项</h4>
+              
+              <el-card class="export-card">
+                <template #header>
+                  <div class="card-header">
+                    <el-icon><Document /></el-icon>
+                    <span>分析报告</span>
+                  </div>
+                </template>
+                <p>导出完整的需求分析报告，包含所有分析结果和建议</p>
+                <div class="export-actions">
+                  <el-button-group>
+                    <el-button @click="exportReport('pdf')" :disabled="!analysisResult">
+                      <el-icon><Download /></el-icon>
+                      PDF
+                    </el-button>
+                    <el-button @click="exportReport('word')" :disabled="!analysisResult">
+                      <el-icon><Download /></el-icon>
+                      Word
+                    </el-button>
+                    <el-button @click="exportReport('markdown')" :disabled="!analysisResult">
+                      <el-icon><Download /></el-icon>
+                      Markdown
+                    </el-button>
+                  </el-button-group>
+                </div>
+              </el-card>
+              
+              <el-card class="export-card">
+                <template #header>
+                  <div class="card-header">
+                    <el-icon><ChatDotRound /></el-icon>
+                    <span>对话记录</span>
+                  </div>
+                </template>
+                <p>导出完整的对话记录和交互历史</p>
+                <div class="export-actions">
+                  <el-button @click="exportChat()" :disabled="messages.length === 0">
+                    <el-icon><Download /></el-icon>
+                    导出对话
+                  </el-button>
+                </div>
+              </el-card>
+              
+              <el-card class="export-card">
+                <template #header>
+                  <div class="card-header">
+                    <el-icon><Setting /></el-icon>
+                    <span>自定义导出</span>
+                  </div>
+                </template>
+                <p>选择特定内容进行导出</p>
+                <div class="custom-export">
+                  <el-checkbox-group v-model="exportOptions">
+                    <el-checkbox label="basicInfo">基本信息</el-checkbox>
+                    <el-checkbox label="clientInfo">需求方信息</el-checkbox>
+                    <el-checkbox label="analysis">详细分析</el-checkbox>
+                    <el-checkbox label="suggestions">建议和改进</el-checkbox>
+                    <el-checkbox label="chat">对话记录</el-checkbox>
+                  </el-checkbox-group>
+                  <el-button 
+                    type="primary" 
+                    @click="exportCustom()" 
+                    :disabled="exportOptions.length === 0"
+                    style="margin-top: 10px;"
+                  >
+                    <el-icon><Download /></el-icon>
+                    自定义导出
+                  </el-button>
+                </div>
+              </el-card>
+            </div>
+          </div>
+        </el-tab-pane>
+      </el-tabs>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useWebSocketStore } from '../stores/websocket'
 import { 
   Plus, 
   ChatDotRound, 
-  Check, 
+  User, 
   Connection, 
   Microphone, 
   Document, 
-  User,
+  Check,
   Loading, 
   Promotion,
-  Close
+  Close,
+  Paperclip,
+  FullScreen,
+  Setting,
+  Download
 } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
-const wsStore = useWebSocketStore()
-const messagesContainer = ref(null)
+// 响应式数据
 const currentMessage = ref('')
+const messagesContainer = ref(null)
+const uploadRef = ref(null)
+const uploadedFile = ref(null)
+const isAnalyzing = ref(false)
+const isTyping = ref(false)
 const isSending = ref(false)
 const showRightPanel = ref(false)
+const activeTab = ref('realtime')
+const exportOptions = ref([])
+
+// WebSocket store
+const wsStore = useWebSocketStore()
 
 // 计算属性
 const messages = computed(() => wsStore.messages)
 const isConnected = computed(() => wsStore.isConnected)
 const connectionStatus = computed(() => wsStore.connectionStatus)
+const processingStatus = computed(() => ({
+  type: wsStore.isProcessing ? 'warning' : 'success',
+  text: wsStore.isProcessing ? '处理中...' : '就绪'
+}))
+const processingSteps = computed(() => wsStore.processingSteps || [])
+const currentProcessing = computed(() => wsStore.currentProcessing)
+const analysisResult = computed(() => wsStore.analysisResult)
 
 const connectionStatusType = computed(() => {
   switch (connectionStatus.value) {
     case 'connected': return 'success'
     case 'connecting': return 'warning'
-    case 'error': return 'danger'
+    case 'disconnected': return 'danger'
     default: return 'info'
   }
 })
@@ -220,68 +432,334 @@ const connectionStatusText = computed(() => {
   switch (connectionStatus.value) {
     case 'connected': return '已连接'
     case 'connecting': return '连接中'
-    case 'error': return '连接错误'
-    default: return '未连接'
+    case 'disconnected': return '已断开'
+    default: return '未知状态'
   }
 })
 
 // 方法
-const sendMessage = async () => {
-  if (!currentMessage.value.trim() || !isConnected.value) return
-  
-  isSending.value = true
-  
-  try {
-    await wsStore.sendMessage(currentMessage.value)
-    currentMessage.value = ''
-    await scrollToBottom()
-  } catch (error) {
-    console.error('发送消息失败:', error)
-    ElMessage.error('发送消息失败')
-  } finally {
-    isSending.value = false
-  }
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+  })
 }
 
-const startNewChat = () => {
-  wsStore.clearMessages()
-  ElMessage.success('已开始新的对话')
-}
-
-const toggleRealtime = () => {
-  ElMessage.info('实时问答功能开发中')
-}
-
-const showFiles = () => {
-  ElMessage.info('文件管理功能开发中')
-}
-
-// 简化时间格式化函数，不依赖dayjs
 const formatTime = (timestamp) => {
   try {
     const date = new Date(timestamp)
     return date.toLocaleTimeString('zh-CN', { 
       hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit' 
+      minute: '2-digit' 
     })
   } catch (error) {
-    return '时间格式错误'
+    return ''
   }
 }
 
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
 const formatMessage = (message) => {
-  // 简单的 Markdown 渲染
   return message
     .replace(/\n/g, '<br>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
 }
 
-const scrollToBottom = async () => {
-  await nextTick()
-  if (messagesContainer.value) {
-    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+const sendMessage = async () => {
+  if (!currentMessage.value.trim() || isTyping.value) return
+  
+  const message = currentMessage.value.trim()
+  currentMessage.value = ''
+  isTyping.value = true
+  
+  try {
+    await wsStore.sendMessage(message)
+  } catch (error) {
+    ElMessage.error('发送消息失败: ' + error.message)
+  } finally {
+    isTyping.value = false
+  }
+}
+
+const startNewChat = () => {
+  wsStore.clearMessages()
+  uploadedFile.value = null
+  activeTab.value = 'realtime'
+  ElMessage.success('已开始新任务')
+}
+
+const toggleRealtime = () => {
+  ElMessage.info('实时问答功能开发中...')
+}
+
+const showFiles = () => {
+  activeTab.value = 'files'
+}
+
+const attachFile = () => {
+  // 触发隐藏的文件上传组件
+  const fileInput = uploadRef.value?.$el.querySelector('input[type="file"]')
+  if (fileInput) {
+    fileInput.click()
+  }
+}
+
+const expandInput = () => {
+  ElMessageBox.prompt('请输入详细内容', '展开输入', {
+    inputType: 'textarea',
+    inputValue: currentMessage.value,
+    inputPlaceholder: '请输入您的问题或需求...'
+  }).then(({ value }) => {
+    currentMessage.value = value
+  }).catch(() => {
+    // 用户取消
+  })
+}
+
+// 文件上传相关方法
+const handleFileChange = (file) => {
+  const allowedTypes = [
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/pdf',
+    'text/plain',
+    'text/markdown'
+  ]
+  
+  if (!allowedTypes.includes(file.raw.type) && !file.name.match(/\.(doc|docx|pdf|txt|md)$/i)) {
+    ElMessage.error('不支持的文件格式，请上传 Word、PDF、TXT 或 Markdown 文件')
+    return false
+  }
+  
+  if (file.size > 10 * 1024 * 1024) { // 10MB
+    ElMessage.error('文件大小不能超过 10MB')
+    return false
+  }
+  
+  uploadedFile.value = file
+  ElMessage.success(`文件 ${file.name} 已选择，点击"开始分析"进行处理`)
+}
+
+const removeFile = () => {
+  uploadedFile.value = null
+  uploadRef.value?.clearFiles()
+}
+
+const analyzeDocument = async () => {
+  if (!uploadedFile.value) {
+    ElMessage.warning('请先上传文档')
+    return
+  }
+  
+  isAnalyzing.value = true
+  activeTab.value = 'realtime'
+  
+  try {
+    // 添加处理步骤
+    wsStore.addProcessingStep({
+      id: Date.now(),
+      title: '文档上传',
+      description: `正在处理文件: ${uploadedFile.value.name}`,
+      status: 'primary',
+      timestamp: new Date().toLocaleTimeString(),
+      progress: 0
+    })
+    
+    // 模拟文档分析过程
+    await simulateDocumentAnalysis()
+    
+    ElMessage.success('文档分析完成')
+    activeTab.value = 'files'
+  } catch (error) {
+    ElMessage.error('文档分析失败: ' + error.message)
+  } finally {
+    isAnalyzing.value = false
+  }
+}
+
+const simulateDocumentAnalysis = async () => {
+  const steps = [
+    { title: '文档解析', description: '正在解析文档结构和内容', progress: 20 },
+    { title: '内容分析', description: '正在分析需求内容', progress: 50 },
+    { title: '智能处理', description: '正在生成分析报告', progress: 80 },
+    { title: '完成处理', description: '分析报告生成完成', progress: 100 }
+  ]
+  
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i]
+    wsStore.updateProcessingStep({
+      id: Date.now() + i,
+      title: step.title,
+      description: step.description,
+      status: i === steps.length - 1 ? 'success' : 'primary',
+      timestamp: new Date().toLocaleTimeString(),
+      progress: step.progress
+    })
+    
+    wsStore.setCurrentProcessing(step.description)
+    await new Promise(resolve => setTimeout(resolve, 1000))
+  }
+  
+  // 设置分析结果
+  wsStore.setAnalysisResult({
+    title: '需求文档分析报告',
+    type: '需求分析',
+    timestamp: Date.now(),
+    basicInfo: {
+      '文档标题': uploadedFile.value.name.replace(/\.[^/.]+$/, ""),
+      '版本': 'V0.1',
+      '撰写人': '李威明',
+      '类型': '系统对接',
+      '标签': '链数, 民生银行'
+    },
+    clientInfo: {
+      '日期': '2025/5/12',
+      '需求人': '哈治均'
+    },
+    analysis: `
+      <h4>需求概述</h4>
+      <p>本文档描述了民生银行融资像范围调整的系统对接需求。主要涉及以下几个方面：</p>
+      <ul>
+        <li>系统架构设计与优化</li>
+        <li>数据接口规范定义</li>
+        <li>安全性要求与实现</li>
+        <li>性能指标与监控</li>
+      </ul>
+      
+      <h4>技术分析</h4>
+      <p>基于文档内容分析，建议采用以下技术方案：</p>
+      <ul>
+        <li>微服务架构，提高系统可扩展性</li>
+        <li>RESTful API设计，确保接口标准化</li>
+        <li>OAuth 2.0认证，保障数据安全</li>
+        <li>Redis缓存，优化系统性能</li>
+      </ul>
+    `,
+    suggestions: [
+      '建议增加详细的错误处理机制',
+      '需要完善系统监控和日志记录',
+      '建议添加自动化测试用例',
+      '需要制定详细的部署和运维方案'
+    ]
+  })
+  
+  wsStore.setCurrentProcessing(null)
+}
+
+// 导出功能
+const exportReport = async (format) => {
+  if (!analysisResult.value) {
+    ElMessage.warning('暂无分析结果可导出')
+    return
+  }
+  
+  try {
+    // 这里应该调用后端API进行导出
+    ElMessage.success(`正在导出 ${format.toUpperCase()} 格式的分析报告...`)
+    
+    // 模拟导出过程
+    setTimeout(() => {
+      ElMessage.success('导出完成')
+    }, 2000)
+  } catch (error) {
+    ElMessage.error('导出失败: ' + error.message)
+  }
+}
+
+const exportChat = async () => {
+  if (messages.value.length === 0) {
+    ElMessage.warning('暂无对话记录可导出')
+    return
+  }
+  
+  try {
+    const chatContent = messages.value.map(msg => {
+      const time = formatTime(msg.timestamp)
+      const sender = msg.type === 'user' ? '用户' : 'AI助手'
+      return `[${time}] ${sender}: ${msg.message}`
+    }).join('\n')
+    
+    const blob = new Blob([chatContent], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `对话记录_${new Date().toLocaleDateString()}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+    
+    ElMessage.success('对话记录导出完成')
+  } catch (error) {
+    ElMessage.error('导出失败: ' + error.message)
+  }
+}
+
+const exportCustom = async () => {
+  if (exportOptions.value.length === 0) {
+    ElMessage.warning('请选择要导出的内容')
+    return
+  }
+  
+  try {
+    let content = '# 自定义导出报告\n\n'
+    
+    if (exportOptions.value.includes('basicInfo') && analysisResult.value?.basicInfo) {
+      content += '## 基本信息\n'
+      Object.entries(analysisResult.value.basicInfo).forEach(([key, value]) => {
+        content += `- ${key}: ${value}\n`
+      })
+      content += '\n'
+    }
+    
+    if (exportOptions.value.includes('clientInfo') && analysisResult.value?.clientInfo) {
+      content += '## 需求方信息\n'
+      Object.entries(analysisResult.value.clientInfo).forEach(([key, value]) => {
+        content += `- ${key}: ${value}\n`
+      })
+      content += '\n'
+    }
+    
+    if (exportOptions.value.includes('analysis') && analysisResult.value?.analysis) {
+      content += '## 详细分析\n'
+      content += analysisResult.value.analysis.replace(/<[^>]*>/g, '') + '\n\n'
+    }
+    
+    if (exportOptions.value.includes('suggestions') && analysisResult.value?.suggestions) {
+      content += '## 建议和改进\n'
+      analysisResult.value.suggestions.forEach(suggestion => {
+        content += `- ${suggestion}\n`
+      })
+      content += '\n'
+    }
+    
+    if (exportOptions.value.includes('chat') && messages.value.length > 0) {
+      content += '## 对话记录\n'
+      messages.value.forEach(msg => {
+        const time = formatTime(msg.timestamp)
+        const sender = msg.type === 'user' ? '用户' : 'AI助手'
+        content += `**[${time}] ${sender}**: ${msg.message}\n\n`
+      })
+    }
+    
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `自定义报告_${new Date().toLocaleDateString()}.md`
+    a.click()
+    URL.revokeObjectURL(url)
+    
+    ElMessage.success('自定义导出完成')
+  } catch (error) {
+    ElMessage.error('导出失败: ' + error.message)
   }
 }
 
@@ -290,6 +768,7 @@ watch(messages, () => {
   scrollToBottom()
 }, { deep: true })
 
+// 组件挂载时初始化
 onMounted(() => {
   scrollToBottom()
 })
@@ -303,24 +782,31 @@ onMounted(() => {
 }
 
 .sidebar {
-  width: 320px;
+  width: 400px;
   background: white;
   border-right: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
+  height: 100vh;
 
   .sidebar-header {
+    flex: 0 0 auto;
     padding: 20px;
     border-bottom: 1px solid #e4e7ed;
+    background: white;
 
     .app-title {
       display: flex;
       align-items: center;
-      gap: 8px;
       margin: 0 0 16px 0;
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 600;
       color: #303133;
+
+      .el-icon {
+        margin-right: 8px;
+        color: #409eff;
+      }
     }
 
     .new-chat-btn {
@@ -329,29 +815,29 @@ onMounted(() => {
   }
 
   .chat-history {
-    flex: 1;
+    flex: 0 0 auto;
     padding: 20px;
-    overflow-y: auto;
+    overflow: hidden;
 
     .history-section {
-      margin-bottom: 20px;
+      margin-bottom: 16px;
 
       h3 {
         font-size: 16px;
         font-weight: 600;
         color: #303133;
-        margin: 0 0 4px 0;
+        margin: 0 0 6px 0;
       }
 
       .section-subtitle {
-        color: #909399;
         font-size: 14px;
+        color: #909399;
         margin: 0;
       }
     }
 
     .task-description {
-      margin-bottom: 20px;
+      margin-bottom: 16px;
 
       h4 {
         font-size: 14px;
@@ -361,40 +847,247 @@ onMounted(() => {
       }
 
       p {
-        font-size: 14px;
+        font-size: 13px;
         color: #606266;
         line-height: 1.5;
         margin: 0 0 8px 0;
       }
+    }
 
-      ul {
-        margin: 8px 0;
-        padding-left: 20px;
+    .feature-tips {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #e4e7ed;
 
-        li {
-          font-size: 14px;
-          color: #606266;
-          line-height: 1.5;
-          margin-bottom: 4px;
+      p {
+        font-size: 13px;
+        color: #606266;
+        font-weight: 500;
+        margin: 0;
+      }
+    }
+  }
+
+  .chat-messages {
+    flex: 1;
+    padding: 15px 20px;
+    overflow-y: auto;
+    min-height: 0;
+
+    .message {
+      margin-bottom: 16px;
+
+      &.user {
+        .user-message {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+
+          .message-content {
+            background: #409eff;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 18px 18px 4px 18px;
+            max-width: 80%;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+          }
+
+          .message-time {
+            font-size: 12px;
+            color: #909399;
+            margin-top: 4px;
+          }
+        }
+      }
+
+      &.chat_response {
+        .bot-message {
+          display: flex;
+          align-items: flex-start;
+
+          .bot-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+
+            .el-icon {
+              color: #606266;
+            }
+          }
+
+          .message-content {
+            flex: 1;
+
+            .message-text {
+              background: white;
+              padding: 12px 16px;
+              border-radius: 4px 18px 18px 18px;
+              border: 1px solid #e4e7ed;
+              font-size: 14px;
+              line-height: 1.6;
+              color: #303133;
+            }
+
+            .message-time {
+              font-size: 12px;
+              color: #909399;
+              margin-top: 4px;
+            }
+          }
         }
       }
     }
 
-    .task-status {
+    .typing-indicator {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      align-items: flex-start;
+
+      .bot-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        flex-shrink: 0;
+
+        .el-icon {
+          color: #606266;
+        }
+      }
+
+      .typing-dots {
+        background: white;
+        padding: 12px 16px;
+        border-radius: 4px 18px 18px 18px;
+        border: 1px solid #e4e7ed;
+        display: flex;
+        align-items: center;
+
+        span {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #c0c4cc;
+          margin: 0 2px;
+          animation: typing 1.4s infinite ease-in-out;
+
+          &:nth-child(1) { animation-delay: -0.32s; }
+          &:nth-child(2) { animation-delay: -0.16s; }
+        }
+      }
+    }
+  }
+
+  .chat-input {
+    flex: 0 0 auto;
+    padding: 20px;
+    border-top: 1px solid #e4e7ed;
+    background: white;
+
+    .input-container {
+      .uploaded-file-info {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 12px;
+        padding: 0;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        
+        .file-info-container {
+          display: flex;
+          align-items: flex-start;
+          flex: 1;
+          min-width: 0;
+          max-width: calc(100% - 80px);
+          padding: 8px 12px;
+          background: #f0f9ff;
+          border: 1px solid #b3d8ff;
+          border-radius: 6px;
+          overflow: hidden;
+          
+          .file-icon {
+            flex-shrink: 0;
+            margin-right: 8px;
+            margin-top: 2px;
+            color: #67c23a;
+          }
+          
+          .file-details {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            flex: 1;
+            overflow: hidden;
+            
+            .file-name {
+              word-break: break-all;
+              overflow-wrap: break-word;
+              line-height: 1.3;
+              white-space: normal;
+              font-size: 14px;
+              color: #303133;
+              margin-bottom: 2px;
+            }
+            
+            .file-size {
+              font-size: 12px;
+              color: #909399;
+              white-space: nowrap;
+            }
+          }
+        }
+        
+        .close-btn {
+          flex-shrink: 0;
+          align-self: flex-start;
+          margin-left: 6px;
+          margin-top: 2px;
+          padding: 4px;
+          
+          :deep(.el-icon) {
+            font-size: 14px;
+          }
+        }
+        
+        .analyze-btn {
+          flex-shrink: 0;
+          align-self: flex-start;
+          min-width: 72px;
+        }
+      }
+      
+      .input-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 12px;
+      }
     }
   }
 }
 
-.main-chat {
+.agent-workspace {
   flex: 1;
   display: flex;
   flex-direction: column;
   background: white;
 
-  .chat-header {
+  .workspace-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -402,167 +1095,285 @@ onMounted(() => {
     border-bottom: 1px solid #e4e7ed;
     background: white;
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-
-      h3 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: #303133;
-      }
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #303133;
     }
   }
 
-  .chat-messages {
+  .workspace-tabs {
     flex: 1;
-    padding: 20px;
+    padding: 0;
     overflow-y: auto;
-    background: #fafbfc;
 
-    .message {
-      margin-bottom: 20px;
-
-      &.user {
-        display: flex;
-        justify-content: flex-end;
-
-        .user-message {
-          max-width: 70%;
-          background: #409eff;
-          color: white;
-          padding: 12px 16px;
-          border-radius: 12px;
-          border-bottom-right-radius: 4px;
-
-          .message-content {
-            margin-bottom: 4px;
-            line-height: 1.5;
-          }
-
-          .message-time {
-            font-size: 12px;
-            opacity: 0.8;
-          }
-        }
-      }
-
-      &.chat_response, &.processing {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-
-        .bot-avatar {
-          width: 32px;
-          height: 32px;
-          background: #f0f9ff;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #409eff;
-          flex-shrink: 0;
-
-          .rotating {
-            animation: rotate 1s linear infinite;
-          }
-        }
-
-        .message-content {
-          flex: 1;
-          background: white;
-          padding: 12px 16px;
-          border-radius: 12px;
-          border-top-left-radius: 4px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-
-          .message-text {
-            line-height: 1.6;
-            margin-bottom: 8px;
-          }
-
-          .message-time {
-            font-size: 12px;
-            color: #909399;
-          }
-
-          .analysis-info {
-            margin-top: 8px;
-          }
-        }
-      }
-
-      &.system, &.error {
-        margin: 16px 0;
-      }
+    :deep(.el-tabs__header) {
+      margin: 0;
+      padding: 0 24px;
+      background: #fafbfc;
+      border-bottom: 1px solid #e4e7ed;
     }
-  }
 
-  .chat-input {
-    padding: 20px;
-    background: white;
-    border-top: 1px solid #e4e7ed;
+    :deep(.el-tabs__content) {
+      padding: 0;
+      height: calc(100vh - 120px);
+      overflow-y: auto;
+    }
 
-    .input-container {
-      .message-input {
-        margin-bottom: 12px;
-      }
+    .tab-content {
+      padding: 24px;
+      height: 100%;
+      overflow-y: auto;
 
-      .input-actions {
+      .status-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        margin-bottom: 20px;
 
-        .input-tips {
-          font-size: 12px;
-          color: #909399;
+        h4 {
+          font-size: 16px;
+          font-weight: 600;
+          color: #303133;
+          margin: 0;
+        }
+      }
+
+      .processing-steps {
+        margin-bottom: 20px;
+
+        :deep(.el-timeline-item__content) {
+          .step-content {
+            h5 {
+              font-size: 14px;
+              font-weight: 600;
+              color: #303133;
+              margin: 0 0 8px 0;
+            }
+
+            p {
+              font-size: 13px;
+              color: #606266;
+              margin: 0 0 8px 0;
+            }
+
+            .step-progress {
+              margin-top: 8px;
+            }
+          }
+        }
+      }
+
+      .current-processing {
+        .card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+
+          .rotating {
+            animation: rotate 2s linear infinite;
+          }
+        }
+      }
+
+      .analysis-result {
+        .result-header {
+          margin-bottom: 20px;
+
+          h4 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #303133;
+            margin: 0 0 8px 0;
+          }
+
+          .result-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+
+            .result-time {
+              font-size: 13px;
+              color: #909399;
+            }
+          }
+        }
+
+        .result-content {
+          .info-card {
+            margin-bottom: 16px;
+
+            :deep(.el-card__header) {
+              padding: 12px 16px;
+              background: #fafbfc;
+
+              h5 {
+                font-size: 14px;
+                font-weight: 600;
+                color: #303133;
+                margin: 0;
+              }
+            }
+
+            :deep(.el-card__body) {
+              padding: 16px;
+            }
+
+            .analysis-content {
+              font-size: 14px;
+              line-height: 1.6;
+              color: #303133;
+
+              h4 {
+                font-size: 16px;
+                font-weight: 600;
+                color: #303133;
+                margin: 16px 0 8px 0;
+              }
+
+              ul {
+                margin: 8px 0;
+                padding-left: 20px;
+              }
+
+              li {
+                margin: 4px 0;
+              }
+            }
+
+            .suggestions-content {
+              ul {
+                margin: 0;
+                padding-left: 20px;
+
+                li {
+                  font-size: 14px;
+                  color: #606266;
+                  line-height: 1.6;
+                  margin: 8px 0;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      .empty-state {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 400px;
+      }
+
+      .export-options {
+        .export-card {
+          margin-bottom: 20px;
+
+          :deep(.el-card__header) {
+            padding: 16px 20px;
+            background: #fafbfc;
+
+            .card-header {
+              display: flex;
+              align-items: center;
+              font-size: 16px;
+              font-weight: 600;
+              color: #303133;
+
+              .el-icon {
+                margin-right: 8px;
+                color: #409eff;
+              }
+            }
+          }
+
+          :deep(.el-card__body) {
+            padding: 20px;
+
+            p {
+              font-size: 14px;
+              color: #606266;
+              line-height: 1.6;
+              margin: 0 0 16px 0;
+            }
+
+            .export-actions {
+              display: flex;
+              justify-content: flex-end;
+              gap: 8px;
+            }
+
+            .custom-export {
+              :deep(.el-checkbox-group) {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+              }
+            }
+          }
         }
       }
     }
   }
 }
 
-.right-panel {
-  width: 300px;
-  background: white;
-  border-left: 1px solid #e4e7ed;
-
-  .panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid #e4e7ed;
-
-    h4 {
-      margin: 0;
-      font-size: 14px;
-      font-weight: 600;
-    }
+@keyframes typing {
+  0%, 60%, 100% {
+    transform: translateY(0);
   }
-
-  .panel-content {
-    padding: 20px;
+  30% {
+    transform: translateY(-10px);
   }
 }
 
 @keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 // 响应式设计
 @media (max-width: 768px) {
   .chat-container {
-    .sidebar {
-      width: 280px;
-    }
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: 50vh;
     
-    .right-panel {
-      display: none;
+    .chat-input {
+      .input-container {
+        .uploaded-file-info {
+          flex-direction: column;
+          align-items: stretch;
+          
+          .file-info-container {
+            max-width: 100%;
+            margin-bottom: 8px;
+            
+            .file-details {
+              .file-name {
+                font-size: 13px;
+              }
+            }
+          }
+          
+          .analyze-btn {
+            width: 100%;
+            align-self: stretch;
+          }
+        }
+      }
     }
+  }
+  
+  .agent-workspace {
+    height: 50vh;
   }
 }
 </style> 

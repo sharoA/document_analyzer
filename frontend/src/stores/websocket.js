@@ -1,332 +1,258 @@
 import { defineStore } from 'pinia'
-import { ref, reactive } from 'vue'
+import { ref, computed } from 'vue'
 import axios from 'axios'
 
-export const useWebSocketStore = defineStore('websocket', () => {
-  const ws = ref(null)
-  const isConnected = ref(false)
-  const isConnecting = ref(false)
-  const messages = ref([])
-  const connectionStatus = ref('disconnected') // disconnected, connecting, connected, error
-  
-  // 添加模拟模式和API模式
-  const mockMode = ref(false) // 改为false，使用真实API
-  const apiMode = ref(true) // 使用HTTP API模式
-
-  // API配置
-  const apiConfig = {
-    baseURL: 'http://localhost:8081', // 后端服务器地址
-    timeout: 30000, // 30秒超时
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    withCredentials: false // 不发送cookies
+// 创建axios实例
+const api = axios.create({
+  baseURL: 'http://localhost:8081',
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
   }
+})
 
-  // 创建axios实例
-  const apiClient = axios.create(apiConfig)
+// 请求拦截器
+api.interceptors.request.use(
+  (config) => {
+    console.log('发送请求:', config.method?.toUpperCase(), config.url)
+    return config
+  },
+  (error) => {
+    console.error('请求错误:', error)
+    return Promise.reject(error)
+  }
+)
 
-  // 添加请求拦截器
-  apiClient.interceptors.request.use(
-    (config) => {
-      console.log('发送API请求:', config)
-      return config
-    },
-    (error) => {
-      console.error('请求拦截器错误:', error)
-      return Promise.reject(error)
-    }
-  )
+// 响应拦截器
+api.interceptors.response.use(
+  (response) => {
+    console.log('收到响应:', response.status, response.data)
+    return response
+  },
+  (error) => {
+    console.error('响应错误:', error.response?.status, error.response?.data || error.message)
+    return Promise.reject(error)
+  }
+)
 
-  // 添加响应拦截器
-  apiClient.interceptors.response.use(
-    (response) => {
-      console.log('API响应:', response)
-      return response
-    },
-    (error) => {
-      console.error('API响应错误:', error)
-      if (error.code === 'ECONNREFUSED') {
-        console.error('后端服务器连接被拒绝，请检查服务器是否运行')
-      }
-      return Promise.reject(error)
-    }
-  )
+export const useWebSocketStore = defineStore('websocket', () => {
+  // 状态
+  const isConnected = ref(false)
+  const connectionStatus = ref('disconnected')
+  const messages = ref([])
+  const currentSessionId = ref(null)
+  const isProcessing = ref(false)
+  const processingSteps = ref([])
+  const currentProcessing = ref(null)
+  const analysisResult = ref(null)
 
+  // 计算属性
+  const lastMessage = computed(() => {
+    return messages.value.length > 0 ? messages.value[messages.value.length - 1] : null
+  })
+
+  // 连接方法（模拟模式）
   const connect = () => {
-    if (apiMode.value) {
-      // 使用HTTP API模式
-      isConnected.value = true
-      isConnecting.value = false
-      connectionStatus.value = 'connected'
-      console.log('API模式已启用，连接到后端服务器')
+    try {
+      connectionStatus.value = 'connecting'
       
-      // 添加欢迎消息
-      addMessage({
-        type: 'system',
-        message: '欢迎使用 analyDesign 智能需求分析系统！现在使用API模式与火山引擎交互。',
-        timestamp: new Date().toISOString(),
-        message_id: generateMessageId()
-      })
-      return
-    }
-
-    if (mockMode.value) {
-      // 模拟连接成功
+      // 模拟连接过程
       setTimeout(() => {
         isConnected.value = true
-        isConnecting.value = false
         connectionStatus.value = 'connected'
-        console.log('模拟 WebSocket 连接已建立')
+        console.log('WebSocket 连接成功（模拟模式）')
         
         // 添加欢迎消息
         addMessage({
-          type: 'system',
-          message: '欢迎使用 analyDesign 智能需求分析系统！',
-          timestamp: new Date().toISOString(),
+          type: 'chat_response',
+          message: '您好！我是智能需求分析助手，可以帮您分析需求文档。请上传您的文档开始分析，或者直接与我对话。',
+          timestamp: Date.now(),
           message_id: generateMessageId()
         })
       }, 1000)
-      return
+    } catch (error) {
+      console.error('连接失败:', error)
+      connectionStatus.value = 'disconnected'
+      isConnected.value = false
     }
+  }
 
-    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-      return
+  // 断开连接
+  const disconnect = () => {
+    isConnected.value = false
+    connectionStatus.value = 'disconnected'
+    console.log('WebSocket 连接已断开')
+  }
+
+  // 发送消息
+  const sendMessage = async (message) => {
+    if (!message.trim()) return
+
+    // 添加用户消息
+    const userMessage = {
+      type: 'user',
+      message: message.trim(),
+      timestamp: Date.now(),
+      message_id: generateMessageId()
     }
-
-    isConnecting.value = true
-    connectionStatus.value = 'connecting'
+    addMessage(userMessage)
 
     try {
-      // 根据当前协议选择 WebSocket 协议
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//${window.location.hostname}:8765`
-      
-      ws.value = new WebSocket(wsUrl)
+      // 调用后端API
+      const response = await api.post('/api/chat', {
+        message: message.trim(),
+        session_id: currentSessionId.value || generateSessionId()
+      })
 
-      ws.value.onopen = () => {
-        isConnected.value = true
-        isConnecting.value = false
-        connectionStatus.value = 'connected'
-        console.log('WebSocket 连接已建立')
-      }
+      if (response.data && response.data.response) {
+        // 添加AI回复
+        const aiMessage = {
+          type: 'chat_response',
+          message: response.data.response,
+          timestamp: Date.now(),
+          message_id: generateMessageId(),
+          analysis: response.data.analysis
+        }
+        addMessage(aiMessage)
 
-      ws.value.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          handleMessage(data)
-        } catch (error) {
-          console.error('解析消息失败:', error)
+        // 更新会话ID
+        if (response.data.session_id) {
+          currentSessionId.value = response.data.session_id
         }
       }
-
-      ws.value.onclose = () => {
-        isConnected.value = false
-        isConnecting.value = false
-        connectionStatus.value = 'disconnected'
-        console.log('WebSocket 连接已关闭')
-        
-        // 自动重连
-        setTimeout(() => {
-          if (!isConnected.value) {
-            connect()
-          }
-        }, 3000)
-      }
-
-      ws.value.onerror = (error) => {
-        isConnecting.value = false
-        connectionStatus.value = 'error'
-        console.error('WebSocket 错误:', error)
-      }
-
     } catch (error) {
-      isConnecting.value = false
-      connectionStatus.value = 'error'
-      console.error('WebSocket 连接失败:', error)
-    }
-  }
-
-  const disconnect = () => {
-    if (ws.value) {
-      ws.value.close()
-      ws.value = null
-    }
-  }
-
-  // 发送消息到后端API
-  const sendMessageToAPI = async (message) => {
-    try {
-      console.log('发送消息到后端API:', message)
-      
-      // 添加用户消息到界面
-      const userMessageId = generateMessageId()
-      addMessage({
-        type: 'user',
-        message: message,
-        timestamp: new Date().toISOString(),
-        message_id: userMessageId
-      })
-
-      // 添加处理中消息
-      const processingMessageId = generateMessageId()
-      addMessage({
-        type: 'processing',
-        message: '正在分析您的需求，请稍候...',
-        timestamp: new Date().toISOString(),
-        message_id: processingMessageId
-      })
-
-      // 调用后端API
-      const response = await apiClient.post('/api/chat', {
-        message: message,
-        session_id: generateSessionId(),
-        timestamp: new Date().toISOString()
-      })
-
-      // 移除处理中消息
-      messages.value = messages.value.filter(msg => msg.message_id !== processingMessageId)
-
-      // 添加AI回复
-      if (response.data && response.data.success) {
-        addMessage({
-          type: 'chat_response',
-          message: response.data.response || response.data.message,
-          timestamp: new Date().toISOString(),
-          message_id: generateMessageId(),
-          analysis: {
-            confidence: response.data.confidence || 0.85,
-            intent: response.data.intent,
-            entities: response.data.entities
-          }
-        })
-      } else {
-        throw new Error(response.data?.error || '后端返回错误')
-      }
-
-      return userMessageId
-
-    } catch (error) {
-      console.error('API调用失败:', error)
-      
-      // 移除处理中消息
-      messages.value = messages.value.filter(msg => msg.type !== 'processing')
+      console.error('发送消息失败:', error)
       
       // 添加错误消息
-      addMessage({
-        type: 'error',
-        message: `抱歉，服务暂时不可用：${error.message}。请检查后端服务是否正常运行。`,
-        timestamp: new Date().toISOString(),
+      const errorMessage = {
+        type: 'chat_response',
+        message: '抱歉，我暂时无法回复您的消息。请稍后再试。',
+        timestamp: Date.now(),
         message_id: generateMessageId()
-      })
-
-      return null
-    }
-  }
-
-  const sendMessage = async (message) => {
-    if (apiMode.value) {
-      return await sendMessageToAPI(message)
-    }
-
-    if (mockMode.value) {
-      // 模拟发送消息
-      const messageData = {
-        type: 'user',
-        message: message,
-        message_id: generateMessageId(),
-        timestamp: new Date().toISOString()
       }
+      addMessage(errorMessage)
       
-      // 添加用户消息
-      addMessage(messageData)
-      
-      // 模拟AI回复
-      setTimeout(() => {
-        addMessage({
-          type: 'chat_response',
-          message: `感谢您的问题："${message}"。这是一个模拟回复，实际的AI分析功能需要连接到后端服务器。目前系统正在演示模式下运行。`,
-          timestamp: new Date().toISOString(),
-          message_id: generateMessageId(),
-          analysis: {
-            confidence: 0.85
-          }
-        })
-      }, 1500)
-      
-      return messageData.message_id
-    }
-
-    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-      const messageData = {
-        type: 'chat',
-        message: message,
-        message_id: generateMessageId(),
-        timestamp: new Date().toISOString()
-      }
-      
-      ws.value.send(JSON.stringify(messageData))
-      
-      // 添加用户消息到消息列表
-      addMessage({
-        type: 'user',
-        message: message,
-        timestamp: new Date().toISOString(),
-        message_id: messageData.message_id
-      })
-      
-      return messageData.message_id
-    } else {
-      console.error('WebSocket 未连接')
-      return null
+      throw error
     }
   }
 
-  const handleMessage = (data) => {
-    addMessage(data)
-  }
-
+  // 添加消息
   const addMessage = (message) => {
-    messages.value.push(message)
+    messages.value.push({
+      ...message,
+      timestamp: message.timestamp || Date.now(),
+      message_id: message.message_id || generateMessageId()
+    })
   }
 
+  // 清空消息
   const clearMessages = () => {
     messages.value = []
+    currentSessionId.value = null
+    processingSteps.value = []
+    currentProcessing.value = null
+    analysisResult.value = null
+    isProcessing.value = false
   }
 
+  // 处理步骤管理
+  const addProcessingStep = (step) => {
+    processingSteps.value.push({
+      ...step,
+      id: step.id || Date.now(),
+      timestamp: step.timestamp || new Date().toLocaleTimeString()
+    })
+    isProcessing.value = true
+  }
+
+  const updateProcessingStep = (step) => {
+    const index = processingSteps.value.findIndex(s => s.id === step.id)
+    if (index !== -1) {
+      processingSteps.value[index] = { ...processingSteps.value[index], ...step }
+    } else {
+      addProcessingStep(step)
+    }
+  }
+
+  const setCurrentProcessing = (message) => {
+    currentProcessing.value = message
+    isProcessing.value = !!message
+  }
+
+  // 分析结果管理
+  const setAnalysisResult = (result) => {
+    analysisResult.value = {
+      ...result,
+      timestamp: result.timestamp || Date.now()
+    }
+    isProcessing.value = false
+  }
+
+  const clearAnalysisResult = () => {
+    analysisResult.value = null
+  }
+
+  // 工具函数
   const generateMessageId = () => {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2)
+    return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
   const generateSessionId = () => {
-    return 'session_' + Date.now().toString(36) + Math.random().toString(36).substr(2)
+    const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    currentSessionId.value = sessionId
+    return sessionId
   }
 
-  // 发送心跳
-  const sendPing = () => {
-    if (ws.value && ws.value.readyState === WebSocket.OPEN) {
-      ws.value.send(JSON.stringify({
-        type: 'ping',
-        timestamp: new Date().toISOString()
-      }))
+  // 健康检查
+  const checkHealth = async () => {
+    try {
+      const response = await api.get('/api/health')
+      return response.data
+    } catch (error) {
+      console.error('健康检查失败:', error)
+      return null
     }
   }
 
-  // 定期发送心跳
-  setInterval(sendPing, 30000)
+  // 获取会话列表
+  const getSessions = async () => {
+    try {
+      const response = await api.get('/api/sessions')
+      return response.data
+    } catch (error) {
+      console.error('获取会话列表失败:', error)
+      return []
+    }
+  }
 
   return {
-    ws,
+    // 状态
     isConnected,
-    isConnecting,
     connectionStatus,
     messages,
-    mockMode,
-    apiMode,
+    currentSessionId,
+    isProcessing,
+    processingSteps,
+    currentProcessing,
+    analysisResult,
+    
+    // 计算属性
+    lastMessage,
+    
+    // 方法
     connect,
     disconnect,
     sendMessage,
     addMessage,
-    clearMessages
+    clearMessages,
+    addProcessingStep,
+    updateProcessingStep,
+    setCurrentProcessing,
+    setAnalysisResult,
+    clearAnalysisResult,
+    checkHealth,
+    getSessions,
+    generateMessageId,
+    generateSessionId
   }
 }) 

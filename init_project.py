@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-智能需求分析系统 - 项目初始化脚本
+analyDesign 后端服务 - 项目初始化脚本
 """
 
 import os
@@ -17,29 +17,13 @@ def create_directories():
         "templates", 
         "uploads",
         "outputs",
-        "logs"
+        "logs",
+        "frontend"
     ]
     
     for directory in directories:
         Path(directory).mkdir(exist_ok=True)
         print(f"  ✅ {directory}/")
-    
-    return True
-
-def setup_env_file():
-    """设置环境配置文件"""
-    print("⚙️ 设置环境配置文件...")
-    
-    env_example = Path(".env.example")
-    env_file = Path(".env")
-    
-    if env_example.exists() and not env_file.exists():
-        shutil.copy(env_example, env_file)
-        print("  ✅ .env 文件已创建")
-    elif env_file.exists():
-        print("  ℹ️ .env 文件已存在")
-    else:
-        print("  ⚠️ .env.example 文件不存在")
     
     return True
 
@@ -116,31 +100,39 @@ def show_next_steps():
     """显示下一步操作指南"""
     print("\n🎯 项目初始化完成！")
     print("\n📋 接下来的步骤：")
-    print("1. 编辑 .env 文件，配置必要的参数：")
-    print("   - DEEPSEEK_API_KEY=your_api_key_here")
-    print("   - BUSINESS_DATABASE_URL=your_database_url")
-    print("   - COMPANY_NAME=您的公司名称")
+    print("1. 设置虚拟环境：")
+    print("   - 运行: powershell -ExecutionPolicy Bypass -File setup_env.ps1")
     
-    print("\n2. 安装依赖包：")
-    print("   - 运行: python setup_pip_mirror.py")
-    print("   - 或者: pip install streamlit python-dotenv pydantic")
+    print("\n2. 配置API密钥：")
+    print("   - 编辑 src/simple_config.py")
+    print("   - 设置火山引擎API密钥")
     
-    print("\n3. 测试配置：")
+    print("\n3. 安装依赖包：")
+    print("   - 激活虚拟环境后运行: pip install -r requirements.txt")
+    
+    print("\n4. 测试配置：")
     print("   - 运行: python test_setup.py")
     
-    print("\n4. 启动系统：")
-    print("   - 运行: python run.py")
-    print("   - 或者: streamlit run src/enhanced_app.py")
+    print("\n5. 启动后端服务：")
+    print("   - 快速启动: 双击 start_backend_quick.bat")
+    print("   - 选择模式: 双击 start_backend.bat")
+    print("   - 开发调试: 双击 start_backend_dev.bat")
+    
+    print("\n6. 启动前端服务：")
+    print("   - cd frontend")
+    print("   - npm install")
+    print("   - npm run dev")
     
     print("\n🌟 项目特性：")
-    print("  - 支持多种文档格式分析")
-    print("  - 智能需求分析和关键词提取")
-    print("  - 自动生成设计文档")
-    print("  - 支持前端截图分析")
+    print("  - 前后端分离架构 (Vue 3 + Python Flask)")
+    print("  - WebSocket 实时通信")
+    print("  - 智能文档分析和AI对话")
+    print("  - 支持多种文档格式")
+    print("  - 现代化用户界面")
 
 def main():
     """主函数"""
-    print("🚀 智能需求分析与设计文档生成系统")
+    print("🚀 analyDesign 智能分析系统")
     print("项目初始化脚本")
     print("=" * 50)
     
@@ -150,9 +142,6 @@ def main():
     
     # 创建目录结构
     create_directories()
-    
-    # 设置环境文件
-    setup_env_file()
     
     # 创建基础模板
     create_basic_templates()

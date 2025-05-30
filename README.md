@@ -1,6 +1,6 @@
 # 🤖 智能需求分析与设计文档生成系统
 
-这是一个基于人工智能的企业级需求分析和设计文档生成系统，能够结合公司现有的产品需求文档库、数据库结构和设计文档模板来进行深度分析。
+这是一个基于人工智能的企业级需求分析和设计文档生成系统，采用前后端分离架构，能够结合公司现有的产品需求文档库、数据库结构和设计文档模板来进行深度分析。
 
 ## ✨ 核心功能
 
@@ -30,13 +30,27 @@
 
 ## 🛠️ 技术架构
 
+### 前后端分离架构
+```
+┌─────────────────┐    WebSocket/HTTP    ┌─────────────────┐
+│   Vue 3 前端    │ ←─────────────────→ │  Python 后端    │
+│                 │                      │                 │
+│ • Element Plus  │                      │ • Flask API     │
+│ • WebSocket     │                      │ • SocketIO      │
+│ • 实时聊天界面   │                      │ • AI 分析引擎   │
+└─────────────────┘                      └─────────────────┘
+     端口: 3000                              端口: 8081
+```
+
+### 技术栈
+- **前端**: Vue 3 + Element Plus + WebSocket + Vite
+- **后端**: Python Flask + SocketIO + AI引擎
 - **LangChain**: 构建智能体和连接组件
-- **DeepSeek**: 大语言模型，提供强大的文本理解和生成能力
+- **DeepSeek/火山引擎**: 大语言模型，提供强大的文本理解和生成能力
 - **Weaviate**: 向量数据库，存储和检索文档语义信息
 - **SQLAlchemy**: 关系型数据库连接，分析现有业务数据库
 - **PyPDF2/pdfplumber/docx/unstructured**: 多格式文档处理
 - **Tesseract/EasyOCR**: OCR工具，处理前端截图中的文本
-- **Streamlit**: 现代化Web界面，提供友好的用户交互
 
 ## 🚀 快速开始
 
@@ -47,151 +61,120 @@
 git clone [项目地址]
 cd analyDesign
 
-# 配置pip使用阿里云镜像（推荐，加速下载）
-python setup_pip_mirror.py
+# 设置虚拟环境
+powershell -ExecutionPolicy Bypass -File setup_env.ps1
 
-# 或者手动配置pip镜像源
-pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
-pip config set global.trusted-host mirrors.aliyun.com
+# 激活虚拟环境
+call analyDesign_env\Scripts\activate.bat
 
 # 安装Python依赖
 pip install -r requirements.txt
-
-# 或者使用阿里云镜像直接安装
-pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
-
-# 安装Tesseract OCR（Windows）
-# 下载并安装：https://github.com/UB-Mannheim/tesseract/wiki
-
-# 安装Docker（用于Weaviate）
-# 下载并安装：https://www.docker.com/products/docker-desktop
 ```
 
 ### 2. 配置环境
 
-```bash
-# 复制环境配置文件
-cp .env.example .env
+编辑 `src/simple_config.py` 文件，配置以下参数：
 
-# 编辑 .env 文件，配置以下参数：
-```
+```python
+# 火山引擎API配置
+VOLCENGINE_API_KEY = "your_volcengine_api_key_here"
 
-```env
-# DeepSeek API配置
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
-
-# 业务数据库配置（连接现有业务数据库）
-BUSINESS_DATABASE_URL=mysql://username:password@localhost:3306/business_db
-
-# 公司信息配置
-COMPANY_NAME=您的公司名称
-PRODUCT_LINE=您的产品线名称
+# 业务数据库配置（可选）
+BUSINESS_DATABASE_URL = "mysql://username:password@localhost:3306/business_db"
 ```
 
 ### 3. 启动系统
 
+#### 后端启动
 ```bash
-# 使用启动脚本（推荐）
-python run.py
+# 快速启动（推荐）
+双击 start_backend_quick.bat
 
-# 或者手动启动
-# 1. 启动Weaviate
-docker run -d -p 8080:8080 semitechnologies/weaviate:1.19.6
+# 或选择启动模式
+双击 start_backend.bat
 
-# 2. 启动Web应用
-streamlit run src/enhanced_app.py
+# 或开发调试模式
+双击 start_backend_dev.bat
+```
+
+#### 前端启动
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
 ### 4. 访问系统
 
-打开浏览器访问：`http://localhost:8501`
+- **前端界面**: `http://localhost:3000`
+- **后端API**: `http://localhost:8081`
+- **WebSocket**: `ws://localhost:8081/socket.io/`
 
 ## 📖 使用指南
 
-### 步骤1：文档上传
-1. 在"文档上传"标签页上传需求文档（PDF、Word等）
+### 步骤1：启动服务
+1. 启动后端服务（端口8081）
+2. 启动前端服务（端口3000）
+3. 在浏览器中访问前端界面
+
+### 步骤2：文档上传与分析
+1. 在聊天界面上传需求文档（PDF、Word等）
 2. 可选：上传前端界面截图
-3. 点击"开始处理文档"
+3. 系统自动进行智能分析
 
-### 步骤2：智能分析
-1. 切换到"需求分析"标签页
-2. 点击"开始智能分析"
-3. 系统将自动：
-   - 提取业务关键词
-   - 搜索相关数据库表
-   - 检查数据字段可用性
-   - 识别潜在问题
+### 步骤3：实时对话
+1. 与AI助手进行实时对话
+2. 获取需求分析结果
+3. 生成设计文档和建议
 
-### 步骤3：生成设计文档
-1. 切换到"设计文档"标签页
-2. 点击"生成后端设计文档"或"生成前端设计文档"
-3. 查看生成的详细设计文档
-4. 保存或下载设计文档
-
-### 步骤4：查看分析结果
-1. 在"分析结果"标签页查看：
-   - API接口设计详情
-   - 相似历史文档
-   - 完整的分析报告
+### 步骤4：查看结果
+1. 查看分析报告和设计建议
+2. 下载生成的设计文档
+3. 获取API接口设计详情
 
 ## 📁 项目结构
 
 ```
 analyDesign/
-├── src/                          # 源代码目录
-│   ├── config.py                 # 配置管理
-│   ├── document_processor.py     # 文档处理模块
-│   ├── vector_store.py          # 向量数据库管理
-│   ├── database_analyzer.py     # 数据库分析模块
-│   ├── enhanced_analyzer.py     # 增强智能分析器
-│   └── enhanced_app.py          # Web应用界面
-├── templates/                    # 设计文档模板
-│   ├── backend_design_template.md
-│   └── frontend_design_template.md
-├── uploads/                      # 上传文件存储
-├── outputs/                      # 生成文档输出
-├── requirements.txt              # Python依赖
-├── .env.example                 # 环境配置示例
-├── setup_pip_mirror.py          # pip镜像配置工具
-├── run.py                       # 启动脚本
-├── test_setup.py                # 配置测试脚本
-└── README.md                    # 项目说明
+├── 🐍 后端部分
+│   ├── src/
+│   │   ├── integrated_server.py     # 集成服务器
+│   │   ├── api_server.py           # API服务器
+│   │   ├── enhanced_analyzer.py    # 智能分析器
+│   │   ├── websocket_server.py     # WebSocket服务
+│   │   └── simple_config.py        # 配置文件
+│   ├── start_backend_quick.bat     # 快速启动脚本
+│   ├── start_backend.bat           # 启动选择脚本
+│   └── requirements.txt            # Python依赖
+│
+├── 🎨 前端部分
+│   ├── frontend/
+│   │   ├── src/
+│   │   │   ├── components/
+│   │   │   │   └── ChatInterface.vue    # 主聊天界面
+│   │   │   └── stores/
+│   │   │       └── websocket.js         # WebSocket状态管理
+│   │   └── package.json             # 前端依赖
+│   
+├── 📄 配置和模板
+│   ├── templates/                   # 设计文档模板
+│   ├── uploads/                     # 上传文件存储
+│   ├── outputs/                     # 生成文档输出
+│   └── logs/                        # 日志文件
 ```
 
 ## 🔧 高级配置
-
-### pip镜像源配置
-
-为了加速包的下载，建议使用国内镜像源：
-
-```bash
-# 使用配置工具（推荐）
-python setup_pip_mirror.py
-
-# 手动配置常用镜像源
-# 阿里云
-pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
-
-# 清华大学
-pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/
-
-# 中科大
-pip config set global.index-url https://pypi.mirrors.ustc.edu.cn/simple/
-```
 
 ### 数据库连接
 
 系统支持连接现有的业务数据库来分析表结构：
 
-```env
+```python
 # MySQL
-BUSINESS_DATABASE_URL=mysql://username:password@localhost:3306/database_name
+BUSINESS_DATABASE_URL = "mysql://username:password@localhost:3306/database_name"
 
 # PostgreSQL
-BUSINESS_DATABASE_URL=postgresql://username:password@localhost:5432/database_name
-
-# SQL Server
-BUSINESS_DATABASE_URL=mssql+pyodbc://username:password@server/database?driver=ODBC+Driver+17+for+SQL+Server
+BUSINESS_DATABASE_URL = "postgresql://username:password@localhost:5432/database_name"
 ```
 
 ### 自定义模板
@@ -200,19 +183,6 @@ BUSINESS_DATABASE_URL=mssql+pyodbc://username:password@server/database?driver=OD
 
 - `backend_design_template.md`: 后端设计文档模板
 - `frontend_design_template.md`: 前端设计文档模板
-
-### 向量数据库配置
-
-支持本地和云端Weaviate部署：
-
-```env
-# 本地部署
-WEAVIATE_URL=http://localhost:8080
-
-# 云端部署
-WEAVIATE_URL=https://your-cluster.weaviate.network
-WEAVIATE_API_KEY=your_api_key
-```
 
 ## 🎯 应用场景
 
