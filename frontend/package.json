@@ -15,9 +15,12 @@
     "axios": "^1.6.0",
     "element-plus": "^2.4.0",
     "highlight.js": "^11.9.0",
+    "mammoth": "^1.9.1",
     "markdown-it": "^14.0.0",
+    "pdfjs-dist": "^3.4.120",
     "pinia": "^2.1.0",
     "vue": "^3.4.0",
+    "vue-pdf": "^4.3.0",
     "vue-router": "^4.2.0"
   },
   "devDependencies": {

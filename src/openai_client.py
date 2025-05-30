@@ -19,6 +19,7 @@ except ImportError:
 # 导入配置
 try:
     from .config import settings
+    from .llm_logger import log_llm_request, log_llm_response, log_llm_stream_chunk
 except ImportError:
     # 如果在测试环境中，直接加载环境变量
     from dotenv import load_dotenv
@@ -37,6 +38,16 @@ except ImportError:
         DEFAULT_TIMEOUT = 60
     
     settings = MockSettings()
+    
+    # 如果导入失败，创建空的日志函数
+    def log_llm_request(*args, **kwargs):
+        return f"openai_{int(time.time() * 1000)}"
+    
+    def log_llm_response(*args, **kwargs):
+        pass
+    
+    def log_llm_stream_chunk(*args, **kwargs):
+        pass
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -95,22 +106,77 @@ class OpenAIClient:
         Returns:
             响应内容或流对象
         """
+        # 准备请求参数
+        used_model = model or self.config.model
+        request_params = {
+            "model": used_model,
+            "temperature": temperature or self.config.temperature,
+            "max_tokens": max_tokens or self.config.max_tokens,
+            "stream": stream,
+            **kwargs
+        }
+        
+        # 记录请求日志
+        request_id = log_llm_request(
+            provider=self.config.name.lower().replace(" ", "_"),
+            model=used_model,
+            messages=messages,
+            parameters=request_params
+        )
+        
+        start_time = time.time()
+        
         try:
             response = self.client.chat.completions.create(
-                model=model or self.config.model,
                 messages=messages,
-                temperature=temperature or self.config.temperature,
-                max_tokens=max_tokens or self.config.max_tokens,
-                stream=stream,
-                **kwargs
+                **request_params
             )
             
+            response_time = time.time() - start_time
+            
             if stream:
+                # 记录流式响应开始
+                log_llm_response(
+                    request_id=request_id,
+                    response_content="[STREAM_START]",
+                    response_time=response_time,
+                    token_usage=None
+                )
                 return response
             else:
-                return response.choices[0].message.content
+                response_content = response.choices[0].message.content
+                
+                # 提取token使用情况
+                token_usage = None
+                if hasattr(response, 'usage') and response.usage:
+                    token_usage = {
+                        "prompt_tokens": response.usage.prompt_tokens,
+                        "completion_tokens": response.usage.completion_tokens,
+                        "total_tokens": response.usage.total_tokens
+                    }
+                
+                # 记录响应日志
+                log_llm_response(
+                    request_id=request_id,
+                    response_content=response_content,
+                    response_time=response_time,
+                    token_usage=token_usage
+                )
+                
+                return response_content
                 
         except Exception as e:
+            response_time = time.time() - start_time
+            error_msg = str(e)
+            
+            # 记录错误日志
+            log_llm_response(
+                request_id=request_id,
+                response_content="",
+                response_time=response_time,
+                error=error_msg
+            )
+            
             logger.error(f"API调用失败: {e}")
             raise
     
@@ -131,16 +197,72 @@ class OpenAIClient:
         Yields:
             流式响应内容
         """
-        stream = self.chat_completion(
-            messages=messages,
-            model=model,
-            stream=True,
+        # 准备请求参数
+        used_model = model or self.config.model
+        request_params = {
+            "model": used_model,
+            "temperature": self.config.temperature,
+            "max_tokens": self.config.max_tokens,
+            "stream": True,
             **kwargs
+        }
+        
+        # 记录请求日志
+        request_id = log_llm_request(
+            provider=self.config.name.lower().replace(" ", "_"),
+            model=used_model,
+            messages=messages,
+            parameters=request_params
         )
         
-        for chunk in stream:
-            if chunk.choices and chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+        start_time = time.time()
+        chunk_index = 0
+        full_response = ""
+        
+        try:
+            stream = self.client.chat.completions.create(
+                messages=messages,
+                **request_params
+            )
+            
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    chunk_content = chunk.choices[0].delta.content
+                    full_response += chunk_content
+                    
+                    # 记录流式响应块
+                    log_llm_stream_chunk(
+                        request_id=request_id,
+                        chunk_content=chunk_content,
+                        chunk_index=chunk_index
+                    )
+                    
+                    chunk_index += 1
+                    yield chunk_content
+            
+            # 记录完整响应
+            response_time = time.time() - start_time
+            log_llm_response(
+                request_id=request_id,
+                response_content=full_response,
+                response_time=response_time,
+                token_usage=None  # 流式响应通常不返回token使用情况
+            )
+                    
+        except Exception as e:
+            response_time = time.time() - start_time
+            error_msg = str(e)
+            
+            # 记录错误日志
+            log_llm_response(
+                request_id=request_id,
+                response_content=full_response,
+                response_time=response_time,
+                error=error_msg
+            )
+            
+            logger.error(f"流式API调用失败: {e}")
+            raise
 
 class MultiAPIManager:
     """多API管理器"""

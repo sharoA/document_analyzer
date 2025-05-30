@@ -28,7 +28,7 @@
           <p>支持 Word、PDF、TXT、Markdown 格式文档分析</p>
           
           <div class="feature-tips">
-            <p>💡 点击下方"附件"按钮上传文档，自动开始分析</p>
+            <p>💡 点击下方"附件"按钮上传文档，点击上传文档后面开始分析按钮进行解析</p>
           </div>
         </div>
       </div>
@@ -207,8 +207,86 @@
           </div>
         </el-tab-pane>
 
+        <!-- 上传文档预览 -->
+        <el-tab-pane label="上传文档预览" name="preview">
+          <div class="tab-content">
+            <div v-if="!uploadedFile" class="empty-state">
+              <el-empty description="暂无上传文档">
+                <el-button type="primary" @click="attachFile">
+                  <el-icon><Paperclip /></el-icon>
+                  上传文档
+                </el-button>
+              </el-empty>
+            </div>
+            
+            <div v-else class="document-preview">
+              <div class="preview-header">
+                <h4>{{ getPreviewTitle(uploadedFile) }}</h4>
+                <div class="file-info">
+                  <el-tag size="small" type="success">
+                    <el-icon><Document /></el-icon>
+                    {{ uploadedFile.name }}
+                  </el-tag>
+                  <span class="file-size">{{ formatFileSize(uploadedFile.size) }}</span>
+                </div>
+              </div>
+              
+              <div class="preview-content">
+                <!-- 文档基本信息 -->
+                <el-card style="margin-bottom: 16px;">
+                  <template #header>
+                    <div style="display: flex; align-items: center;">
+                      <el-icon style="margin-right: 8px;"><Document /></el-icon>
+                      <span>文档信息</span>
+                    </div>
+                  </template>
+                  <el-descriptions :column="2" border size="small">
+                    <el-descriptions-item label="文件名">
+                      {{ uploadedFile.name }}
+                    </el-descriptions-item>
+                    <el-descriptions-item label="文件大小">
+                      {{ formatFileSize(uploadedFile.size) }}
+                    </el-descriptions-item>
+                    <el-descriptions-item label="文件类型">
+                      {{ getFileType(uploadedFile) }}
+                    </el-descriptions-item>
+                    <el-descriptions-item label="扩展名">
+                      {{ getFileExtension(uploadedFile.name) }}
+                    </el-descriptions-item>
+                  </el-descriptions>
+                </el-card>
+                
+                <!-- 文档预览区域 -->
+                <el-card>
+                  <template #header>
+                    <div style="display: flex; align-items: center;">
+                      <el-icon style="margin-right: 8px;"><View /></el-icon>
+                      <span>文档预览</span>
+                    </div>
+                  </template>
+                  
+                  <!-- 使用DocumentPreview组件 -->
+                  <DocumentPreview :file="uploadedFile" />
+                </el-card>
+                
+                <!-- 操作按钮 -->
+                <div style="margin-top: 24px; text-align: center; padding: 20px; border-top: 1px solid #e4e7ed;">
+                  <el-button type="primary" size="large" @click="analyzeDocument" :loading="isAnalyzing">
+                    <el-icon><Promotion /></el-icon>
+                    开始分析文档
+                  </el-button>
+                  <el-button size="large" @click="removeFile">
+                    <el-icon><Close /></el-icon>
+                    移除文档
+                  </el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-tab-pane>
+
         <!-- 文件解析结果 -->
-        <el-tab-pane label="文件" name="files">
+        <el-tab-pane label="解析结果" name="files">
           <div class="tab-content">
             <div v-if="!analysisResult" class="empty-state">
               <el-empty description="暂无解析结果">
@@ -388,9 +466,16 @@ import {
   Paperclip,
   FullScreen,
   Setting,
-  Download
+  Download,
+  View,
+  InfoFilled,
+  ArrowLeft,
+  ArrowRight,
+  ZoomIn,
+  ZoomOut
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import DocumentPreview from './DocumentPreview.vue'
 
 // 响应式数据
 const currentMessage = ref('')
@@ -466,6 +551,26 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
+const getFileType = (file) => {
+  const typeMap = {
+    'application/msword': 'Microsoft Word 文档',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'Microsoft Word 文档',
+    'application/pdf': 'PDF 文档',
+    'text/plain': '纯文本文档',
+    'text/markdown': 'Markdown 文档'
+  }
+  return typeMap[file.raw.type] || '未知文档类型'
+}
+
+const getFileExtension = (fileName) => {
+  const lastDot = fileName.lastIndexOf('.')
+  return lastDot !== -1 ? fileName.substring(lastDot) : '无扩展名'
+}
+
+const getPreviewTitle = (file) => {
+  return '文档预览'
+}
+
 const formatMessage = (message) => {
   return message
     .replace(/\n/g, '<br>')
@@ -527,6 +632,8 @@ const expandInput = () => {
 
 // 文件上传相关方法
 const handleFileChange = (file) => {
+  console.log('文件上传开始:', file)
+  
   const allowedTypes = [
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -535,17 +642,36 @@ const handleFileChange = (file) => {
     'text/markdown'
   ]
   
+  console.log('文件类型:', file.raw.type)
+  console.log('文件名:', file.name)
+  console.log('文件大小:', file.size)
+  
   if (!allowedTypes.includes(file.raw.type) && !file.name.match(/\.(doc|docx|pdf|txt|md)$/i)) {
     ElMessage.error('不支持的文件格式，请上传 Word、PDF、TXT 或 Markdown 文件')
     return false
   }
   
-  if (file.size > 10 * 1024 * 1024) { // 10MB
-    ElMessage.error('文件大小不能超过 10MB')
+  if (file.size > 50 * 1024 * 1024) { // 50MB
+    ElMessage.error('文件大小不能超过 50MB')
     return false
   }
   
   uploadedFile.value = file
+  console.log('uploadedFile设置完成:', uploadedFile.value)
+  
+  // 使用nextTick确保DOM更新后再切换页签
+  nextTick(() => {
+    console.log('切换到预览页签...')
+    activeTab.value = 'preview'
+    console.log('当前活动页签:', activeTab.value)
+    
+    // 强制触发响应式更新
+    setTimeout(() => {
+      console.log('延迟检查 - 当前页签:', activeTab.value)
+      console.log('延迟检查 - 上传文件:', uploadedFile.value?.name)
+    }, 100)
+  })
+  
   ElMessage.success(`文件 ${file.name} 已选择，点击"开始分析"进行处理`)
 }
 
@@ -564,14 +690,17 @@ const analyzeDocument = async () => {
   activeTab.value = 'realtime'
   
   try {
-    // 添加处理步骤
-    wsStore.addProcessingStep({
-      id: Date.now(),
+    // 清空之前的处理步骤
+    wsStore.clearProcessingSteps()
+    
+    // 添加文档上传完成步骤
+    wsStore.updateProcessingStep({
+      id: 'step_0',
       title: '文档上传',
-      description: `正在处理文件: ${uploadedFile.value.name}`,
-      status: 'primary',
+      description: `文件上传完成: ${uploadedFile.value.name}`,
+      status: 'success',
       timestamp: new Date().toLocaleTimeString(),
-      progress: 0
+      progress: 100
     })
     
     // 模拟文档分析过程
@@ -588,25 +717,42 @@ const analyzeDocument = async () => {
 
 const simulateDocumentAnalysis = async () => {
   const steps = [
-    { title: '文档解析', description: '正在解析文档结构和内容', progress: 20 },
-    { title: '内容分析', description: '正在分析需求内容', progress: 50 },
-    { title: '智能处理', description: '正在生成分析报告', progress: 80 },
-    { title: '完成处理', description: '分析报告生成完成', progress: 100 }
+    { id: 'step_1', title: '文档解析', description: '正在解析文档结构和内容', progress: 20 },
+    { id: 'step_2', title: '内容分析', description: '正在分析需求内容', progress: 50 },
+    { id: 'step_3', title: '智能处理', description: '正在生成分析报告', progress: 80 },
+    { id: 'step_4', title: '完成处理', description: '分析报告生成完成', progress: 100 }
   ]
   
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i]
+    
+    // 添加或更新当前步骤
     wsStore.updateProcessingStep({
-      id: Date.now() + i,
+      id: step.id,
       title: step.title,
       description: step.description,
-      status: i === steps.length - 1 ? 'success' : 'primary',
+      status: 'primary',
       timestamp: new Date().toLocaleTimeString(),
       progress: step.progress
     })
     
     wsStore.setCurrentProcessing(step.description)
     await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    // 将当前步骤标记为完成
+    wsStore.updateProcessingStep({
+      id: step.id,
+      title: step.title,
+      description: i === steps.length - 1 ? step.description : `${step.title}完成`,
+      status: 'success',
+      timestamp: new Date().toLocaleTimeString(),
+      progress: 100
+    })
+    
+    // 如果不是最后一步，稍微延迟一下显示完成状态
+    if (i < steps.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
   }
   
   // 设置分析结果
@@ -768,9 +914,22 @@ watch(messages, () => {
   scrollToBottom()
 }, { deep: true })
 
+// 监听上传文件变化
+watch(uploadedFile, (newFile, oldFile) => {
+  console.log('uploadedFile变化:', { newFile, oldFile })
+}, { deep: true })
+
+// 监听活动页签变化
+watch(activeTab, (newTab, oldTab) => {
+  console.log('activeTab变化:', { newTab, oldTab })
+})
+
 // 组件挂载时初始化
 onMounted(() => {
   scrollToBottom()
+  console.log('组件已挂载')
+  console.log('初始uploadedFile:', uploadedFile.value)
+  console.log('初始activeTab:', activeTab.value)
 })
 </script>
 
@@ -1255,6 +1414,139 @@ onMounted(() => {
                 }
               }
             }
+          }
+        }
+      }
+
+      .document-preview {
+        .preview-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #e4e7ed;
+
+          h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #303133;
+            margin: 0;
+          }
+
+          .file-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+
+            .file-size {
+              font-size: 12px;
+              color: #909399;
+            }
+          }
+        }
+
+        .preview-content {
+          .text-preview {
+            .file-content {
+              background: #f8f9fa;
+              border: 1px solid #e4e7ed;
+              border-radius: 6px;
+              padding: 16px;
+              margin-bottom: 20px;
+
+              pre {
+                margin: 0;
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+                line-height: 1.5;
+                color: #303133;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+              }
+            }
+
+            .loading-content {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              padding: 40px;
+              color: #909399;
+
+              .el-icon {
+                font-size: 24px;
+                margin-bottom: 12px;
+              }
+
+              p {
+                margin: 0;
+                font-size: 14px;
+              }
+            }
+          }
+
+          .binary-preview {
+            .file-info-display {
+              margin-bottom: 20px;
+
+              .document-icon {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                margin-bottom: 16px;
+
+                .el-icon {
+                  margin-bottom: 8px;
+                }
+
+                .icon-text {
+                  font-size: 14px;
+                  font-weight: 600;
+                  color: #303133;
+                  margin: 0;
+                }
+              }
+
+              .preview-notice {
+                margin-top: 16px;
+
+                :deep(.el-alert__content) {
+                  .notice-content {
+                    p {
+                      margin: 8px 0;
+                      font-size: 13px;
+                      line-height: 1.5;
+
+                      strong {
+                        color: #303133;
+                        font-weight: 600;
+                      }
+                    }
+
+                    ul {
+                      margin: 8px 0;
+                      padding-left: 20px;
+
+                      li {
+                        margin: 4px 0;
+                        font-size: 13px;
+                        line-height: 1.4;
+                        color: #67c23a;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          .preview-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding-top: 20px;
+            border-top: 1px solid #e4e7ed;
           }
         }
       }

@@ -7,10 +7,144 @@ from .database_analyzer import DatabaseAnalyzer
 from .vector_store import VectorStore
 import json
 import os
+import time
+
+# 导入日志记录器
+try:
+    from .llm_logger import log_llm_request, log_llm_response
+except ImportError:
+    # 如果导入失败，创建空的日志函数
+    def log_llm_request(*args, **kwargs):
+        return f"langchain_{int(time.time() * 1000)}"
+    
+    def log_llm_response(*args, **kwargs):
+        pass
+
+class LoggedDeepSeek:
+    """带日志记录的DeepSeek包装器"""
+    
+    def __init__(self, api_key: str):
+        self.llm = DeepSeek(api_key=api_key)
+        self.api_key = api_key
+    
+    def __call__(self, prompt: str, **kwargs) -> str:
+        """调用DeepSeek并记录日志"""
+        # 准备请求参数
+        request_params = {
+            "prompt": prompt,
+            **kwargs
+        }
+        
+        # 记录请求日志
+        request_id = log_llm_request(
+            provider="deepseek_langchain",
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            parameters=request_params
+        )
+        
+        start_time = time.time()
+        
+        try:
+            # 调用原始LLM
+            response = self.llm(prompt, **kwargs)
+            response_time = time.time() - start_time
+            
+            # 记录响应日志
+            log_llm_response(
+                request_id=request_id,
+                response_content=response,
+                response_time=response_time,
+                token_usage=None  # LangChain通常不返回token使用情况
+            )
+            
+            return response
+            
+        except Exception as e:
+            response_time = time.time() - start_time
+            error_msg = str(e)
+            
+            # 记录错误日志
+            log_llm_response(
+                request_id=request_id,
+                response_content="",
+                response_time=response_time,
+                error=error_msg
+            )
+            
+            raise
+    
+    def __getattr__(self, name):
+        """代理其他属性到原始LLM"""
+        return getattr(self.llm, name)
+
+class LoggedLLMChain:
+    """带日志记录的LLMChain包装器"""
+    
+    def __init__(self, llm, prompt: PromptTemplate):
+        self.chain = LLMChain(llm=llm, prompt=prompt)
+        self.llm = llm
+        self.prompt = prompt
+    
+    def run(self, **kwargs) -> str:
+        """运行链并记录日志"""
+        # 格式化提示词
+        formatted_prompt = self.prompt.format(**kwargs)
+        
+        # 准备请求参数
+        request_params = {
+            "prompt_template": self.prompt.template,
+            "input_variables": kwargs,
+            **kwargs
+        }
+        
+        # 记录请求日志
+        request_id = log_llm_request(
+            provider="deepseek_langchain_chain",
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": formatted_prompt}],
+            parameters=request_params
+        )
+        
+        start_time = time.time()
+        
+        try:
+            # 运行原始链
+            response = self.chain.run(**kwargs)
+            response_time = time.time() - start_time
+            
+            # 记录响应日志
+            log_llm_response(
+                request_id=request_id,
+                response_content=response,
+                response_time=response_time,
+                token_usage=None
+            )
+            
+            return response
+            
+        except Exception as e:
+            response_time = time.time() - start_time
+            error_msg = str(e)
+            
+            # 记录错误日志
+            log_llm_response(
+                request_id=request_id,
+                response_content="",
+                response_time=response_time,
+                error=error_msg
+            )
+            
+            raise
+    
+    def __getattr__(self, name):
+        """代理其他属性到原始链"""
+        return getattr(self.chain, name)
 
 class EnhancedRequirementAnalyzer:
     def __init__(self):
-        self.llm = DeepSeek(api_key=settings.DEEPSEEK_API_KEY)
+        # 使用带日志记录的DeepSeek包装器
+        self.llm = LoggedDeepSeek(api_key=settings.DEEPSEEK_API_KEY)
         self.db_analyzer = DatabaseAnalyzer()
         self.vector_store = VectorStore()
         self._setup_chains()
@@ -55,7 +189,7 @@ class EnhancedRequirementAnalyzer:
         - relationships: 实体关系
         - data_requirements: 数据需求列表
         """
-        self.keyword_chain = LLMChain(
+        self.keyword_chain = LoggedLLMChain(
             llm=self.llm,
             prompt=PromptTemplate(
                 input_variables=["content", "similar_docs", "db_summary"],
@@ -86,7 +220,7 @@ class EnhancedRequirementAnalyzer:
         - business_logic_issues: 业务逻辑问题
         - suggestions: 改进建议
         """
-        self.issue_chain = LLMChain(
+        self.issue_chain = LoggedLLMChain(
             llm=self.llm,
             prompt=PromptTemplate(
                 input_variables=["content", "keywords", "field_availability", "related_tables"],
@@ -122,7 +256,7 @@ class EnhancedRequirementAnalyzer:
             }}
         ]
         """
-        self.api_design_chain = LLMChain(
+        self.api_design_chain = LoggedLLMChain(
             llm=self.llm,
             prompt=PromptTemplate(
                 input_variables=["content", "keywords", "related_tables"],
@@ -157,7 +291,7 @@ class EnhancedRequirementAnalyzer:
         5. 安全性设计
         6. 性能优化方案
         """
-        self.backend_design_chain = LLMChain(
+        self.backend_design_chain = LoggedLLMChain(
             llm=self.llm,
             prompt=PromptTemplate(
                 input_variables=["content", "api_design", "db_analysis", "issues", "template"],
@@ -189,7 +323,7 @@ class EnhancedRequirementAnalyzer:
         5. 样式设计
         6. 响应式设计
         """
-        self.frontend_design_chain = LLMChain(
+        self.frontend_design_chain = LoggedLLMChain(
             llm=self.llm,
             prompt=PromptTemplate(
                 input_variables=["content", "ocr_text", "api_design", "template"],

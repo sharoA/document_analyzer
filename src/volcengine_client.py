@@ -6,6 +6,7 @@
 
 import os
 import logging
+import time
 from typing import List, Dict, Optional, Any, Generator
 from dataclasses import dataclass
 
@@ -16,6 +17,7 @@ except ImportError:
 
 try:
     from .simple_config import settings
+    from .llm_logger import log_llm_request, log_llm_response, log_llm_stream_chunk
 except ImportError:
     from dotenv import load_dotenv
     load_dotenv()
@@ -29,6 +31,16 @@ except ImportError:
         DEFAULT_TIMEOUT = 60
     
     settings = MockSettings()
+    
+    # 如果导入失败，创建空的日志函数
+    def log_llm_request(*args, **kwargs):
+        return f"volcengine_{int(time.time() * 1000)}"
+    
+    def log_llm_response(*args, **kwargs):
+        pass
+    
+    def log_llm_stream_chunk(*args, **kwargs):
+        pass
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -97,22 +109,76 @@ class VolcengineClient:
         Returns:
             AI回复内容
         """
+        # 准备请求参数
+        request_params = {
+            "temperature": temperature or self.config.temperature,
+            "max_tokens": max_tokens or self.config.max_tokens,
+            "stream": stream,
+            **kwargs
+        }
+        
+        # 记录请求日志
+        request_id = log_llm_request(
+            provider="volcengine",
+            model=self.config.model_id,
+            messages=messages,
+            parameters=request_params
+        )
+        
+        start_time = time.time()
+        
         try:
             response = self.client.chat.completions.create(
                 model=self.config.model_id,
                 messages=messages,
-                temperature=temperature or self.config.temperature,
-                max_tokens=max_tokens or self.config.max_tokens,
-                stream=stream,
-                **kwargs
+                **request_params
             )
             
+            response_time = time.time() - start_time
+            
             if stream:
+                # 记录流式响应开始
+                log_llm_response(
+                    request_id=request_id,
+                    response_content="[STREAM_START]",
+                    response_time=response_time,
+                    token_usage=None
+                )
                 return response
             else:
-                return response.choices[0].message.content
+                response_content = response.choices[0].message.content
+                
+                # 提取token使用情况
+                token_usage = None
+                if hasattr(response, 'usage') and response.usage:
+                    token_usage = {
+                        "prompt_tokens": response.usage.prompt_tokens,
+                        "completion_tokens": response.usage.completion_tokens,
+                        "total_tokens": response.usage.total_tokens
+                    }
+                
+                # 记录响应日志
+                log_llm_response(
+                    request_id=request_id,
+                    response_content=response_content,
+                    response_time=response_time,
+                    token_usage=token_usage
+                )
+                
+                return response_content
                 
         except Exception as e:
+            response_time = time.time() - start_time
+            error_msg = str(e)
+            
+            # 记录错误日志
+            log_llm_response(
+                request_id=request_id,
+                response_content="",
+                response_time=response_time,
+                error=error_msg
+            )
+            
             logger.error(f"火山引擎API调用失败: {e}")
             raise
     
@@ -135,21 +201,69 @@ class VolcengineClient:
         Yields:
             流式响应内容
         """
+        # 准备请求参数
+        request_params = {
+            "temperature": temperature or self.config.temperature,
+            "max_tokens": max_tokens or self.config.max_tokens,
+            "stream": True,
+            **kwargs
+        }
+        
+        # 记录请求日志
+        request_id = log_llm_request(
+            provider="volcengine",
+            model=self.config.model_id,
+            messages=messages,
+            parameters=request_params
+        )
+        
+        start_time = time.time()
+        chunk_index = 0
+        full_response = ""
+        
         try:
             stream = self.client.chat.completions.create(
                 model=self.config.model_id,
                 messages=messages,
-                temperature=temperature or self.config.temperature,
-                max_tokens=max_tokens or self.config.max_tokens,
-                stream=True,
-                **kwargs
+                **request_params
             )
             
             for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
+                    chunk_content = chunk.choices[0].delta.content
+                    full_response += chunk_content
+                    
+                    # 记录流式响应块
+                    log_llm_stream_chunk(
+                        request_id=request_id,
+                        chunk_content=chunk_content,
+                        chunk_index=chunk_index
+                    )
+                    
+                    chunk_index += 1
+                    yield chunk_content
+            
+            # 记录完整响应
+            response_time = time.time() - start_time
+            log_llm_response(
+                request_id=request_id,
+                response_content=full_response,
+                response_time=response_time,
+                token_usage=None  # 流式响应通常不返回token使用情况
+            )
                     
         except Exception as e:
+            response_time = time.time() - start_time
+            error_msg = str(e)
+            
+            # 记录错误日志
+            log_llm_response(
+                request_id=request_id,
+                response_content=full_response,
+                response_time=response_time,
+                error=error_msg
+            )
+            
             logger.error(f"火山引擎流式API调用失败: {e}")
             raise
     

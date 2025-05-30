@@ -174,6 +174,12 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
   }
 
+  const clearProcessingSteps = () => {
+    processingSteps.value = []
+    currentProcessing.value = null
+    isProcessing.value = false
+  }
+
   const setCurrentProcessing = (message) => {
     currentProcessing.value = message
     isProcessing.value = !!message
@@ -247,6 +253,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     clearMessages,
     addProcessingStep,
     updateProcessingStep,
+    clearProcessingSteps,
     setCurrentProcessing,
     setAnalysisResult,
     clearAnalysisResult,
