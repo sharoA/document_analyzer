@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # AI模型参数配置
     DEFAULT_TEMPERATURE: float = 0.7
     DEFAULT_MAX_TOKENS: int = 2000
-    DEFAULT_TIMEOUT: int = 60
+    DEFAULT_TIMEOUT: int = 120  # 调整为2分钟，适应大模型响应时间
     
     # Weaviate配置
     WEAVIATE_URL: str = os.getenv("WEAVIATE_URL", "http://localhost:8080")

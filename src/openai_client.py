@@ -35,7 +35,7 @@ except ImportError:
         OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
         DEFAULT_TEMPERATURE = 0.7
         DEFAULT_MAX_TOKENS = 2000
-        DEFAULT_TIMEOUT = 60
+        DEFAULT_TIMEOUT = 120  # 调整为2分钟，适应大模型响应时间
     
     settings = MockSettings()
     
@@ -54,20 +54,19 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 @dataclass
-class APIConfig:
-    """API配置类"""
-    name: str
+class AIClientConfig:
+    """AI客户端配置"""
     api_key: str
     base_url: str
     model: str
-    max_tokens: int = 2000
     temperature: float = 0.7
-    timeout: int = 60
+    max_tokens: int = 2000
+    timeout: int = 120  # 调整为2分钟，适应大模型响应时间
 
 class OpenAIClient:
     """OpenAI兼容客户端"""
     
-    def __init__(self, config: APIConfig):
+    def __init__(self, config: AIClientConfig):
         """
         初始化OpenAI客户端
         
@@ -81,7 +80,7 @@ class OpenAIClient:
             timeout=config.timeout
         )
         
-        logger.info(f"OpenAI客户端初始化成功: {config.name}")
+        logger.info(f"OpenAI客户端初始化成功: {config.model}")
     
     def chat_completion(
         self,
@@ -118,7 +117,7 @@ class OpenAIClient:
         
         # 记录请求日志
         request_id = log_llm_request(
-            provider=self.config.name.lower().replace(" ", "_"),
+            provider=self.config.model.lower().replace(" ", "_"),
             model=used_model,
             messages=messages,
             parameters=request_params
@@ -209,7 +208,7 @@ class OpenAIClient:
         
         # 记录请求日志
         request_id = log_llm_request(
-            provider=self.config.name.lower().replace(" ", "_"),
+            provider=self.config.model.lower().replace(" ", "_"),
             model=used_model,
             messages=messages,
             parameters=request_params
@@ -277,8 +276,7 @@ class MultiAPIManager:
         """加载API配置"""
         # 火山引擎配置（优先级最高）
         if settings.VOLCENGINE_API_KEY:
-            config = APIConfig(
-                name="火山引擎",
+            config = AIClientConfig(
                 api_key=settings.VOLCENGINE_API_KEY,
                 base_url=settings.VOLCENGINE_BASE_URL,
                 model=settings.VOLCENGINE_MODEL_ID,
@@ -290,8 +288,7 @@ class MultiAPIManager:
         
         # DeepSeek配置
         if settings.DEEPSEEK_API_KEY:
-            config = APIConfig(
-                name="DeepSeek",
+            config = AIClientConfig(
                 api_key=settings.DEEPSEEK_API_KEY,
                 base_url=settings.DEEPSEEK_BASE_URL,
                 model="deepseek-chat",
@@ -303,8 +300,7 @@ class MultiAPIManager:
         
         # OpenAI配置
         if settings.OPENAI_API_KEY:
-            config = APIConfig(
-                name="OpenAI",
+            config = AIClientConfig(
                 api_key=settings.OPENAI_API_KEY,
                 base_url=settings.OPENAI_BASE_URL,
                 model="gpt-3.5-turbo",
@@ -322,7 +318,7 @@ class MultiAPIManager:
         elif "openai" in self.clients:
             self.default_client = "openai"
     
-    def add_client(self, name: str, config: APIConfig):
+    def add_client(self, name: str, config: AIClientConfig):
         """
         添加客户端
         

@@ -28,7 +28,7 @@ except ImportError:
         VOLCENGINE_BASE_URL = os.getenv("VOLCENGINE_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
         DEFAULT_TEMPERATURE = 0.7
         DEFAULT_MAX_TOKENS = 2000
-        DEFAULT_TIMEOUT = 60
+        DEFAULT_TIMEOUT = 120  # 调整为2分钟，适应大模型响应时间
     
     settings = MockSettings()
     
@@ -53,7 +53,7 @@ class VolcengineConfig:
     base_url: str = "https://ark.cn-beijing.volces.com/api/v3"
     temperature: float = 0.7
     max_tokens: int = 2000
-    timeout: int = 60
+    timeout: int = 120  # 调整为2分钟，适应大模型响应时间
 
 class VolcengineClient:
     """火山引擎客户端"""

@@ -48,7 +48,9 @@ CORS(app,
 # 创建SocketIO实例
 socketio = SocketIO(app, 
                    cors_allowed_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-                   async_mode='threading')
+                   async_mode='threading',
+                   ping_timeout=150,  # 2.5分钟ping超时，比API超时稍长
+                   ping_interval=30)  # 30秒ping间隔
 
 # 初始化火山引擎客户端
 try:
@@ -57,7 +59,8 @@ try:
         model_id=settings.VOLCENGINE_MODEL_ID,
         base_url=settings.VOLCENGINE_BASE_URL,
         temperature=settings.DEFAULT_TEMPERATURE,
-        max_tokens=settings.DEFAULT_MAX_TOKENS
+        max_tokens=settings.DEFAULT_MAX_TOKENS,
+        timeout=settings.DEFAULT_TIMEOUT
     )
     volcano_client = VolcengineClient(volcano_config)
     logger.info("火山引擎客户端初始化成功")

@@ -20,6 +20,15 @@ if not exist "analyDesign_env\Scripts\activate.bat" (
 echo 🔧 激活虚拟环境...
 call analyDesign_env\Scripts\activate.bat
 
+:: 检查Python是否可用
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo ❌ Python环境异常！
+    echo 请检查虚拟环境是否正确安装
+    pause
+    exit /b 1
+)
+
 :: 启动集成服务器
 echo.
 echo 🚀 启动集成服务器 (HTTP API + WebSocket)...

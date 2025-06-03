@@ -12,6 +12,44 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 
+class DailyRotatingFileHandler(logging.FileHandler):
+    """按日期轮转的文件处理器"""
+    
+    def __init__(self, log_dir: Path, filename_pattern: str, encoding='utf-8'):
+        self.log_dir = log_dir
+        self.filename_pattern = filename_pattern
+        self.current_date = None
+        self.encoding = encoding
+        
+        # 初始化当前日期和文件
+        self._rotate_if_needed()
+        super().__init__(self.current_filename, encoding=encoding)
+    
+    def _get_current_date(self):
+        """获取当前日期字符串"""
+        return datetime.now().strftime('%Y%m%d')
+    
+    def _rotate_if_needed(self):
+        """检查是否需要轮转文件"""
+        current_date = self._get_current_date()
+        if self.current_date != current_date:
+            self.current_date = current_date
+            self.current_filename = self.log_dir / self.filename_pattern.format(date=current_date)
+            return True
+        return False
+    
+    def emit(self, record):
+        """发出日志记录，必要时轮转文件"""
+        if self._rotate_if_needed():
+            # 关闭当前文件
+            if hasattr(self, 'stream') and self.stream:
+                self.stream.close()
+            # 重新打开新文件
+            self.baseFilename = str(self.current_filename)
+            self.stream = self._open()
+        
+        super().emit(record)
+
 class LLMLogger:
     """大模型交互日志记录器"""
     
@@ -35,14 +73,18 @@ class LLMLogger:
     
     def _setup_handlers(self):
         """设置日志处理器"""
-        # 文件处理器 - 详细日志
-        log_file = self.log_dir / f"llm_interactions_{datetime.now().strftime('%Y%m%d')}.log"
-        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        # 文件处理器 - 详细日志（支持按日轮转）
+        file_handler = DailyRotatingFileHandler(
+            self.log_dir, 
+            "llm_interactions_{date}.log"
+        )
         file_handler.setLevel(logging.INFO)
         
-        # JSON格式处理器 - 结构化日志
-        json_log_file = self.log_dir / f"llm_interactions_{datetime.now().strftime('%Y%m%d')}.json"
-        json_handler = logging.FileHandler(json_log_file, encoding='utf-8')
+        # JSON格式处理器 - 结构化日志（支持按日轮转）
+        json_handler = DailyRotatingFileHandler(
+            self.log_dir,
+            "llm_interactions_{date}.json"
+        )
         json_handler.setLevel(logging.INFO)
         
         # 控制台处理器 - 简要信息
@@ -67,6 +109,19 @@ class LLMLogger:
         
         # 保存JSON处理器引用，用于结构化日志
         self.json_handler = json_handler
+    
+    def _write_json_log(self, log_data: Dict[str, Any]):
+        """写入JSON日志，确保日期正确"""
+        json_log_line = json.dumps(log_data, ensure_ascii=False, separators=(',', ':'))
+        self.json_handler.emit(logging.LogRecord(
+            name="llm_interaction",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg=json_log_line,
+            args=(),
+            exc_info=None
+        ))
     
     def log_request(
         self,
@@ -111,9 +166,7 @@ class LLMLogger:
         }
         
         # 写入JSON日志
-        json_log_line = json.dumps(log_data, ensure_ascii=False, separators=(',', ':'))
-        self.json_handler.stream.write(json_log_line + '\n')
-        self.json_handler.stream.flush()
+        self._write_json_log(log_data)
         
         return request_id
     
@@ -158,9 +211,7 @@ class LLMLogger:
         }
         
         # 写入JSON日志
-        json_log_line = json.dumps(log_data, ensure_ascii=False, separators=(',', ':'))
-        self.json_handler.stream.write(json_log_line + '\n')
-        self.json_handler.stream.flush()
+        self._write_json_log(log_data)
     
     def log_stream_chunk(
         self,
@@ -189,9 +240,7 @@ class LLMLogger:
         }
         
         # 写入JSON日志
-        json_log_line = json.dumps(log_data, ensure_ascii=False, separators=(',', ':'))
-        self.json_handler.stream.write(json_log_line + '\n')
-        self.json_handler.stream.flush()
+        self._write_json_log(log_data)
     
     def log_conversation_summary(
         self,
@@ -225,9 +274,7 @@ class LLMLogger:
         }
         
         # 写入JSON日志
-        json_log_line = json.dumps(log_data, ensure_ascii=False, separators=(',', ':'))
-        self.json_handler.stream.write(json_log_line + '\n')
-        self.json_handler.stream.flush()
+        self._write_json_log(log_data)
 
 # 全局日志记录器实例
 _llm_logger = None

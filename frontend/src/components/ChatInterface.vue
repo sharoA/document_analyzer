@@ -9,7 +9,6 @@
         </h2>
         <el-button 
           type="primary" 
-          :icon="Plus" 
           @click="startNewChat"
           class="new-chat-btn"
         >
@@ -453,7 +452,6 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useWebSocketStore } from '../stores/websocket'
 import { 
-  Plus, 
   ChatDotRound, 
   User, 
   Connection, 
