@@ -5,6 +5,7 @@
 用于管理文件解析任务的存储和检索
 """
 
+import os
 import sqlite3
 import json
 import time
@@ -19,14 +20,18 @@ logger = logging.getLogger(__name__)
 class TaskStorage:
     """任务存储管理器"""
     
-    def __init__(self, db_path: str = "src/tasks.db"):
+    def __init__(self, db_path: str = "tasks.db"):
         """
         初始化任务存储
         
         Args:
             db_path: 数据库文件路径
         """
-        self.db_path = db_path
+        # 确保数据库文件在项目根目录
+        if not os.path.isabs(db_path):
+            self.db_path = os.path.join(os.getcwd(), db_path)
+        else:
+            self.db_path = db_path
         self._init_database()
     
     def _init_database(self):

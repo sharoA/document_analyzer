@@ -1,0 +1,98 @@
+analysis:
+  chunk_size: 1000
+  enable_ai_analysis: true
+  enable_content_analysis: true
+  max_content_length: 100000
+  overlap_size: 200
+app:
+  debug: false
+  host: 0.0.0.0
+  name: AnalyDesign
+  port: 8000
+  version: 1.0.0
+directories:
+  analysis_results: uploads/analysis_results
+  cache: uploads/cache
+  logs: logs
+  temp: uploads/temp
+  uploads: uploads
+file_upload:
+  allowed_extensions:
+  - .txt
+  - .md
+  - .pdf
+  - .docx
+  - .doc
+  - .pptx
+  - .ppt
+  max_size: 22020096
+  temp_dir: uploads/temp
+llm:
+  max_tokens: 4000
+  model: doubao-pro-4k
+  provider: volcengine
+  temperature: 0.7
+  timeout: 30
+logging:
+  backup_count: 5
+  file: logs/app.log
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+  max_size: 10485760
+openai:
+  api_key: ''
+  base_url: https://api.openai.com/v1
+  max_tokens: 4000
+  model: gpt-3.5-turbo
+  temperature: 0.7
+redis:
+  cache:
+    default_ttl: 3600
+    key_prefix: 'analydesign:'
+  connection_pool:
+    max_connections: 50
+  db: 0
+  decode_responses: true
+  host: localhost
+  password: ''
+  port: 6379
+  socket_connect_timeout: 30
+  socket_keepalive: true
+  socket_keepalive_options: {}
+  socket_timeout: 30
+validation:
+  allowed_file_types:
+  - text/plain
+  - application/pdf
+  - application/msword
+  - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  - text/markdown
+  - application/json
+  - text/html
+  - application/xml
+  max_content_length: 10485760
+  max_file_size: 52428800
+  min_content_length: 1
+vector_database:
+  dimension: 768
+  faiss:
+    index_file: uploads/cache/vector_index.faiss
+    metadata_file: uploads/cache/vector_metadata.json
+  type: faiss
+  weaviate:
+    api_key: root-user-key
+    default_collection:
+      name: AnalyDesignDocuments
+      vector_dimension: 768
+      vectorizer: none
+    grpc_port: 50051
+    host: localhost
+    port: 8080
+    scheme: http
+    timeout: 30
+volcengine:
+  api_key: 7fcb3541-9363-4bfa-90aa-19e9f691bc25
+  endpoint: https://ark.cn-beijing.volces.com/api/v3
+  max_tokens: 4000
+  model: ep-20250605091804-wmw6w
+  temperature: 0.7
