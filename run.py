@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
 analyDesign 后端服务启动脚本
+支持多种启动模式
 """
 
 import os
 import sys
 import subprocess
+import argparse
+import time
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 def check_environment():
     """检查环境配置"""
@@ -22,9 +26,9 @@ def check_environment():
         Path(directory).mkdir(exist_ok=True)
     
     # 检查配置文件
-    config_file = Path("src/simple_config.py")
+    config_file = Path("src/resource/config.py")
     if not config_file.exists():
-        print("⚠️ 配置文件不存在: src/simple_config.py")
+        print("⚠️ 配置文件不存在: src/config.py")
         print("请检查配置文件")
     
     print("✅ 环境检查完成")
@@ -35,6 +39,7 @@ def check_dependencies():
     try:
         import flask
         import flask_socketio
+        import flask_cors
         import requests
         print("✅ 关键依赖已安装")
         return True
@@ -43,9 +48,96 @@ def check_dependencies():
         print("请运行: pip install -r requirements.txt")
         return False
 
+def start_api_server():
+    """启动API服务器"""
+    print("🚀 启动API服务器...")
+    print("📡 服务地址: http://localhost:8082")
+    print("💬 聊天接口: http://localhost:8082/api/chat")
+    print("📁 文件上传: http://localhost:8082/api/file/upload")
+    print("❤️  健康检查: http://localhost:8082/api/health")
+    
+    try:
+        # 切换到src/apis目录并启动服务器
+        os.chdir('src/apis')
+        subprocess.run([sys.executable, 'api_server.py'])
+    except KeyboardInterrupt:
+        print("\n👋 API服务器已停止")
+    except Exception as e:
+        print(f"❌ API服务器启动失败: {e}")
+    finally:
+        # 切换回原目录
+        os.chdir('../..')
+
+def start_websocket_server():
+    """启动WebSocket服务器"""
+    print("🔌 启动WebSocket服务器...")
+    print("🔌 WebSocket地址: ws://localhost:8081/socket.io/")
+    print("📡 服务地址: http://localhost:8081")
+    
+    try:
+        subprocess.run([sys.executable, '-m', 'src.websockets.websocket_server'])
+    except KeyboardInterrupt:
+        print("\n👋 WebSocket服务器已停止")
+    except Exception as e:
+        print(f"❌ WebSocket服务器启动失败: {e}")
+
+def start_full_service():
+    """启动完整服务（API + WebSocket）"""
+    print("🚀 启动完整服务...")
+    print("=" * 60)
+    print("📡 API服务器: http://localhost:8082")
+    print("🔌 WebSocket服务器: ws://localhost:8081/socket.io/")
+    print("=" * 60)
+    
+    # 使用线程池同时启动两个服务器
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        try:
+            # 启动API服务器
+            def start_api():
+                original_dir = os.getcwd()
+                try:
+                    os.chdir('src/apis')
+                    subprocess.run([sys.executable, 'api_server.py'])
+                finally:
+                    os.chdir(original_dir)
+            
+            api_future = executor.submit(start_api)
+            
+            # 稍等一下再启动WebSocket服务器
+            time.sleep(2)
+            
+            # 启动WebSocket服务器
+            ws_future = executor.submit(lambda: subprocess.run([
+                sys.executable, '-m', 'src.websockets.websocket_server'
+            ]))
+            
+            print("✅ 两个服务器都已启动")
+            print("按 Ctrl+C 停止所有服务")
+            
+            # 等待任一服务器结束
+            api_future.result()
+            ws_future.result()
+            
+        except KeyboardInterrupt:
+            print("\n👋 所有服务器已停止")
+        except Exception as e:
+            print(f"❌ 服务启动失败: {e}")
+
 def main():
     """主函数"""
+    parser = argparse.ArgumentParser(description='analyDesign 后端服务启动器')
+    parser.add_argument(
+        '--mode', 
+        choices=['api', 'websocket', 'full'], 
+        default='full',
+        help='启动模式: api(仅API服务器), websocket(仅WebSocket服务器), full(完整服务)'
+    )
+    
+    args = parser.parse_args()
+    
     print("🚀 analyDesign 后端服务启动")
+    print("=" * 50)
+    print(f"启动模式: {args.mode}")
     print("=" * 50)
     
     # 检查环境
@@ -56,21 +148,20 @@ def main():
     if not check_dependencies():
         sys.exit(1)
     
-    # 启动集成服务器
-    print("🚀 启动集成服务器...")
-    print("📡 服务地址: http://localhost:8081")
-    print("🔌 WebSocket: ws://localhost:8081/socket.io/")
-    print("💬 HTTP聊天: http://localhost:8081/api/chat")
-    print("❤️  健康检查: http://localhost:8081/api/health")
     print("=" * 50)
     
-    try:
-        subprocess.run([sys.executable, "start_integrated_server.py"])
-    except KeyboardInterrupt:
-        print("\n👋 服务器已停止")
-    except Exception as e:
-        print(f"❌ 启动失败: {e}")
-        print("请检查配置和依赖是否正确安装")
+    # 根据模式启动相应服务
+    if args.mode == 'api':
+        start_api_server()
+    elif args.mode == 'websocket':
+        start_websocket_server()
+    elif args.mode == 'full':
+        start_full_service()
+    
+    print("=" * 50)
+    print("⚠️  请确保已配置火山引擎API密钥")
+    print("📝 在src/config.py中设置您的火山引擎配置")
+    print("=" * 50)
 
 if __name__ == "__main__":
     main() 

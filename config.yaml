@@ -1,0 +1,106 @@
+analysis:
+  chunk_size: 1000
+  enable_ai_analysis: true
+  enable_content_analysis: true
+  max_content_length: 100000
+  overlap_size: 200
+app:
+  debug: false
+  host: 0.0.0.0
+  name: AnalyDesign
+  port: 8000
+  version: 1.0.0
+directories:
+  analysis_results: uploads/analysis_results
+  cache: uploads/cache
+  logs: logs
+  temp: uploads/temp
+  uploads: uploads
+file_upload:
+  allowed_extensions:
+  - .txt
+  - .md
+  - .pdf
+  - .docx
+  - .doc
+  - .pptx
+  - .ppt
+  max_size: 52428800
+  temp_dir: uploads/temp
+llm:
+  max_tokens: 4000
+  model: doubao-pro-4k
+  provider: volcengine
+  temperature: 0.7
+  timeout: 30
+logging:
+  backup_count: 5
+  file: logs/app.log
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  level: INFO
+  max_size: 10485760
+openai:
+  api_key: ''
+  base_url: https://api.openai.com/v1
+  max_tokens: 4000
+  model: gpt-3.5-turbo
+  temperature: 0.7
+vector_database:
+  # 向量数据库类型: faiss 或 weaviate
+  type: faiss
+  dimension: 768
+  # FAISS 配置
+  faiss:
+    index_file: uploads/cache/vector_index.faiss
+    metadata_file: uploads/cache/vector_metadata.json
+  # Weaviate 配置
+  weaviate:
+    host: localhost
+    port: 8080
+    grpc_port: 50051
+    scheme: http
+    api_key: root-user-key
+    timeout: 30
+    # 默认集合配置
+    default_collection:
+      name: AnalyDesignDocuments
+      vectorizer: none
+      vector_dimension: 768
+volcengine:
+  api_key: '7fcb3541-9363-4bfa-90aa-19e9f691bc25'
+  endpoint: https://ark.cn-beijing.volces.com/api/v3
+  max_tokens: 4000
+  #model: doubao-pro-4k
+  model: ep-20250605091804-wmw6w
+  temperature: 0.7
+# Redis 配置
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+  password: ''
+  decode_responses: true
+  socket_timeout: 30
+  socket_connect_timeout: 30
+  socket_keepalive: true
+  socket_keepalive_options: {}
+  connection_pool:
+    max_connections: 50
+  # 缓存配置
+  cache:
+    default_ttl: 3600  # 默认过期时间（秒）
+    key_prefix: 'analydesign:'  # 键前缀
+# 验证配置
+validation:
+  max_content_length: 10485760  # 10MB
+  min_content_length: 1
+  allowed_file_types:
+    - "text/plain"
+    - "application/pdf"
+    - "application/msword"
+    - "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    - "text/markdown"
+    - "application/json"
+    - "text/html"
+    - "application/xml"
+  max_file_size: 52428800  # 50MB

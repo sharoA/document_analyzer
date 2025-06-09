@@ -289,7 +289,7 @@
           <div class="tab-content">
             <div v-if="!analysisResult" class="empty-state">
               <el-empty description="暂无解析结果">
-                <el-button type="primary" @click="activeTab = 'realtime'">
+                <el-button type="primary" @click="activeTab = 'preview'">
                   上传文档开始分析
                 </el-button>
               </el-empty>
@@ -297,68 +297,309 @@
             
             <div v-else class="analysis-result">
               <div class="result-header">
-                <h4>{{ analysisResult.title || '需求文档分析报告' }}</h4>
+                <h4>{{ analysisResult.title || '文档解析结果' }}</h4>
                 <div class="result-meta">
-                  <el-tag size="small">{{ analysisResult.type || '需求分析' }}</el-tag>
+                  <el-tag size="small" :type="getResultTypeTag(analysisResult.type)">
+                    {{ getResultTypeText(analysisResult.type) }}
+                  </el-tag>
                   <span class="result-time">{{ formatTime(analysisResult.timestamp) }}</span>
                 </div>
               </div>
               
               <el-scrollbar height="500px">
                 <div class="result-content">
-                  <!-- 基本信息 -->
-                  <el-card class="info-card" v-if="analysisResult.basicInfo">
+                  <!-- 文件基本信息 -->
+                  <el-card class="info-card" v-if="analysisResult.fileInfo">
                     <template #header>
-                      <h5>基本信息</h5>
+                      <h5>文件信息</h5>
                     </template>
-                    <el-descriptions :column="2" border>
-                      <el-descriptions-item 
-                        v-for="(value, key) in analysisResult.basicInfo" 
-                        :key="key"
-                        :label="key"
-                      >
-                        {{ value }}
+                    <el-descriptions :column="2" border size="small">
+                      <el-descriptions-item label="文件名">
+                        {{ analysisResult.fileInfo.name }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="文件类型">
+                        {{ analysisResult.fileInfo.type }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="文件大小">
+                        {{ formatFileSize(analysisResult.fileInfo.size) }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="解析时间">
+                        {{ formatTime(analysisResult.timestamp) }}
                       </el-descriptions-item>
                     </el-descriptions>
                   </el-card>
                   
-                  <!-- 需求方信息 -->
-                  <el-card class="info-card" v-if="analysisResult.clientInfo">
+                  <!-- 解析统计信息 -->
+                  <el-card class="info-card" v-if="analysisResult.details">
                     <template #header>
-                      <h5>需求方信息</h5>
+                      <h5>解析统计</h5>
                     </template>
-                    <el-descriptions :column="2" border>
+                    <el-descriptions :column="2" border size="small">
                       <el-descriptions-item 
-                        v-for="(value, key) in analysisResult.clientInfo" 
-                        :key="key"
-                        :label="key"
+                        v-if="analysisResult.details.length"
+                        label="内容长度"
                       >
-                        {{ value }}
+                        {{ analysisResult.details.length }} 字符
+                      </el-descriptions-item>
+                      <el-descriptions-item 
+                        v-if="analysisResult.details.lines"
+                        label="行数"
+                      >
+                        {{ analysisResult.details.lines }} 行
+                      </el-descriptions-item>
+                      <el-descriptions-item 
+                        v-if="analysisResult.details.paragraph_count"
+                        label="段落数"
+                      >
+                        {{ analysisResult.details.paragraph_count }} 段
+                      </el-descriptions-item>
+                      <el-descriptions-item 
+                        v-if="analysisResult.details.table_count"
+                        label="表格数"
+                      >
+                        {{ analysisResult.details.table_count }} 个
+                      </el-descriptions-item>
+                      <el-descriptions-item 
+                        v-if="analysisResult.details.page_count"
+                        label="页数"
+                      >
+                        {{ analysisResult.details.page_count }} 页
+                      </el-descriptions-item>
+                      <el-descriptions-item 
+                        v-if="analysisResult.details.parsing_duration"
+                        label="解析耗时"
+                      >
+                        {{ analysisResult.details.parsing_duration.toFixed(2) }} 秒
                       </el-descriptions-item>
                     </el-descriptions>
                   </el-card>
                   
-                  <!-- 详细分析 -->
-                  <el-card class="info-card" v-if="analysisResult.analysis">
+                  <!-- 内容分析结果 -->
+                  <el-card class="info-card" v-if="analysisResult.contentAnalysis">
                     <template #header>
-                      <h5>详细分析</h5>
+                      <h5>内容分析结果</h5>
                     </template>
-                    <div class="analysis-content" v-html="formatMessage(analysisResult.analysis)"></div>
-                  </el-card>
-                  
-                  <!-- 建议和改进 -->
-                  <el-card class="info-card" v-if="analysisResult.suggestions">
-                    <template #header>
-                      <h5>建议和改进</h5>
-                    </template>
-                    <div class="suggestions-content">
-                      <ul>
-                        <li v-for="suggestion in analysisResult.suggestions" :key="suggestion">
-                          {{ suggestion }}
-                        </li>
-                      </ul>
+                    <div class="content-analysis-result">
+                      <!-- 基础信息 -->
+                      <el-descriptions :column="2" border size="small" style="margin-bottom: 16px;">
+                        <el-descriptions-item label="文档类型">
+                          {{ getDocumentTypeText(analysisResult.contentAnalysis.document_type) }}
+                        </el-descriptions-item>
+                        <el-descriptions-item label="文档语言">
+                          {{ getLanguageText(analysisResult.contentAnalysis.language) }}
+                        </el-descriptions-item>
+                        <el-descriptions-item label="字符数">
+                          {{ analysisResult.contentAnalysis.statistics?.character_count || 0 }}
+                        </el-descriptions-item>
+                        <el-descriptions-item label="词数">
+                          {{ analysisResult.contentAnalysis.statistics?.word_count || 0 }}
+                        </el-descriptions-item>
+                      </el-descriptions>
+                      
+                      <!-- 文档摘要 -->
+                      <div v-if="analysisResult.contentAnalysis.summary" class="analysis-section">
+                        <h6>文档摘要</h6>
+                        <p class="summary-text">{{ analysisResult.contentAnalysis.summary }}</p>
+                      </div>
+                      
+                      <!-- 关键词 -->
+                      <div v-if="analysisResult.contentAnalysis.keyword_extraction?.length" class="analysis-section">
+                        <h6>关键词</h6>
+                        <div class="keywords">
+                          <el-tag 
+                            v-for="[keyword, freq] in analysisResult.contentAnalysis.keyword_extraction" 
+                            :key="keyword"
+                            size="small"
+                            class="keyword-tag"
+                          >
+                            {{ keyword }} ({{ freq }})
+                          </el-tag>
+                        </div>
+                      </div>
+                      
+                      <!-- 文档结构 -->
+                      <div v-if="analysisResult.contentAnalysis.structure_analysis" class="analysis-section">
+                        <h6>文档结构</h6>
+                        <el-descriptions :column="2" border size="small">
+                          <el-descriptions-item label="总行数">
+                            {{ analysisResult.contentAnalysis.structure_analysis.total_lines }}
+                          </el-descriptions-item>
+                          <el-descriptions-item label="空行数">
+                            {{ analysisResult.contentAnalysis.structure_analysis.empty_lines }}
+                          </el-descriptions-item>
+                          <el-descriptions-item label="标题数">
+                            {{ analysisResult.contentAnalysis.structure_analysis.headings?.length || 0 }}
+                          </el-descriptions-item>
+                          <el-descriptions-item label="列表项">
+                            {{ analysisResult.contentAnalysis.structure_analysis.lists?.length || 0 }}
+                          </el-descriptions-item>
+                        </el-descriptions>
+                      </div>
+                      
+                      <!-- 需求分析（如果是需求文档） -->
+                      <div v-if="analysisResult.contentAnalysis.requirements_analysis" class="analysis-section">
+                        <h6>需求分析</h6>
+                        <el-descriptions :column="1" border size="small">
+                          <el-descriptions-item label="功能需求数">
+                            {{ analysisResult.contentAnalysis.requirements_analysis.functional_requirements?.length || 0 }}
+                          </el-descriptions-item>
+                          <el-descriptions-item label="非功能需求数">
+                            {{ analysisResult.contentAnalysis.requirements_analysis.non_functional_requirements?.length || 0 }}
+                          </el-descriptions-item>
+                          <el-descriptions-item label="优先级提及">
+                            {{ analysisResult.contentAnalysis.requirements_analysis.priority_mentions?.length || 0 }}
+                          </el-descriptions-item>
+                        </el-descriptions>
+                      </div>
                     </div>
                   </el-card>
+                  
+                  <!-- AI分析结果 -->
+                  <el-card class="info-card" v-if="analysisResult.aiAnalysis">
+                    <template #header>
+                      <div class="ai-analysis-header">
+                        <h5>智能处理结果</h5>
+                        <el-tag size="small" type="success">
+                          {{ getAnalysisTypeText(analysisResult.aiAnalysis.analysis_type) }}
+                        </el-tag>
+                      </div>
+                    </template>
+                    <div class="ai-analysis-result">
+                      <!-- AI分析信息 -->
+                      <el-descriptions :column="2" border size="small" style="margin-bottom: 16px;">
+                        <el-descriptions-item label="分析模型">
+                          {{ analysisResult.aiAnalysis.analysis_model }}
+                        </el-descriptions-item>
+                        <el-descriptions-item label="置信度">
+                          {{ (analysisResult.aiAnalysis.confidence_score * 100).toFixed(1) }}%
+                        </el-descriptions-item>
+                        <el-descriptions-item label="分析时间">
+                          {{ formatTime(analysisResult.aiAnalysis.analyzed_at) }}
+                        </el-descriptions-item>
+                        <el-descriptions-item label="分析耗时">
+                          {{ analysisResult.aiAnalysis.analysis_duration?.toFixed(2) || 0 }} 秒
+                        </el-descriptions-item>
+                      </el-descriptions>
+                      
+                      <!-- AI分析内容 -->
+                      <div class="ai-response-content">
+                        <h6>智能分析报告</h6>
+                        <div class="ai-response-text">
+                          <el-scrollbar height="300px">
+                            <div v-html="formatAIResponse(analysisResult.aiAnalysis.ai_response)"></div>
+                          </el-scrollbar>
+                        </div>
+                      </div>
+                      
+                      <!-- 自定义提示（如果有） -->
+                      <div v-if="analysisResult.aiAnalysis.custom_prompt" class="custom-prompt-section">
+                        <h6>自定义分析提示</h6>
+                        <p class="custom-prompt-text">{{ analysisResult.aiAnalysis.custom_prompt }}</p>
+                      </div>
+                    </div>
+                  </el-card>
+                  
+                  <!-- 文档内容预览 -->
+                  <el-card class="content-card" v-if="analysisResult.content">
+                    <template #header>
+                      <div class="content-header">
+                        <h5>文档内容</h5>
+                        <el-button-group size="small">
+                          <el-button @click="copyContent">
+                            <el-icon><DocumentCopy /></el-icon>
+                            复制内容
+                          </el-button>
+                          <el-button @click="downloadContent">
+                            <el-icon><Download /></el-icon>
+                            下载文本
+                          </el-button>
+                        </el-button-group>
+                      </div>
+                    </template>
+                    
+                    <div class="content-preview">
+                      <el-scrollbar height="300px">
+                        <pre class="content-text">{{ analysisResult.content }}</pre>
+                      </el-scrollbar>
+                    </div>
+                  </el-card>
+                  
+                  <!-- Word文档特有信息 -->
+                  <el-card 
+                    class="info-card" 
+                    v-if="analysisResult.details?.type === 'word' && analysisResult.details.tables?.length"
+                  >
+                    <template #header>
+                      <h5>表格内容</h5>
+                    </template>
+                    <div class="tables-content">
+                      <div 
+                        v-for="(table, index) in analysisResult.details.tables" 
+                        :key="index"
+                        class="table-item"
+                      >
+                        <h6>表格 {{ index + 1 }}</h6>
+                        <el-table :data="formatTableData(table)" border size="small">
+                          <el-table-column 
+                            v-for="(col, colIndex) in getTableColumns(table)" 
+                            :key="colIndex"
+                            :prop="`col${colIndex}`"
+                            :label="`列${colIndex + 1}`"
+                            show-overflow-tooltip
+                          />
+                        </el-table>
+                      </div>
+                    </div>
+                  </el-card>
+                  
+                  <!-- PDF文档特有信息 -->
+                  <el-card 
+                    class="info-card" 
+                    v-if="analysisResult.details?.type === 'pdf' && analysisResult.details.pages?.length"
+                  >
+                    <template #header>
+                      <h5>页面内容</h5>
+                    </template>
+                    <div class="pages-content">
+                      <el-collapse>
+                        <el-collapse-item 
+                          v-for="page in analysisResult.details.pages" 
+                          :key="page.page_number"
+                          :title="`第 ${page.page_number} 页`"
+                          :name="page.page_number"
+                        >
+                          <div class="page-content">
+                            <div v-if="page.error" class="page-error">
+                              <el-alert 
+                                :title="`第${page.page_number}页解析失败`"
+                                type="warning"
+                                :description="page.error"
+                                show-icon
+                                :closable="false"
+                              />
+                            </div>
+                            <pre v-else class="page-text">{{ page.text || '该页面无文本内容' }}</pre>
+                          </div>
+                        </el-collapse-item>
+                      </el-collapse>
+                    </div>
+                  </el-card>
+                  
+                  <!-- 操作按钮 -->
+                  <div class="result-actions">
+                    <el-button type="primary" @click="analyzeWithAI">
+                      <el-icon><Promotion /></el-icon>
+                      智能处理
+                    </el-button>
+                    <el-button @click="exportResult">
+                      <el-icon><Download /></el-icon>
+                      导出结果
+                    </el-button>
+                    <el-button @click="clearResult">
+                      <el-icon><Delete /></el-icon>
+                      清空结果
+                    </el-button>
+                  </div>
                 </div>
               </el-scrollbar>
             </div>
@@ -470,7 +711,9 @@ import {
   ArrowLeft,
   ArrowRight,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  DocumentCopy,
+  Delete
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DocumentPreview from './DocumentPreview.vue'
@@ -516,6 +759,31 @@ const connectionStatusText = computed(() => {
     case 'connected': return '已连接'
     case 'connecting': return '连接中'
     case 'disconnected': return '已断开'
+    default: return '未知状态'
+  }
+})
+
+const parsingStatusType = computed(() => {
+  switch (wsStore.parsingStatus) {
+    case 'uploading': return 'warning'
+    case 'parsing': return 'primary'
+    case 'content_analyzing': return 'primary'
+    case 'ai_analyzing': return 'primary'
+    case 'completed': return 'success'
+    case 'failed': return 'danger'
+    default: return 'info'
+  }
+})
+
+const parsingStatusText = computed(() => {
+  switch (wsStore.parsingStatus) {
+    case 'idle': return '待解析'
+    case 'uploading': return '上传中'
+    case 'parsing': return '文档解析中'
+    case 'content_analyzing': return '内容分析中'
+    case 'ai_analyzing': return '智能处理中'
+    case 'completed': return '解析完成'
+    case 'failed': return '解析失败'
     default: return '未知状态'
   }
 })
@@ -644,13 +912,17 @@ const handleFileChange = (file) => {
   console.log('文件名:', file.name)
   console.log('文件大小:', file.size)
   
+  // 检查文件类型
   if (!allowedTypes.includes(file.raw.type) && !file.name.match(/\.(doc|docx|pdf|txt|md)$/i)) {
     ElMessage.error('不支持的文件格式，请上传 Word、PDF、TXT 或 Markdown 文件')
     return false
   }
   
-  if (file.size > 50 * 1024 * 1024) { // 50MB
-    ElMessage.error('文件大小不能超过 50MB')
+  // 检查文件大小（21MB限制）
+  const maxFileSize = 21 * 1024 * 1024 // 21MB
+  if (file.size > maxFileSize) {
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1)
+    ElMessage.error(`文件大小 ${fileSizeMB}MB 超过限制，最大允许 21MB`)
     return false
   }
   
@@ -670,7 +942,8 @@ const handleFileChange = (file) => {
     }, 100)
   })
   
-  ElMessage.success(`文件 ${file.name} 已选择，点击"开始分析"进行处理`)
+  const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1)
+  ElMessage.success(`文件 ${file.name} (${fileSizeMB}MB) 已选择，点击"开始分析"进行处理`)
 }
 
 const removeFile = () => {
@@ -690,10 +963,11 @@ const analyzeDocument = async () => {
   try {
     // 清空之前的处理步骤
     wsStore.clearProcessingSteps()
+    wsStore.resetParsingState()
     
     // 添加文档上传完成步骤
     wsStore.updateProcessingStep({
-      id: 'step_0',
+      id: 'step_upload',
       title: '文档上传',
       description: `文件上传完成: ${uploadedFile.value.name}`,
       status: 'success',
@@ -701,102 +975,48 @@ const analyzeDocument = async () => {
       progress: 100
     })
     
-    // 模拟文档分析过程
-    await simulateDocumentAnalysis()
+    // 使用WebSocket store的文件上传功能
+    const result = await wsStore.uploadFile(uploadedFile.value)
     
-    ElMessage.success('文档分析完成')
-    activeTab.value = 'files'
+    if (result.success) {
+      ElMessage.success('文档解析已开始，请查看实时进度')
+      
+      // 监听解析状态变化
+      const checkStatus = () => {
+        if (wsStore.parsingStatus === 'completed') {
+          ElMessage.success('文档解析完成')
+          activeTab.value = 'files'
+          isAnalyzing.value = false
+        } else if (wsStore.parsingStatus === 'failed') {
+          ElMessage.error('文档解析失败')
+          isAnalyzing.value = false
+        } else if (wsStore.isFileProcessing) {
+          // 继续监听
+          setTimeout(checkStatus, 1000)
+        } else {
+          isAnalyzing.value = false
+        }
+      }
+      
+      checkStatus()
+    } else {
+      throw new Error('文件上传失败')
+    }
+    
   } catch (error) {
     ElMessage.error('文档分析失败: ' + error.message)
-  } finally {
     isAnalyzing.value = false
-  }
-}
-
-const simulateDocumentAnalysis = async () => {
-  const steps = [
-    { id: 'step_1', title: '文档解析', description: '正在解析文档结构和内容', progress: 20 },
-    { id: 'step_2', title: '内容分析', description: '正在分析需求内容', progress: 50 },
-    { id: 'step_3', title: '智能处理', description: '正在生成分析报告', progress: 80 },
-    { id: 'step_4', title: '完成处理', description: '分析报告生成完成', progress: 100 }
-  ]
-  
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i]
     
-    // 添加或更新当前步骤
+    // 添加失败步骤
     wsStore.updateProcessingStep({
-      id: step.id,
-      title: step.title,
-      description: step.description,
-      status: 'primary',
+      id: 'step_parsing_failed',
+      title: '解析失败',
+      description: `解析失败: ${error.message}`,
+      status: 'danger',
       timestamp: new Date().toLocaleTimeString(),
-      progress: step.progress
+      progress: 0
     })
-    
-    wsStore.setCurrentProcessing(step.description)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // 将当前步骤标记为完成
-    wsStore.updateProcessingStep({
-      id: step.id,
-      title: step.title,
-      description: i === steps.length - 1 ? step.description : `${step.title}完成`,
-      status: 'success',
-      timestamp: new Date().toLocaleTimeString(),
-      progress: 100
-    })
-    
-    // 如果不是最后一步，稍微延迟一下显示完成状态
-    if (i < steps.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 500))
-    }
   }
-  
-  // 设置分析结果
-  wsStore.setAnalysisResult({
-    title: '需求文档分析报告',
-    type: '需求分析',
-    timestamp: Date.now(),
-    basicInfo: {
-      '文档标题': uploadedFile.value.name.replace(/\.[^/.]+$/, ""),
-      '版本': 'V0.1',
-      '撰写人': '李威明',
-      '类型': '系统对接',
-      '标签': '链数, 民生银行'
-    },
-    clientInfo: {
-      '日期': '2025/5/12',
-      '需求人': '哈治均'
-    },
-    analysis: `
-      <h4>需求概述</h4>
-      <p>本文档描述了民生银行融资像范围调整的系统对接需求。主要涉及以下几个方面：</p>
-      <ul>
-        <li>系统架构设计与优化</li>
-        <li>数据接口规范定义</li>
-        <li>安全性要求与实现</li>
-        <li>性能指标与监控</li>
-      </ul>
-      
-      <h4>技术分析</h4>
-      <p>基于文档内容分析，建议采用以下技术方案：</p>
-      <ul>
-        <li>微服务架构，提高系统可扩展性</li>
-        <li>RESTful API设计，确保接口标准化</li>
-        <li>OAuth 2.0认证，保障数据安全</li>
-        <li>Redis缓存，优化系统性能</li>
-      </ul>
-    `,
-    suggestions: [
-      '建议增加详细的错误处理机制',
-      '需要完善系统监控和日志记录',
-      '建议添加自动化测试用例',
-      '需要制定详细的部署和运维方案'
-    ]
-  })
-  
-  wsStore.setCurrentProcessing(null)
 }
 
 // 导出功能
@@ -929,6 +1149,142 @@ onMounted(() => {
   console.log('初始uploadedFile:', uploadedFile.value)
   console.log('初始activeTab:', activeTab.value)
 })
+
+const getResultTypeTag = (type) => {
+  switch (type) {
+    case 'text': return 'primary'
+    case 'word': return 'success'
+    case 'pdf': return 'warning'
+    default: return 'info'
+  }
+}
+
+const getResultTypeText = (type) => {
+  switch (type) {
+    case 'text': return '文本文档'
+    case 'word': return 'Word文档'
+    case 'pdf': return 'PDF文档'
+    default: return '文档解析'
+  }
+}
+
+// 表格数据格式化
+const formatTableData = (table) => {
+  if (!table || !Array.isArray(table)) return []
+  
+  return table.map(row => {
+    const rowData = {}
+    row.forEach((cell, index) => {
+      rowData[`col${index}`] = cell
+    })
+    return rowData
+  })
+}
+
+const getTableColumns = (table) => {
+  if (!table || !Array.isArray(table) || table.length === 0) return []
+  return table[0] || []
+}
+
+// 内容操作方法
+const copyContent = async () => {
+  if (!analysisResult.value?.content) {
+    ElMessage.warning('没有可复制的内容')
+    return
+  }
+  
+  try {
+    await navigator.clipboard.writeText(analysisResult.value.content)
+    ElMessage.success('内容已复制到剪贴板')
+  } catch (error) {
+    ElMessage.error('复制失败')
+  }
+}
+
+const downloadContent = () => {
+  if (!analysisResult.value?.content) {
+    ElMessage.warning('没有可下载的内容')
+    return
+  }
+  
+  const blob = new Blob([analysisResult.value.content], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${analysisResult.value.fileInfo?.name || 'document'}_content.txt`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  ElMessage.success('内容下载开始')
+}
+
+const analyzeWithAI = async () => {
+  if (!analysisResult.value?.content) {
+    ElMessage.warning('没有可分析的内容')
+    return
+  }
+  
+  try {
+    const message = `请分析以下文档内容：\n\n${analysisResult.value.content.substring(0, 2000)}${analysisResult.value.content.length > 2000 ? '...' : ''}`
+    await wsStore.sendMessage(message)
+    activeTab.value = 'realtime'
+    ElMessage.success('已发送给AI进行智能处理')
+  } catch (error) {
+    ElMessage.error('发送分析请求失败')
+  }
+}
+
+const exportResult = () => {
+  ElMessage.info('导出功能开发中...')
+}
+
+const clearResult = () => {
+  wsStore.clearAnalysisResult()
+  ElMessage.success('解析结果已清空')
+}
+
+// 新增的辅助方法
+const getDocumentTypeText = (type) => {
+  const typeMap = {
+    'requirements': '需求文档',
+    'design': '设计文档',
+    'general': '通用文档'
+  }
+  return typeMap[type] || '未知类型'
+}
+
+const getLanguageText = (language) => {
+  const languageMap = {
+    'chinese': '中文',
+    'english': '英文',
+    'unknown': '未知语言'
+  }
+  return languageMap[language] || language
+}
+
+const getAnalysisTypeText = (type) => {
+  const typeMap = {
+    'comprehensive': '全面分析',
+    'summary': '摘要分析',
+    'requirements': '需求分析',
+    'custom': '自定义分析'
+  }
+  return typeMap[type] || type
+}
+
+const formatAIResponse = (response) => {
+  if (!response) return ''
+  
+  return response
+    .replace(/\n/g, '<br>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/#{1,6}\s*(.*?)(?=\n|$)/g, '<h6>$1</h6>')
+    .replace(/^\d+\.\s*(.*?)(?=\n|$)/gm, '<li>$1</li>')
+    .replace(/^-\s*(.*?)(?=\n|$)/gm, '<li>$1</li>')
+}
 </script>
 
 <style lang="scss" scoped>
@@ -1664,6 +2020,141 @@ onMounted(() => {
   
   .agent-workspace {
     height: 50vh;
+  }
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #e4e7ed;
+  margin-top: 20px;
+}
+
+// 内容分析结果样式
+.content-analysis-result {
+  .analysis-section {
+    margin-bottom: 16px;
+    
+    h6 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e4e7ed;
+    }
+    
+    .summary-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #606266;
+      margin: 0;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #409eff;
+    }
+    
+    .keywords {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      
+      .keyword-tag {
+        margin: 0;
+      }
+    }
+  }
+}
+
+// AI分析结果样式
+.ai-analysis-result {
+  .ai-analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    h5 {
+      margin: 0;
+    }
+  }
+  
+  .ai-response-content {
+    margin-top: 16px;
+    
+    h6 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0 0 12px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e4e7ed;
+    }
+    
+    .ai-response-text {
+      background: #f8f9fa;
+      border: 1px solid #e4e7ed;
+      border-radius: 6px;
+      padding: 16px;
+      
+      :deep(h6) {
+        color: #409eff;
+        font-weight: 600;
+        margin: 16px 0 8px 0;
+        
+        &:first-child {
+          margin-top: 0;
+        }
+      }
+      
+      :deep(strong) {
+        color: #303133;
+        font-weight: 600;
+      }
+      
+      :deep(em) {
+        color: #606266;
+        font-style: italic;
+      }
+      
+      :deep(code) {
+        background: #e6f7ff;
+        color: #1890ff;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+      }
+      
+      :deep(li) {
+        margin: 4px 0;
+        color: #606266;
+        line-height: 1.5;
+      }
+    }
+  }
+  
+  .custom-prompt-section {
+    margin-top: 16px;
+    
+    h6 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0 0 8px 0;
+    }
+    
+    .custom-prompt-text {
+      font-size: 13px;
+      color: #909399;
+      background: #f5f7fa;
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin: 0;
+      font-style: italic;
+    }
   }
 }
 </style> 
