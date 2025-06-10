@@ -1,6 +1,6 @@
 import { dialogContentProps } from './dialog-content.mjs';
 import { buildProps, definePropType } from '../../../utils/vue/props/runtime.mjs';
-import { teleportProps } from '../../teleport/src/teleport.mjs';
+import { teleportProps } from '../../teleport/src/teleport2.mjs';
 import { UPDATE_MODEL_EVENT } from '../../../constants/event.mjs';
 import { isBoolean } from '../../../utils/types.mjs';
 

@@ -25,6 +25,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     let stopResizeListener = void 0;
     let wrapScrollTop = 0;
     let wrapScrollLeft = 0;
+    let direction = "";
     const scrollbarRef = ref();
     const wrapRef = ref();
     const resizeRef = ref();
@@ -51,12 +52,28 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
       var _a;
       if (wrapRef.value) {
         (_a = barRef.value) == null ? void 0 : _a.handleScroll(wrapRef.value);
+        const prevTop = wrapScrollTop;
+        const prevLeft = wrapScrollLeft;
         wrapScrollTop = wrapRef.value.scrollTop;
         wrapScrollLeft = wrapRef.value.scrollLeft;
+        const arrivedStates = {
+          bottom: wrapScrollTop + wrapRef.value.clientHeight >= wrapRef.value.scrollHeight,
+          top: wrapScrollTop <= 0 && prevTop !== 0,
+          right: wrapScrollLeft + wrapRef.value.clientWidth >= wrapRef.value.scrollWidth && prevLeft !== wrapScrollLeft,
+          left: wrapScrollLeft <= 0 && prevLeft !== 0
+        };
+        if (prevTop !== wrapScrollTop) {
+          direction = wrapScrollTop > prevTop ? "bottom" : "top";
+        }
+        if (prevLeft !== wrapScrollLeft) {
+          direction = wrapScrollLeft > prevLeft ? "right" : "left";
+        }
         emit("scroll", {
-          scrollTop: wrapRef.value.scrollTop,
-          scrollLeft: wrapRef.value.scrollLeft
+          scrollTop: wrapScrollTop,
+          scrollLeft: wrapScrollLeft
         });
+        if (arrivedStates[direction])
+          emit("end-reached", direction);
       }
     };
     function scrollTo(arg1, arg2) {

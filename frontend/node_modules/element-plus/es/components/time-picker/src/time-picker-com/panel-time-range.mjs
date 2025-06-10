@@ -1,6 +1,7 @@
 import { defineComponent, inject, computed, ref, openBlock, createElementBlock, normalizeClass, unref, createElementVNode, toDisplayString, createVNode, createCommentVNode } from 'vue';
 import dayjs from 'dayjs';
 import { union } from 'lodash-unified';
+import { PICKER_BASE_INJECTION_KEY } from '../constants.mjs';
 import { panelTimeRangeProps } from '../props/panel-time-range.mjs';
 import { useTimePanel } from '../composables/use-time-panel.mjs';
 import { useOldValue, buildAvailableTimeSlotGetter } from '../composables/use-time-picker.mjs';
@@ -27,7 +28,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
     const { t, lang } = useLocale();
     const nsTime = useNamespace("time");
     const nsPicker = useNamespace("picker");
-    const pickerBase = inject("EP_PICKER_BASE");
+    const pickerBase = inject(PICKER_BASE_INJECTION_KEY);
     const {
       arrowControl,
       disabledHours,

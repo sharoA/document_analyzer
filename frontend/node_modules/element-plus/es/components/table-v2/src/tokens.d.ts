@@ -6,3 +6,4 @@ export type TableV2Context = {
     ns: UseNamespaceReturn;
 };
 export declare const TableV2InjectionKey: InjectionKey<TableV2Context>;
+export declare const TABLE_V2_GRID_INJECTION_KEY = "tableV2GridScrollLeft";

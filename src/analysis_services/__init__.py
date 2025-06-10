@@ -19,11 +19,11 @@ from .vector_database import (
     VectorDatabaseFactory
 )
 
-# 服务管理器
-from .service_manager import (
-    AnalysisServiceManager,
-    get_analysis_service_manager,
-    initialize_analysis_service_manager
+# 服务管理器 - 使用同步版本
+from .sync_service_manager import (
+    SyncAnalysisServiceManager,
+    initialize_service_manager,
+    get_service_manager
 )
 
 # 工具函数 - 使用绝对导入避免相对导入问题
@@ -126,9 +126,9 @@ __all__ = [
     'VectorDatabaseFactory',
     
     # 服务管理
-    'AnalysisServiceManager',
-    'get_analysis_service_manager',
-    'initialize_analysis_service_manager',
+    'SyncAnalysisServiceManager',
+    'initialize_service_manager',
+    'get_service_manager',
     
     # 工具类
     'TextProcessor',

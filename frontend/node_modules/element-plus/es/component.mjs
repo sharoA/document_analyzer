@@ -75,6 +75,7 @@ import { ElTour, ElTourStep } from './components/tour/index.mjs';
 import { ElAnchor, ElAnchorLink } from './components/anchor/index.mjs';
 import { ElSegmented } from './components/segmented/index.mjs';
 import { ElMention } from './components/mention/index.mjs';
+import { ElSplitter, ElSplitterPanel } from './components/splitter/index.mjs';
 
 var Components = [
   ElAffix,
@@ -182,7 +183,9 @@ var Components = [
   ElAnchor,
   ElAnchorLink,
   ElSegmented,
-  ElMention
+  ElMention,
+  ElSplitter,
+  ElSplitterPanel
 ];
 
 export { Components as default };

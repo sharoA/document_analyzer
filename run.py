@@ -26,9 +26,9 @@ def check_environment():
         Path(directory).mkdir(exist_ok=True)
     
     # 检查配置文件
-    config_file = Path("src/resource/config.py")
+    config_file = Path("src/utils/volcengine_client.py")
     if not config_file.exists():
-        print("⚠️ 配置文件不存在: src/config.py")
+        print("⚠️ 配置文件不存在: src/utils/volcengine_client.py")
         print("请检查配置文件")
     
     print("✅ 环境检查完成")
@@ -59,7 +59,7 @@ def start_api_server():
     try:
         # 切换到src/apis目录并启动服务器
         os.chdir('src/apis')
-        subprocess.run([sys.executable, 'api_server.py'])
+        subprocess.run([sys.executable, 'enhanced_api.py'])
     except KeyboardInterrupt:
         print("\n👋 API服务器已停止")
     except Exception as e:
@@ -75,11 +75,15 @@ def start_websocket_server():
     print("📡 服务地址: http://localhost:8081")
     
     try:
-        subprocess.run([sys.executable, '-m', 'src.websockets.websocket_server'])
+        original_dir = os.getcwd()
+        os.chdir('src/websockets')
+        subprocess.run([sys.executable, 'websocket_server.py'])
     except KeyboardInterrupt:
         print("\n👋 WebSocket服务器已停止")
     except Exception as e:
         print(f"❌ WebSocket服务器启动失败: {e}")
+    finally:
+        os.chdir(original_dir)
 
 def start_full_service():
     """启动完整服务（API + WebSocket）"""
@@ -94,12 +98,10 @@ def start_full_service():
         try:
             # 启动API服务器
             def start_api():
-                original_dir = os.getcwd()
                 try:
-                    os.chdir('src/apis')
-                    subprocess.run([sys.executable, 'api_server.py'])
-                finally:
-                    os.chdir(original_dir)
+                    subprocess.run([sys.executable, 'run_api_server.py'])
+                except Exception as e:
+                    print(f"API服务器启动错误: {e}")
             
             api_future = executor.submit(start_api)
             
@@ -107,16 +109,24 @@ def start_full_service():
             time.sleep(2)
             
             # 启动WebSocket服务器
-            ws_future = executor.submit(lambda: subprocess.run([
-                sys.executable, '-m', 'src.websockets.websocket_server'
-            ]))
+            def start_websocket():
+                try:
+                    subprocess.run([sys.executable, 'src/websockets/websocket_server.py'])
+                except Exception as e:
+                    print(f"WebSocket服务器启动错误: {e}")
+            
+            ws_future = executor.submit(start_websocket)
             
             print("✅ 两个服务器都已启动")
             print("按 Ctrl+C 停止所有服务")
             
-            # 等待任一服务器结束
-            api_future.result()
-            ws_future.result()
+            # 保持主线程运行，等待键盘中断
+            try:
+                while True:
+                    time.sleep(1)
+            except KeyboardInterrupt:
+                print("\n🛑 正在停止所有服务...")
+                # 让子进程自己处理停止信号
             
         except KeyboardInterrupt:
             print("\n👋 所有服务器已停止")

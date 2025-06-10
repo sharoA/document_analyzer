@@ -18,7 +18,7 @@ export default defineConfig({
     strictPort: true,
     open: false,
     hmr: {
-      overlay: false
+      overlay: true
     },
     watch: {
       usePolling: true,

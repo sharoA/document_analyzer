@@ -1,4 +1,4 @@
-import type { ISelectV2Props } from './token';
+import type { SelectV2Props } from './token';
 import type { Option } from './select.types';
 export interface Props {
     label?: string;
@@ -7,7 +7,7 @@ export interface Props {
     options?: string;
 }
 export declare const defaultProps: Required<Props>;
-export declare function useProps(props: Pick<ISelectV2Props, 'props'>): {
+export declare function useProps(props: Pick<SelectV2Props, 'props'>): {
     aliasProps: import("vue").ComputedRef<{
         label: string;
         value: string;

@@ -1,4 +1,4 @@
-import { LEFT_CHECK_CHANGE_EVENT, RIGHT_CHECK_CHANGE_EVENT } from '../transfer.mjs';
+import { LEFT_CHECK_CHANGE_EVENT, RIGHT_CHECK_CHANGE_EVENT } from '../transfer2.mjs';
 
 const useCheckedChange = (checkedState, emit) => {
   const onSourceCheckedChange = (val, movedKeys) => {

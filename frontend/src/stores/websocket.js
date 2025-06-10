@@ -30,7 +30,12 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
-    console.error('响应错误:', error.response?.status, error.response?.data || error.message)
+    // 只在非网络连接错误时输出错误信息
+    if (error.code !== 'ECONNREFUSED' && error.code !== 'ERR_NETWORK') {
+      console.error('响应错误:', error.response?.status, error.response?.data || error.message)
+    } else {
+      console.warn('网络连接失败，请检查后端服务是否启动')
+    }
     return Promise.reject(error)
   }
 )
@@ -69,45 +74,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const currentProcessing = ref(null)
   const analysisResult = ref(null)
   
-  // 添加轮询管理
-  const activePolls = ref(new Map()) // 存储活跃的轮询定时器
-  
-  // 停止指定任务的轮询
-  const stopPolling = (taskId, pollType = 'all') => {
-    const pollKey = `${taskId}_${pollType}`
-    if (activePolls.value.has(pollKey)) {
-      clearTimeout(activePolls.value.get(pollKey))
-      activePolls.value.delete(pollKey)
-      console.log(`🛑 已停止轮询: ${pollKey}`)
-    }
-    
-    // 如果是停止所有轮询
-    if (pollType === 'all') {
-      const keysToDelete = []
-      activePolls.value.forEach((timerId, key) => {
-        if (key.startsWith(taskId)) {
-          clearTimeout(timerId)
-          keysToDelete.push(key)
-        }
-      })
-      keysToDelete.forEach(key => activePolls.value.delete(key))
-      console.log(`🛑 已停止任务 ${taskId} 的所有轮询`)
-    }
-  }
-  
-  // 设置轮询定时器
-  const setPollingTimer = (taskId, pollType, callback, delay = 2000) => {
-    const pollKey = `${taskId}_${pollType}`
-    
-    // 先停止现有的轮询
-    stopPolling(taskId, pollType)
-    
-    // 设置新的轮询
-    const timerId = setTimeout(callback, delay)
-    activePolls.value.set(pollKey, timerId)
-    
-    return timerId
-  }
+  // 轮询管理
+  const activePolls = ref(new Map())
 
   // 计算属性
   const lastMessage = computed(() => {
@@ -121,29 +89,606 @@ export const useWebSocketStore = defineStore('websocket', () => {
            parsingStatus.value === 'ai_analyzing'
   })
 
-  // 连接方法（模拟模式）
-  const connect = () => {
+  // 连接WebSocket服务器 (Socket.IO) - 支持任务级连接
+  const connect = (taskId = null) => {
     try {
-      isConnected.value = true
-      console.log('WebSocket 连接成功（模拟模式）')
-      
-      // 添加欢迎消息
-      addMessage({
-        type: 'chat_response',
-        message: '您好！我是智能需求分析助手，可以帮您分析需求文档。请上传您的文档开始分析，或者直接与我对话。',
-        timestamp: Date.now(),
-        message_id: generateMessageId()
+      // 动态导入socket.io-client
+      import('socket.io-client').then(({ io }) => {
+        const wsUrl = 'http://localhost:8081'
+        console.log('🔌 正在连接Socket.IO服务器:', wsUrl)
+        
+        // 🔧 新架构：支持使用TaskID作为连接参数 + 禁用缓冲优化
+        const connectOptions = {
+          timeout: 20000,  // 减少超时时间
+          transports: ['websocket'],  // 强制使用websocket，避免polling缓冲
+          forceNew: !!taskId,  // 任务级连接强制新建
+          upgrade: false,    // 禁用传输升级避免切换延迟
+          rememberUpgrade: false,  // 禁用升级记忆
+          reconnection: !taskId,     // 任务级连接不自动重连
+          reconnectionAttempts: taskId ? 0 : 3,  // 减少重连次数
+          reconnectionDelay: 500,   // 减少重连延迟
+          reconnectionDelayMax: 2000, // 减少最大重连延迟
+          pingTimeout: 10000,     // 大幅减少ping超时（10秒）
+          pingInterval: 5000,     // 大幅减少ping间隔（5秒）
+          // 🔥 关键：禁用各种缓冲和优化
+          autoConnect: true,
+          multiplex: false,       // 禁用多路复用避免缓冲
+          randomizationFactor: 0, // 禁用随机化
+          query: taskId ? { task_id: taskId } : {}  // 传递TaskID
+        }
+        
+        console.log('🔧 连接配置:', connectOptions)
+        console.log('🆔 任务级连接ID:', taskId || '通用连接')
+        
+        socket.value = io(wsUrl, connectOptions)
+        
+        socket.value.on('connect', () => {
+          isConnected.value = true
+          console.log('✅ Socket.IO 连接成功')
+          console.log('🆔 前端客户端ID:', clientId.value)
+          console.log('🆔 Socket.IO会话ID:', socket.value.id)
+          console.log('📋 ID映射说明: 前端显示ID为标识用，实际通信使用Socket.IO会话ID')
+          console.log('⏰ 连接时间:', new Date().toLocaleTimeString())
+          
+          // 检查是否有进行中的任务
+          checkOngoingTasks()
+          
+          // 🔧 新增：启动Session一致性监控
+          startSessionConsistencyMonitoring()
+          
+          // 添加欢迎消息
+          addMessage({
+            type: 'chat_response',
+            message: '您好！我是智能需求分析助手，可以帮您分析需求文档。请上传您的文档开始分析，或者直接与我对话。',
+            timestamp: Date.now(),
+            message_id: generateMessageId()
+          })
+        })
+        
+        socket.value.on('connected', (data) => {
+          console.log('📨 收到连接确认:', data)
+          console.log('🔍 ID对比:')
+          console.log('  前端生成ID:', clientId.value)
+          console.log('  后端返回ID:', data.client_id)
+          console.log('  Socket.IO ID:', socket.value.id)
+          console.log('📋 说明: 后端使用Socket.IO ID进行通信路由')
+          console.log('🔧 [调试] 确认analysis_progress事件监听器已设置')
+          handleWebSocketMessage(data)
+        })
+        
+        // 专门监听 analysis_progress 事件
+        socket.value.on('analysis_progress', (data) => {
+          console.log('🎯 [专门监听器] 收到分析进度更新:', data)
+          console.log('🎯 [专门监听器] 进度数据结构:', JSON.stringify(data, null, 2))
+          console.log('🎯 [专门监听器] 调用 handleAnalysisProgress...')
+          try {
+            handleAnalysisProgress(data)
+            console.log('🎯 [专门监听器] handleAnalysisProgress 执行完成')
+          } catch (error) {
+            console.error('❌ [专门监听器] handleAnalysisProgress 执行失败:', error)
+          }
+        })
+        
+        // 添加专门的事件监听器
+        socket.value.on('session_mapping_updated', (data) => {
+          console.log('✅ Session ID映射更新确认:', data)
+          console.log('🔄 更新后的Session ID:', data.new_session_id)
+          console.log('🆔 当前Socket ID:', socket.value.id)
+        })
+        
+        socket.value.on('session_mapping_error', (data) => {
+          console.error('❌ Session ID映射更新失败:', data)
+        })
+
+        // 🔧 新增：任务绑定确认监听
+        socket.value.on('task_binding_confirmed', (data) => {
+          console.log('✅ 收到任务绑定确认:', data)
+          console.log('🎯 强绑定建立成功 - TaskID:', data.task_id, 'SessionID:', data.session_id)
+        })
+        
+        socket.value.on('task_binding_error', (data) => {
+          console.error('❌ 任务绑定失败:', data)
+        })
+
+        // 🔧 新增：任务完成断开事件监听
+        socket.value.on('task_completed_disconnect', (data) => {
+          console.log('🏁 收到任务完成断开通知:', data)
+          const taskId = data.task_id
+          
+          // 更新任务状态为已完成
+          if (parsingTasks.value.has(taskId)) {
+            const task = parsingTasks.value.get(taskId)
+            task.status = 'completed'
+            task.completedAt = new Date()
+            parsingTasks.value.set(taskId, task)
+          }
+          
+          // 设置完成状态
+          parsingStatus.value = 'completed'
+          
+          console.log(`✅ [任务完成] 任务 ${taskId} 已完成，连接将自动断开`)
+        })
+
+        // 监听所有事件用于调试
+        socket.value.onAny((eventName, ...args) => {
+          console.log('📨 [onAny] 收到Socket.IO事件:', eventName, args)
+          
+          // 特别检查analysis_progress事件
+          if (eventName === 'analysis_progress') {
+            console.log('🎯 [onAny] 检测到analysis_progress事件！')
+            console.log('🎯 [onAny] 事件数据:', JSON.stringify(args[0], null, 2))
+            console.log('🎯 [onAny] 专门监听器是否存在:', typeof socket.value._callbacks?.['analysis_progress'])
+            console.log('🎯 [onAny] 强制调用handleAnalysisProgress进行应急处理')
+            handleAnalysisProgress(args[0])
+            return
+          }
+          
+          // 特殊事件也跳过
+          if (eventName === 'session_mapping_updated' || eventName === 'session_mapping_error' || eventName === 'task_completed_disconnect') {
+            console.log('🎯 特殊事件已由专门监听器处理:', eventName)
+            return
+          }
+          
+          if (eventName !== 'connect' && eventName !== 'connected') {
+            // 检查是否是包含进度信息的其他事件
+            const data = args[0]
+            if (data && (data.overall_progress !== undefined || data.stage_progress)) {
+              console.log('🎯 发现包含进度信息的其他事件:', eventName, data)
+              handleAnalysisProgress(data)
+            } else {
+              handleWebSocketMessage({ type: eventName, ...args[0] })
+            }
+          }
+        })
+        
+        socket.value.on('disconnect', (reason) => {
+          isConnected.value = false
+          console.log('❌ Socket.IO 连接已断开，原因:', reason)
+          console.log('⏰ 断开时间:', new Date().toLocaleTimeString())
+          console.log('📊 断开前的Session ID:', socket.value?.id || 'N/A')
+          
+          // 🔧 新增：停止Session一致性监控
+          stopSessionConsistencyMonitoring()
+        })
+        
+        // 监听连接错误
+        socket.value.on('error', (error) => {
+          console.error('❌ Socket.IO 错误:', error)
+          console.log('⏰ 错误时间:', new Date().toLocaleTimeString())
+        })
+        
+        // 监听重连事件
+        socket.value.on('reconnect', (attemptNumber) => {
+          console.log('🔄 Socket.IO 重新连接成功，尝试次数:', attemptNumber)
+          console.log('⏰ 重连时间:', new Date().toLocaleTimeString())
+          console.log('🆔 重连后的新Session ID:', socket.value.id)
+          isConnected.value = true
+          
+          // 🔧 新增：自动同步所有进行中任务的Session映射
+          console.log('🔄 [Session映射] 开始同步重连后的Session映射...')
+          
+          // 检查当前进行中的任务
+          for (const [taskId, task] of parsingTasks.value.entries()) {
+            if (task.status !== 'completed' && task.status !== 'failed') {
+              console.log(`🔄 [Session映射] 同步任务 ${taskId} 的Session映射`)
+              console.log(`  旧SessionID: ${task.currentSessionId}`)
+              console.log(`  新SessionID: ${socket.value.id}`)
+              
+              // 更新任务的SessionID
+              task.currentSessionId = socket.value.id
+              parsingTasks.value.set(taskId, task)
+              
+              // 发送Session映射更新到后端
+              const syncMessage = {
+                task_id: taskId,
+                new_session_id: socket.value.id,
+                old_session_id: task.initialSessionId,
+                client_type: 'frontend',
+                action: 'reconnect_sync'
+              }
+              
+              console.log(`📡 [Session映射] 发送重连同步消息:`, syncMessage)
+              socket.value.emit('update_session_mapping', syncMessage)
+            }
+          }
+          
+          // 如果有当前正在处理的任务，请求最新进度
+          if (currentParsingTask.value && currentParsingTask.value.id) {
+            setTimeout(() => {
+              console.log('🔄 [Session映射] 请求最新任务进度:', currentParsingTask.value.id)
+              socket.value.emit('get_analysis_progress', {
+                task_id: currentParsingTask.value.id
+              })
+            }, 1000)
+          }
+        })
+        
+        socket.value.on('reconnect_attempt', (attemptNumber) => {
+          console.log('🔄 尝试重新连接 Socket.IO，第', attemptNumber, '次')
+          console.log('⏰ 重连尝试时间:', new Date().toLocaleTimeString())
+        })
+        
+        socket.value.on('connect_error', (error) => {
+          console.warn('⚠️ Socket.IO 连接失败:', error.message)
+          console.log('⏰ 连接失败时间:', new Date().toLocaleTimeString())
+          isConnected.value = false
+          // 降级到HTTP模式
+          initHttpMode()
+        })
+        
+      }).catch((error) => {
+        console.error('导入socket.io-client失败:', error)
+        initHttpMode()
       })
+      
     } catch (error) {
       console.error('连接失败:', error)
       isConnected.value = false
+      // 降级到HTTP模式
+      initHttpMode()
+    }
+  }
+
+  // Socket.IO连接失败时的处理
+  const initHttpMode = () => {
+    console.log('❌ Socket.IO连接失败')
+    isConnected.value = false
+    
+    // 添加错误提示消息
+    addMessage({
+      type: 'chat_response',
+      message: '⚠️ 无法连接到WebSocket服务器。请确保后端服务已启动（端口8081和8082）。\n\n您仍可以进行聊天，但文档分析功能将不可用。\n\n启动后端服务的方法：\n1. 打开终端\n2. 进入项目目录\n3. 运行: python run.py --mode=full',
+      timestamp: Date.now(),
+      message_id: generateMessageId()
+    })
+  }
+
+  // 处理分析进度更新
+  const handleAnalysisProgress = (data) => {
+    console.log('📊 [handleAnalysisProgress] 开始处理分析进度:', data)
+    console.log('📊 [handleAnalysisProgress] 当前 parsingProgress.value:', parsingProgress.value)
+    
+    if (!data.task_id) {
+      console.warn('❌ [handleAnalysisProgress] 没有task_id，跳过处理')
+      return
+    }
+    
+    console.log('📊 [handleAnalysisProgress] 任务ID确认:', data.task_id)
+    
+    // 更新整体进度
+    if (data.overall_progress !== undefined) {
+      console.log(`📄 [整体进度] 更新: ${parsingProgress.value} -> ${data.overall_progress}%`)
+      const oldProgress = parsingProgress.value
+      parsingProgress.value = data.overall_progress
+      console.log(`📄 [整体进度] 更新后: ${parsingProgress.value}%`)
+      console.log(`📄 [整体进度] 验证更新: ${oldProgress} -> ${parsingProgress.value}`)
+      
+      // 同时更新currentProcessing对象，用于UI显示
+      if (currentProcessing.value) {
+        currentProcessing.value = {
+          ...currentProcessing.value,
+          progress: data.overall_progress,
+          description: data.message || currentProcessing.value.description
+        }
+        console.log(`📄 更新currentProcessing进度: ${data.overall_progress}%`)
+      } else {
+        // 如果没有currentProcessing，创建一个
+        setCurrentProcessing({
+          description: data.message || '正在处理文档分析...',
+          progress: data.overall_progress,
+          status: 'primary'
+        })
+        console.log(`📄 创建新的currentProcessing，进度: ${data.overall_progress}%`)
+      }
+    }
+    
+    // 更新各阶段进度
+    if (data.stage_progress) {
+      const stageMapping = {
+        'document_parsing': 'step_parsing',
+        'content_analysis': 'step_content_analysis',
+        'ai_analysis': 'step_ai_analysis'
+      }
+      
+      const stageNames = {
+        'document_parsing': '文档解析',
+        'content_analysis': '内容分析',
+        'ai_analysis': '智能解析'
+      }
+      
+      for (const [stage, progress] of Object.entries(data.stage_progress)) {
+        const stepId = stageMapping[stage]
+        const stageName = stageNames[stage]
+        
+        console.log(`🔍 [阶段进度] 处理阶段: ${stage} -> ${stepId} (${stageName}) - ${progress}%`)
+        console.log(`🔍 [阶段进度] 映射检查 - stepId: '${stepId}', stageName: '${stageName}'`)
+        
+        if (stepId) {
+          let status = 'primary'
+          let description = '正在处理...'
+          
+          if (progress === 100) {
+            status = 'success'
+            description = '已完成'
+          } else if (progress > 0) {
+            status = 'primary'
+            description = `正在进行 ${progress}%`
+          }
+          
+          console.log(`📄 调用 updateProcessingStep:`, {
+            id: stepId,
+            title: stageName,
+            description: description,
+            status: status,
+            progress: progress
+          })
+          
+          updateProcessingStep({
+            id: stepId,
+            title: stageName,
+            description: description,
+            status: status,
+            progress: progress,
+            timestamp: new Date().toLocaleTimeString()
+          })
+          
+          console.log(`📄 更新阶段进度: ${stageName} ${progress}%`)
+        } else {
+          console.warn(`❌ 未找到阶段映射: ${stage}`)
+        }
+      }
+    }
+    
+    // 检查是否完成
+    if (data.status === 'completed') {
+      parsingStatus.value = 'completed'
+      updateProcessingStep({
+        id: 'step_complete',
+        title: '完成处理',
+        description: '文档分析已完成',
+        status: 'success',
+        progress: 100,
+        timestamp: new Date().toLocaleTimeString()
+      })
+    }
+  }
+
+  // 检查进行中的任务
+  const checkOngoingTasks = async () => {
+    try {
+      console.log('🔍 检查进行中的任务...')
+      const response = await api.get('/api/v2/analysis/tasks?limit=10')
+      const data = response.data
+      
+      if (data.success && data.tasks && data.tasks.length > 0) {
+        // 查找状态为running的任务
+        const activeTask = data.tasks.find(task => task.status === 'running' || task.status === 'processing')
+        
+        if (activeTask) {
+          console.log('📋 发现活跃任务:', activeTask)
+          
+          // 恢复任务状态
+          if (activeTask.overall_progress !== undefined) {
+            parsingProgress.value = activeTask.overall_progress
+            parsingStatus.value = activeTask.status || 'running'
+            
+            // 创建或更新currentProcessing状态
+            setCurrentProcessing({
+              description: `正在处理: ${activeTask.file_name || activeTask.task_id || '文档分析'}`,
+              progress: activeTask.overall_progress,
+              status: 'primary'
+            })
+            
+            console.log(`🔄 恢复任务状态: ${activeTask.overall_progress}% - ${activeTask.status}`)
+            
+            // 如果有阶段进度，也要恢复
+            if (activeTask.stage_progress) {
+              handleAnalysisProgress({
+                task_id: activeTask.task_id,
+                overall_progress: activeTask.overall_progress,
+                stage_progress: activeTask.stage_progress,
+                status: activeTask.status,
+                message: `恢复任务: ${activeTask.file_name || '文档分析'}`
+              })
+            }
+          }
+        } else {
+          console.log('📋 没有发现运行中的任务')
+        }
+      } else {
+        console.log('📋 没有发现任何任务')
+      }
+    } catch (error) {
+      console.log('🔍 检查活跃任务失败:', error.message)
+      // 忽略错误，继续正常运行
+    }
+  }
+
+  // 处理WebSocket消息
+  const handleWebSocketMessage = (data) => {
+    console.log('🔥 [WebSocket] 处理消息:', data.type || 'analysis_progress', data)
+    
+    switch (data.type) {
+      case 'analysis_started':
+        // 分析开始
+        console.log('🚀 分析已开始:', data)
+        parsingStatus.value = 'running'
+        
+        // 创建初始处理状态
+        setCurrentProcessing({
+          description: `开始分析任务: ${data.task_id}`,
+          progress: 0,
+          status: 'primary'
+        })
+        
+        addMessage({
+          type: 'chat_response',
+          message: '✅ 文档分析已开始，正在处理...',
+          timestamp: Date.now(),
+          message_id: generateMessageId()
+        })
+        break
+        
+      case 'analysis_progress':
+        // 分析进度更新
+        if (data.task_id && data.progress !== undefined) {
+          console.log(`📄 分析进度: ${data.progress}% - ${data.message}`)
+          
+          // 更新对应的处理步骤
+          if (data.stage) {
+            updateProcessingStep({
+              id: `step_${data.stage}`,
+              title: data.stage_name || data.stage,
+              description: data.message || '正在处理...',
+              status: data.progress === 100 ? 'success' : 'primary',
+              progress: data.progress,
+              timestamp: new Date().toLocaleTimeString()
+            })
+          }
+          
+          // 更新全局进度
+          parsingProgress.value = data.progress
+        }
+        break
+        
+      case 'stage_completed':
+        // 阶段完成
+        console.log(`✅ 阶段完成: ${data.stage}`)
+        updateProcessingStep({
+          id: `step_${data.stage}`,
+          title: data.stage_name || data.stage,
+          description: data.message || '已完成',
+          status: 'success',
+          progress: 100,
+          timestamp: new Date().toLocaleTimeString()
+        })
+        break
+        
+      case 'analysis_completed':
+        // 分析完成
+        console.log('🎉 分析完成!')
+        parsingStatus.value = 'completed'
+        
+        if (data.result) {
+          setAnalysisResult(data.result)
+        }
+        
+        updateProcessingStep({
+          id: 'step_complete',
+          title: '完成处理',
+          description: '文档分析已完成',
+          status: 'success',
+          progress: 100,
+          timestamp: new Date().toLocaleTimeString()
+        })
+        
+        addMessage({
+          type: 'chat_response',
+          message: '文档分析已完成！您可以在"需求文档分析"标签页查看结果。',
+          timestamp: Date.now(),
+          message_id: generateMessageId()
+        })
+        break
+        
+      case 'analysis_failed':
+        // 分析失败
+        console.log('❌ 分析失败:', data.error)
+        parsingStatus.value = 'failed'
+        
+        updateProcessingStep({
+          id: data.stage ? `step_${data.stage}` : 'step_error',
+          title: '分析失败',
+          description: data.error || '未知错误',
+          status: 'error',
+          progress: 0,
+          timestamp: new Date().toLocaleTimeString()
+        })
+        
+        addMessage({
+          type: 'chat_response',
+          message: `分析失败：${data.error || '未知错误'}`,
+          timestamp: Date.now(),
+          message_id: generateMessageId()
+        })
+        break
+        
+      case 'chat_response':
+        // 聊天回复
+        if (data.message) {
+          addMessage({
+            type: 'chat_response',
+            message: data.message,
+            timestamp: Date.now(),
+            message_id: generateMessageId(),
+            analysis: data.analysis
+          })
+        }
+        break
+        
+      default:
+        console.log('🔶 未知的WebSocket消息类型:', data.type)
     }
   }
 
   // 断开连接
   const disconnect = () => {
+    if (socket.value) {
+      socket.value.disconnect()
+      socket.value = null
+    }
     isConnected.value = false
-    console.log('WebSocket 连接已断开')
+    console.log('Socket.IO 连接已断开')
+  }
+
+  // 🔧 新增：任务级连接管理
+  const connectForTask = async (taskId) => {
+    console.log('🎯 为任务创建专用WebSocket连接:', taskId)
+    
+    // 如果已有连接，先断开
+    if (socket.value && socket.value.connected) {
+      console.log('🔄 断开现有连接以建立任务专用连接')
+      socket.value.disconnect()
+    }
+    
+    // 使用TaskID建立新连接
+    connect(taskId)
+    
+    // 等待连接建立
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('任务连接超时'))
+      }, 10000)
+      
+      socket.value.on('connect', () => {
+        clearTimeout(timeout)
+        console.log('✅ 任务专用连接建立成功')
+        console.log('🆔 连接ID:', socket.value.id)
+        console.log('🎯 任务ID:', taskId)
+        resolve(socket.value.id)
+      })
+      
+      socket.value.on('connect_error', (error) => {
+        clearTimeout(timeout)
+        console.error('❌ 任务连接失败:', error)
+        reject(error)
+      })
+    })
+  }
+
+  // 🔧 新增：任务完成后断开连接
+  const disconnectTask = (taskId) => {
+    console.log('🏁 任务完成，断开专用连接:', taskId)
+    if (socket.value) {
+      socket.value.disconnect()
+      socket.value = null
+      isConnected.value = false
+    }
+    
+    // 重新建立通用连接（用于聊天等其他功能）
+    setTimeout(() => {
+      console.log('🔄 重新建立通用WebSocket连接')
+      connect()
+    }, 1000)
   }
 
   // 发送消息
@@ -160,7 +705,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     addMessage(userMessage)
 
     try {
-      // 调用后端API
+      // 聊天始终使用HTTP API，保持原有行为
       const response = await api.post('/api/chat', {
         message: message.trim(),
         session_id: sessionId.value
@@ -196,13 +741,21 @@ export const useWebSocketStore = defineStore('websocket', () => {
   // 文件上传和解析
   const uploadFile = async (file) => {
     try {
+      console.log('📁 开始文件上传流程')
+      console.log('🔍 上传开始时的WebSocket状态:')
+      console.log('  连接状态:', isConnected.value)
+      console.log('  Session ID:', socket.value?.id || 'N/A')
+      console.log('  前端ID:', clientId.value)
+      console.log('⏰ 上传开始时间:', new Date().toLocaleTimeString())
+      
       parsingStatus.value = 'uploading'
       parsingProgress.value = 0
       
       // 检查文件大小（21MB限制）
       const maxFileSize = 21 * 1024 * 1024 // 21MB
-      if (file.size > maxFileSize) {
-        throw new Error(`文件大小 ${(file.size / (1024 * 1024)).toFixed(1)}MB 超过限制，最大允许 21MB`)
+      const actualFileSize = file.size || (file.raw && file.raw.size) || 0
+      if (actualFileSize > maxFileSize) {
+        throw new Error(`文件大小 ${(actualFileSize / (1024 * 1024)).toFixed(1)}MB 超过限制，最大允许 21MB`)
       }
       
       // 预先创建完整的处理流程节点
@@ -271,24 +824,91 @@ export const useWebSocketStore = defineStore('websocket', () => {
         timestamp: new Date().toLocaleTimeString()
       })
       
-      // 将文件转换为base64
-      const fileContent = await fileToBase64(file.raw)
+      // 安全地获取文件对象并转换为base64
+      let actualFile = null
+      if (file.raw && file.raw instanceof File) {
+        // Element Plus 文件对象格式
+        actualFile = file.raw
+      } else if (file instanceof File) {
+        // 原生 File 对象
+        actualFile = file
+      } else {
+        throw new Error('无效的文件格式: 无法识别的文件对象')
+      }
+      
+      console.log('🔥 [上传] 文件对象类型检查:', {
+        hasRaw: !!file.raw,
+        rawIsFile: file.raw instanceof File,
+        fileIsFile: file instanceof File,
+        actualFileType: actualFile?.constructor?.name,
+        fileName: file.name || actualFile?.name
+      })
+      
+      const fileContent = await fileToBase64(actualFile)
       
       const fileInfo = {
-        name: file.name,
-        type: file.raw.type,
-        size: file.size,
+        name: file.name || actualFile.name,
+        type: actualFile.type,
+        size: file.size || actualFile.size,
         content: fileContent
       }
 
       // 调用后端文件上传API
+      console.log('🌐 准备调用文件上传API')
+      console.log('  上传前Session ID:', socket.value?.id || 'N/A')
+      console.log('⏰ API调用开始时间:', new Date().toLocaleTimeString())
+      
       const response = await api.post('/api/file/upload', {
         file_info: fileInfo,
         client_id: clientId.value
       })
+      
+      console.log('✅ 文件上传API调用完成')
+      console.log('  上传后Session ID:', socket.value?.id || 'N/A')
+      console.log('  连接状态:', isConnected.value)
+      console.log('⏰ API调用完成时间:', new Date().toLocaleTimeString())
 
       if (response.data.success) {
         const taskId = response.data.task_id
+        
+        // 🔧 简化方案：立即建立强绑定映射
+        console.log('🎯 [简化方案] 立即建立TaskID映射')
+        console.log('  TaskID:', taskId)
+        console.log('  当前SessionID:', socket.value?.id)
+        
+        // 确保WebSocket连接存在
+        if (!socket.value || !isConnected.value) {
+          console.log('🔄 WebSocket未连接，重新建立连接...')
+          connect()
+          
+          // 等待连接建立
+          await new Promise((resolve, reject) => {
+            const checkConnection = () => {
+              if (isConnected.value && socket.value) {
+                resolve()
+              } else {
+                setTimeout(checkConnection, 100)
+              }
+            }
+            setTimeout(() => reject(new Error('连接超时')), 5000)
+            checkConnection()
+          })
+        }
+        
+        // 立即发送强绑定映射
+        const strongBindingMessage = {
+          task_id: taskId,
+          session_id: socket.value.id,
+          action: 'strong_binding',
+          client_type: 'frontend',
+          timestamp: Date.now()
+        }
+        
+        console.log('📡 [简化方案] 发送强绑定映射:', strongBindingMessage)
+        socket.value.emit('establish_task_binding', strongBindingMessage)
+        
+        // 等待绑定确认
+        await new Promise(resolve => setTimeout(resolve, 300))
         
         // 文档上传完成
         updateProcessingStep({
@@ -303,9 +923,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
         // 创建解析任务记录
         const task = {
           id: taskId,
-          fileName: file.name,
-          fileType: file.raw.type,
-          fileSize: file.size,
+          fileName: file.name || actualFile.name,
+          fileType: actualFile.type,
+          fileSize: file.size || actualFile.size,
           filePath: response.data.file_path,
           status: 'pending',
           progress: 0,
@@ -315,7 +935,10 @@ export const useWebSocketStore = defineStore('websocket', () => {
           aiAnalysis: null,
           error: null,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          // 🔧 新增：记录初始SessionID
+          initialSessionId: socket.value?.id,
+          currentSessionId: socket.value?.id
         }
         
         parsingTasks.value.set(taskId, task)
@@ -332,23 +955,75 @@ export const useWebSocketStore = defineStore('websocket', () => {
           timestamp: new Date().toLocaleTimeString()
         })
         
-        // 开始轮询解析状态
-        pollParsingStatus(taskId)
-        
-        return { success: true, taskId }
+        // 通过Socket.IO通知后端开始分析
+        if (socket.value && isConnected.value) {
+          // 🔧 增强：检查连接稳定性和Session一致性
+          console.log('🔍 [Session映射] 检查WebSocket连接状态...')
+          console.log('🔌 连接状态:', isConnected.value)
+          console.log('🆔 当前Session ID:', socket.value.id)
+          console.log('🆔 任务记录的Session ID:', task.currentSessionId)
+          
+          // 如果SessionID发生变化，更新映射
+          if (socket.value.id !== task.currentSessionId) {
+            console.log('⚠️ [Session映射] 检测到SessionID变化，更新映射...')
+            console.log('  旧SessionID:', task.currentSessionId)
+            console.log('  新SessionID:', socket.value.id)
+            
+            // 更新任务记录
+            task.currentSessionId = socket.value.id
+            parsingTasks.value.set(taskId, task)
+            
+            // 发送Session映射更新
+            const sessionUpdateMessage = {
+              task_id: taskId,
+              new_session_id: socket.value.id,
+              old_session_id: task.initialSessionId,
+              client_type: 'frontend',
+              action: 'session_changed'
+            }
+            
+            console.log('📡 [Session映射] 发送Session变更通知:', sessionUpdateMessage)
+            socket.value.emit('update_session_mapping', sessionUpdateMessage)
+            
+            // 等待映射更新完成
+            await new Promise(resolve => setTimeout(resolve, 800))
+          }
+          
+          // 发送开始分析请求
+          const analysisMessage = {
+            task_id: taskId,
+            execution_mode: 'automatic',
+            socket_session_id: socket.value.id,  // 使用Socket.IO的session ID
+            client_id: clientId.value,
+            session_id: sessionId.value
+          }
+          
+          console.log('🆔 [Session映射] 最终分析请求:', analysisMessage)
+          console.log('🔄 发送的socket_session_id:', socket.value.id)
+          
+          socket.value.emit('start_analysis', analysisMessage)
+          
+          console.log('📡 ✅ start_analysis事件已发送')
+          console.log('⏰ 发送时间:', new Date().toLocaleTimeString())
+          
+          return { success: true, task_id: taskId }
+        } else {
+          throw new Error('WebSocket连接不可用')
+        }
       } else {
-        throw new Error(response.data.error || '文件上传失败')
+        throw new Error('文件上传失败: ' + (response.data.error || '未知错误'))
       }
+      
     } catch (error) {
-      console.error('文件上传失败:', error)
+      console.error('🔥 [WebSocket] 文件上传失败:', error)
       parsingStatus.value = 'failed'
       
-      // 更新上传步骤为失败状态
+      // 添加失败步骤
       updateProcessingStep({
         id: 'step_upload',
         title: '文档上传',
         description: `上传失败: ${error.message}`,
-        status: 'error',
+        status: 'danger',
         progress: 0,
         timestamp: new Date().toLocaleTimeString()
       })
@@ -357,201 +1032,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
     }
   }
 
-  // 轮询解析状态 - 修改为严格顺序控制
-  const pollParsingStatus = async (taskId) => {
-    const maxAttempts = 60 // 最多轮询60次（约2分钟）
-    let attempts = 0
-    
-    const poll = async () => {
-      try {
-        attempts++
-        console.log(`📄 文档解析轮询 - 第${attempts}次，任务ID: ${taskId}`)
-        
-        // 检查全局状态
-        if (parsingStatus.value === 'completed' || parsingStatus.value === 'failed') {
-          console.log('🛑 全局状态已完成/失败，停止解析轮询')
-          stopPolling(taskId, 'parsing')
-          return
-        }
-        
-        const response = await api.get(`/api/file/parsing/${taskId}`)
-        
-        if (response.data.success) {
-          const task = response.data
-          console.log(`📄 文档解析状态: ${task.status}, 进度: ${task.progress}%`)
-          
-          // 更新任务状态
-          const localTask = parsingTasks.value.get(taskId)
-          if (localTask) {
-            Object.assign(localTask, {
-              status: task.status,
-              progress: task.progress,
-              steps: task.steps || [],
-              result: task.result,
-              error: task.error,
-              updatedAt: new Date()
-            })
-            
-            parsingProgress.value = task.progress
-            
-            // 重要：更新当前解析任务的步骤信息
-            if (currentParsingTask.value && currentParsingTask.value.id === taskId) {
-              currentParsingTask.value.status = task.status
-              currentParsingTask.value.progress = task.progress
-              currentParsingTask.value.steps = task.steps || []
-              currentParsingTask.value.result = task.result
-              currentParsingTask.value.error = task.error
-              currentParsingTask.value.updatedAt = new Date()
-            }
-            
-            // 更新文档解析步骤
-            updateProcessingStep({
-              id: 'step_parsing',
-              title: '文档解析',
-              description: task.current_step || '正在解析文档内容...',
-              status: 'primary',
-              progress: task.progress,
-              timestamp: new Date().toLocaleTimeString()
-            })
-          }
-          
-          // 严格检查：只有当状态为 'parsed' 且进度为 100% 时才进入下一步
-          if (task.status === 'parsed' && task.progress === 100) {
-            console.log('✅ 文档解析完成，准备进入内容分析阶段')
-            // 文档解析完成
-            stopPolling(taskId, 'parsing') // 停止解析轮询
-            updateProcessingStep({
-              id: 'step_parsing',
-              title: '文档解析',
-              description: '文档解析完成',
-              status: 'success',
-              progress: 100,
-              timestamp: new Date().toLocaleTimeString()
-            })
-            
-            // 等待1秒后开始内容分析，确保状态稳定
-            setTimeout(() => {
-              // 开始第三步：内容分析
-              updateProcessingStep({
-                id: 'step_content_analysis',
-                title: '内容分析',
-                description: '正在启动内容分析...',
-                status: 'primary',
-                progress: 0,
-                timestamp: new Date().toLocaleTimeString()
-              })
-              
-              parsingStatus.value = 'content_analyzing'
-              startContentAnalysis(taskId)
-            }, 1000)
-            return
-          } else if (task.status === 'failed') {
-            console.log('❌ 文档解析失败')
-            parsingStatus.value = 'failed'
-            stopPolling(taskId, 'all') // 停止所有轮询
-            
-            // 更新解析步骤为失败状态
-            updateProcessingStep({
-              id: 'step_parsing',
-              title: '文档解析',
-              description: `解析失败: ${task.error || '未知错误'}`,
-              status: 'error',
-              progress: 0,
-              timestamp: new Date().toLocaleTimeString()
-            })
-            
-            // 添加失败消息
-            addMessage({
-              type: 'chat_response',
-              message: `文件解析失败：${task.error || '未知错误'}`,
-              timestamp: Date.now(),
-              message_id: generateMessageId()
-            })
-            
-            return
-          }
-          
-          // 继续轮询 - 只有在处理中的状态才继续
-          if (attempts < maxAttempts && (task.status === 'pending' || task.status === 'processing' || task.status === 'parsing')) {
-            console.log(`⏳ 文档解析进行中，${2.5}秒后继续轮询...`)
-            setPollingTimer(taskId, 'parsing', poll, 2500) // 增加到2.5秒
-          } else if (attempts >= maxAttempts) {
-            console.log('⏰ 文档解析轮询超时')
-            parsingStatus.value = 'failed'
-            stopPolling(taskId, 'all')
-            
-            updateProcessingStep({
-              id: 'step_parsing',
-              title: '文档解析',
-              description: '解析超时，请重试',
-              status: 'error',
-              progress: 0,
-              timestamp: new Date().toLocaleTimeString()
-            })
-            
-            addMessage({
-              type: 'chat_response',
-              message: '文件解析超时，请重试。',
-              timestamp: Date.now(),
-              message_id: generateMessageId()
-            })
-          }
-        }
-      } catch (error) {
-        console.error('轮询解析状态失败:', error)
-        
-        // 检查是否是404错误（任务不存在）
-        if (error.response && error.response.status === 404) {
-          console.log('❌ 解析任务不存在，停止轮询')
-          parsingStatus.value = 'failed'
-          stopPolling(taskId, 'all')
-          
-          updateProcessingStep({
-            id: 'step_parsing',
-            title: '文档解析',
-            description: '任务已丢失，请重新上传文件',
-            status: 'error',
-            progress: 0,
-            timestamp: new Date().toLocaleTimeString()
-          })
-          
-          addMessage({
-            type: 'chat_response',
-            message: '解析任务已丢失，可能是服务器重启导致。请重新上传文件。',
-            timestamp: Date.now(),
-            message_id: generateMessageId()
-          })
-          
-          // 清理当前任务
-          if (currentParsingTask.value && currentParsingTask.value.id === taskId) {
-            currentParsingTask.value = null
-          }
-          parsingTasks.value.delete(taskId)
-          
-          return // 停止轮询
-        }
-        
-        // 其他错误，继续重试
-        if (attempts >= maxAttempts) {
-          parsingStatus.value = 'failed'
-          stopPolling(taskId, 'all')
-          updateProcessingStep({
-            id: 'step_parsing',
-            title: '文档解析',
-            description: '解析失败，请重试',
-            status: 'error',
-            progress: 0,
-            timestamp: new Date().toLocaleTimeString()
-          })
-        } else {
-          console.log(`🔄 解析轮询遇到错误，${2.5}秒后重试...`)
-          setPollingTimer(taskId, 'parsing', poll, 2500) // 增加到2.5秒
-        }
-      }
-    }
-    
-    poll()
-  }
+  // 注意：专注于WebSocket实时通信，不再使用HTTP轮询备用方案
 
   // 开始内容分析
   const startContentAnalysis = async (taskId) => {
@@ -1220,6 +1701,30 @@ export const useWebSocketStore = defineStore('websocket', () => {
     analysisResult.value = null
   }
 
+  // 分析文档方法 - 统一入口
+  const analyzeDocument = async (file) => {
+    console.log('🔥 [WebSocketStore] 开始分析文档:', file.name)
+    try {
+      // 使用现有的uploadFile方法
+      await uploadFile(file)
+      
+      // 添加处理步骤
+      addProcessingStep({
+        id: generateMessageId(),
+        title: '文档分析',
+        description: `正在分析文档: ${file.name}`,
+        status: 'primary',
+        progress: 0,
+        timestamp: new Date().toLocaleTimeString()
+      })
+      
+      return true
+    } catch (error) {
+      console.error('🔥 [WebSocketStore] 文档分析失败:', error)
+      throw error
+    }
+  }
+
   // 健康检查
   const checkHealth = async () => {
     try {
@@ -1550,6 +2055,66 @@ ${task.timestamps ? `
     return markdown
   }
 
+  // 🔧 新增：Session一致性监控
+  let sessionConsistencyTimer = null
+  
+  const startSessionConsistencyMonitoring = () => {
+    // 清除之前的定时器
+    if (sessionConsistencyTimer) {
+      clearInterval(sessionConsistencyTimer)
+    }
+    
+    // 每5秒检查一次Session一致性
+    sessionConsistencyTimer = setInterval(() => {
+      if (!socket.value || !isConnected.value) {
+        return
+      }
+      
+      console.log('🔍 [Session监控] 开始Session一致性检查...')
+      
+      // 检查当前进行中的任务
+      let needSync = false
+      for (const [taskId, task] of parsingTasks.value.entries()) {
+        if (task.status !== 'completed' && task.status !== 'failed') {
+          if (task.currentSessionId !== socket.value.id) {
+            console.log(`⚠️ [Session监控] 发现Session不一致: Task[${taskId}]`)
+            console.log(`  记录的SessionID: ${task.currentSessionId}`)
+            console.log(`  当前SessionID: ${socket.value.id}`)
+            needSync = true
+            
+            // 更新任务记录
+            task.currentSessionId = socket.value.id
+            parsingTasks.value.set(taskId, task)
+            
+            // 发送同步请求
+            const syncMessage = {
+              task_id: taskId,
+              new_session_id: socket.value.id,
+              old_session_id: task.initialSessionId,
+              client_type: 'frontend',
+              action: 'consistency_check'
+            }
+            
+            console.log(`📡 [Session监控] 发送一致性修复:`, syncMessage)
+            socket.value.emit('update_session_mapping', syncMessage)
+          }
+        }
+      }
+      
+      if (!needSync) {
+        console.log('✅ [Session监控] Session映射一致性检查通过')
+      }
+    }, 5000) // 5秒检查一次
+  }
+  
+  const stopSessionConsistencyMonitoring = () => {
+    if (sessionConsistencyTimer) {
+      clearInterval(sessionConsistencyTimer)
+      sessionConsistencyTimer = null
+      console.log('🛑 [Session监控] 停止Session一致性监控')
+    }
+  }
+
   return {
     // 状态
     socket,
@@ -1571,7 +2136,7 @@ ${task.timestamps ? `
     currentProcessing,
     analysisResult,
     
-    // 添加轮询管理
+    // 轮询管理
     activePolls,
     
     // 计算属性
@@ -1581,6 +2146,8 @@ ${task.timestamps ? `
     // 方法
     connect,
     disconnect,
+    connectForTask,
+    disconnectTask,
     sendMessage,
     addMessage,
     clearMessages,
@@ -1590,25 +2157,29 @@ ${task.timestamps ? `
     setCurrentProcessing,
     setAnalysisResult,
     clearAnalysisResult,
+    analyzeDocument,
     checkHealth,
     getSessions,
     uploadFile,
     getParsingStatus,
     fileToBase64,
     resetParsingState,
+    clearAllPolling,
     startContentAnalysis,
     startAIAnalysis,
     getUploadedFiles,
     deleteUploadedFile,
-    stopPolling,
-    setPollingTimer,
-    clearAllPolling,
     updateSessionId,
     // 导出工具函数
     generateMessageId: () => generateMessageId(),
     generateClientId: () => generateClientId(),
     generateSessionId: () => generateSessionId(),
     // 导出Markdown生成函数
-    generateMarkdownReport
+    generateMarkdownReport,
+    // 🔧 新增：Session一致性监控
+    startSessionConsistencyMonitoring,
+    stopSessionConsistencyMonitoring,
+    // 🔧 调试：导出handleAnalysisProgress函数
+    handleAnalysisProgress
   }
 }) 

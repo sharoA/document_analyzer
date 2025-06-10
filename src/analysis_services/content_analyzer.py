@@ -1,6 +1,6 @@
 """
-内容分析服务
-使用大模型和向量数据库进行CRUD操作分析和业务需求识别
+内容分析服务 - 阶段2：内容分析
+专注于功能变更识别：新增功能、修改功能、删除功能、关键变更提取
 """
 
 import json
@@ -10,11 +10,16 @@ from typing import Dict, Any, List
 from .base_service import BaseAnalysisService
 
 class ContentAnalyzerService(BaseAnalysisService):
-    """内容分析服务类"""
+    """内容分析服务类 - 阶段2：内容分析"""
+    
+    def __init__(self, llm_client=None, vector_db=None):
+        super().__init__(llm_client, vector_db)
+        self.stage_name = "content_analysis"
     
     async def analyze(self, task_id: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        执行内容分析
+        执行内容分析 - 第二阶段
+        专注于功能变更识别和关键信息提取
         
         Args:
             task_id: 任务ID
@@ -26,36 +31,37 @@ class ContentAnalyzerService(BaseAnalysisService):
         start_time = time.time()
         
         try:
-            # 提取解析结果
-            parsing_result = input_data.get("parsing_result", {})
-            document_content = input_data.get("document_content", "")
+            # 提取文档解析结果
+            document_parsing = input_data.get("document_parsing", {})
+            document_content = document_parsing.get("content_elements", {}).get("text_content", "")
+            file_info = document_parsing.get("file_info", {})
             
             self._log_analysis_start(task_id, "内容分析", len(document_content))
             
-            # 基础内容分析
-            basic_analysis = await self._basic_content_analysis(parsing_result, document_content)
+            # 1. 分析新增功能
+            new_features = await self.analyze_new_features(document_content, document_parsing)
             
-            # CRUD操作识别
-            crud_analysis = await self._crud_operation_analysis(document_content, parsing_result)
+            # 2. 分析修改功能
+            modified_features = await self.analyze_modified_features(document_content, document_parsing)
             
-            # 向量数据库相似性分析
-            similarity_analysis = await self._vector_similarity_analysis(document_content)
+            # 3. 分析删除功能
+            deleted_features = await self.analyze_deleted_features(document_content, document_parsing)
             
-            # 业务需求分析
-            business_analysis = await self._business_requirement_analysis(document_content, parsing_result)
+            # 4. 提取关键变更
+            key_changes = await self.extract_key_changes(document_content, document_parsing)
             
-            # 技术复杂度评估
-            complexity_analysis = await self._complexity_assessment(crud_analysis, business_analysis)
-            
-            # 合并分析结果
+            # 合并内容分析结果
             content_result = {
-                "basic_analysis": basic_analysis,
-                "crud_analysis": crud_analysis,
-                "similarity_analysis": similarity_analysis,
-                "business_analysis": business_analysis,
-                "complexity_analysis": complexity_analysis,
-                "metadata": {
-                    "analysis_method": "LLM+向量数据库分析",
+                "new_features": new_features,
+                "modified_features": modified_features,
+                "deleted_features": deleted_features,
+                "key_changes": key_changes,
+                "analysis_summary": self._generate_content_summary(
+                    new_features, modified_features, deleted_features, key_changes
+                ),
+                "analysis_metadata": {
+                    "stage": "content_analysis",
+                    "analysis_method": "enhanced_content_analyzer",
                     "analysis_time": time.time() - start_time,
                     "content_length": len(document_content)
                 }
@@ -67,294 +73,401 @@ class ContentAnalyzerService(BaseAnalysisService):
             return self._create_response(
                 success=True,
                 data=content_result,
-                metadata={"analysis_duration": duration}
+                metadata={"analysis_duration": duration, "stage": "content_analysis"}
             )
             
         except Exception as e:
             self._log_error(task_id, "内容分析", e)
             return self._create_response(
                 success=False,
-                error=f"内容分析失败: {str(e)}"
+                error=f"内容分析失败: {str(e)}",
+                metadata={"stage": "content_analysis"}
             )
     
-    async def _basic_content_analysis(self, parsing_result: Dict[str, Any], content: str) -> Dict[str, Any]:
-        """基础内容分析"""
-        basic_info = parsing_result.get("basic_info", {})
-        llm_analysis = parsing_result.get("llm_analysis", {})
-        
-        return {
-            "content_type": llm_analysis.get("document_type", "未知"),
-            "language": basic_info.get("language", "未知"),
-            "word_count": basic_info.get("word_count", 0),
-            "character_count": basic_info.get("character_count", 0),
-            "summary": llm_analysis.get("summary", ""),
-            "key_points": llm_analysis.get("key_points", []),
-            "structure_analysis": llm_analysis.get("structure", {}),
-            "entities": llm_analysis.get("entities", {})
-        }
-    
-    async def _crud_operation_analysis(self, content: str, parsing_result: Dict[str, Any]) -> Dict[str, Any]:
-        """CRUD操作分析"""
-        # 使用大模型进行CRUD操作识别
-        system_prompt = """你是一个专业的业务分析师，专门识别文档中的CRUD操作需求。
+    async def analyze_new_features(self, content: str, document_parsing: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """分析新增功能"""
+        try:
+            # 使用LLM识别新增功能
+            system_prompt = """你是一个专业的需求分析专家，专门识别文档中的新增功能需求。
 
-请分析文档内容，识别所有可能的数据操作需求：
-1. Create（创建）：新增、添加、创建、注册等操作
-2. Read（查询）：查看、搜索、获取、列表、详情等操作  
-3. Update（更新）：修改、编辑、更新、变更等操作
-4. Delete（删除）：删除、移除、取消等操作
+请仔细分析文档内容，识别所有新增的功能特性：
+1. 明确标注为"新增"、"增加"、"添加"的功能
+2. 文档中描述的新功能模块
+3. 新的业务流程或操作
+4. 新的界面或交互功能
 
-对每个识别的操作，请提供：
-- 操作类型（C/R/U/D）
-- 操作对象（数据实体）
-- 操作描述
-- 业务场景
+对每个新增功能，请提供：
+- 功能ID
+- 功能名称
+- 详细描述
+- 优先级（高/中/低）
 - 复杂度评估（简单/中等/复杂）
+- 预估工作量
+- 所在位置（章节/页码）
 
 返回JSON格式：
 {
-    "crud_operations": [
+    "new_features": [
         {
-            "type": "Create/Read/Update/Delete",
-            "entity": "数据实体名称",
-            "description": "操作描述",
-            "scenario": "业务场景",
+            "feature_id": "F001",
+            "feature_name": "功能名称",
+            "description": "详细描述",
+            "priority": "高/中/低",
             "complexity": "简单/中等/复杂",
-            "keywords": ["关键词1", "关键词2"]
+            "estimated_effort": "预估工作量",
+            "location": "所在位置",
+            "business_value": "业务价值",
+            "dependencies": ["依赖项"],
+            "acceptance_criteria": ["验收标准"]
         }
-    ],
-    "summary": {
-        "total_operations": 数量,
-        "create_count": 数量,
-        "read_count": 数量,
-        "update_count": 数量,
-        "delete_count": 数量
-    }
+    ]
 }"""
-        
-        user_prompt = f"""请分析以下文档内容，识别其中的CRUD操作需求：
+            
+            user_prompt = f"""请分析以下文档内容，识别其中的新增功能需求：
 
 文档内容：
-{content[:2000]}
+{content[:3000]}  # 限制长度
 
 请按照指定的JSON格式返回分析结果。"""
         
-        try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=2000)
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=2500)
             if response:
                 try:
-                    crud_result = json.loads(response)
-                    # 添加关键词匹配验证
-                    crud_result["keyword_validation"] = self._validate_crud_keywords(content)
-                    return crud_result
+                    result = json.loads(response)
+                    return result.get("new_features", [])
                 except json.JSONDecodeError:
-                    # 如果JSON解析失败，使用关键词匹配作为备选
-                    return self._fallback_crud_analysis(content)
+                    # 备选方案：关键词匹配
+                    return self._fallback_new_features_analysis(content)
             else:
-                return self._fallback_crud_analysis(content)
+                return self._fallback_new_features_analysis(content)
+                
         except Exception as e:
-            self.logger.error(f"CRUD分析失败: {str(e)}")
-            return self._fallback_crud_analysis(content)
+            self.logger.error(f"新增功能分析失败: {str(e)}")
+            return self._fallback_new_features_analysis(content)
     
-    def _validate_crud_keywords(self, content: str) -> Dict[str, List[str]]:
-        """验证CRUD关键词"""
-        crud_keywords = {
-            "create": ["创建", "新增", "添加", "注册", "建立", "生成", "create", "add", "insert", "register"],
-            "read": ["查询", "查看", "搜索", "获取", "列表", "详情", "read", "get", "search", "list", "view"],
-            "update": ["修改", "编辑", "更新", "变更", "调整", "update", "edit", "modify", "change"],
-            "delete": ["删除", "移除", "取消", "清除", "delete", "remove", "cancel", "clear"]
-        }
-        
-        found_keywords = {}
-        content_lower = content.lower()
-        
-        for operation, keywords in crud_keywords.items():
-            found = []
-            for keyword in keywords:
-                if keyword in content_lower:
-                    found.append(keyword)
-            if found:
-                found_keywords[operation] = found
-        
-        return found_keywords
-    
-    def _fallback_crud_analysis(self, content: str) -> Dict[str, Any]:
-        """备选CRUD分析方法"""
-        keyword_validation = self._validate_crud_keywords(content)
-        
-        crud_operations = []
-        for operation, keywords in keyword_validation.items():
-            for keyword in keywords:
-                crud_operations.append({
-                    "type": operation.capitalize(),
-                    "entity": "未指定",
-                    "description": f"检测到{operation}操作关键词: {keyword}",
-                    "scenario": "基于关键词匹配",
-                    "complexity": "中等",
-                    "keywords": [keyword]
-                })
-        
-        return {
-            "crud_operations": crud_operations,
-            "summary": {
-                "total_operations": len(crud_operations),
-                "create_count": len(keyword_validation.get("create", [])),
-                "read_count": len(keyword_validation.get("read", [])),
-                "update_count": len(keyword_validation.get("update", [])),
-                "delete_count": len(keyword_validation.get("delete", []))
-            },
-            "keyword_validation": keyword_validation,
-            "analysis_method": "关键词匹配"
-        }
-    
-    async def _vector_similarity_analysis(self, content: str) -> Dict[str, Any]:
-        """向量数据库相似性分析"""
+    async def analyze_modified_features(self, content: str, document_parsing: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """分析修改功能"""
         try:
-            # 提取关键句子进行向量搜索
-            sentences = self._extract_key_sentences(content)
-            similarity_results = []
-            
-            for sentence in sentences[:5]:  # 限制搜索数量
-                similar_docs = await self._vector_search(sentence, top_k=3)
-                if similar_docs:
-                    similarity_results.append({
-                        "query": sentence,
-                        "similar_documents": similar_docs
-                    })
-            
-            return {
-                "similarity_results": similarity_results,
-                "total_queries": len(sentences),
-                "found_similarities": len(similarity_results),
-                "analysis_method": "向量相似性搜索"
-            }
-            
-        except Exception as e:
-            self.logger.error(f"向量相似性分析失败: {str(e)}")
-            return {
-                "similarity_results": [],
-                "error": f"向量分析失败: {str(e)}",
-                "analysis_method": "向量相似性搜索"
-            }
-    
-    def _extract_key_sentences(self, content: str) -> List[str]:
-        """提取关键句子"""
-        sentences = re.split(r'[。！？\n]', content)
-        key_sentences = []
-        
-        # 筛选包含重要关键词的句子
-        important_keywords = [
-            "需求", "功能", "系统", "接口", "数据", "用户", "管理", "查询", "创建", "删除", "修改",
-            "requirement", "function", "system", "interface", "data", "user", "manage"
-        ]
-        
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if len(sentence) > 10 and any(keyword in sentence for keyword in important_keywords):
-                key_sentences.append(sentence)
-        
-        return key_sentences[:10]  # 返回前10个关键句子
-    
-    async def _business_requirement_analysis(self, content: str, parsing_result: Dict[str, Any]) -> Dict[str, Any]:
-        """业务需求分析"""
-        system_prompt = """你是一个专业的业务分析师，请分析文档中的业务需求。
+            system_prompt = """你是一个专业的需求分析专家，专门识别文档中的功能修改需求。
 
-请识别以下内容：
-1. 核心业务流程
-2. 用户角色和权限
-3. 数据实体和关系
-4. 业务规则和约束
-5. 非功能性需求（性能、安全等）
+请仔细分析文档内容，识别所有修改的功能特性：
+1. 明确标注为"修改"、"变更"、"优化"的功能
+2. 对现有功能的改进或调整
+3. 业务流程的变化
+4. 界面或交互的调整
+
+对每个修改功能，请提供：
+- 功能ID
+- 功能名称  
+- 修改类型（功能增强/业务调整/界面优化/性能优化）
+- 修改描述
+- 影响级别（高/中/低）
+- 所在位置
 
 返回JSON格式：
 {
-    "business_processes": ["流程1", "流程2"],
-    "user_roles": ["角色1", "角色2"],
-    "data_entities": ["实体1", "实体2"],
-    "business_rules": ["规则1", "规则2"],
-    "non_functional_requirements": {
-        "performance": ["性能要求"],
-        "security": ["安全要求"],
-        "usability": ["可用性要求"]
-    },
-    "priority": "高/中/低"
+    "modified_features": [
+        {
+            "feature_id": "M001",
+            "feature_name": "功能名称",
+            "change_type": "功能增强/业务调整/界面优化/性能优化",
+            "description": "修改描述",
+            "original_behavior": "原有行为",
+            "new_behavior": "新行为",
+            "impact_level": "高/中/低",
+            "location": "所在位置",
+            "impact_analysis": "影响分析",
+            "migration_required": true/false
+        }
+    ]
 }"""
-        
-        user_prompt = f"""请分析以下文档的业务需求：
+            
+            user_prompt = f"""请分析以下文档内容，识别其中的功能修改需求：
 
-{content[:2000]}
+文档内容：
+{content[:3000]}
+
+请按照指定的JSON格式返回分析结果。"""
+            
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=2500)
+            if response:
+                try:
+                    result = json.loads(response)
+                    return result.get("modified_features", [])
+                except json.JSONDecodeError:
+                    return self._fallback_modified_features_analysis(content)
+            else:
+                return self._fallback_modified_features_analysis(content)
+                
+        except Exception as e:
+            self.logger.error(f"修改功能分析失败: {str(e)}")
+            return self._fallback_modified_features_analysis(content)
+    
+    async def analyze_deleted_features(self, content: str, document_parsing: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """分析删除功能"""
+        try:
+            system_prompt = """你是一个专业的需求分析专家，专门识别文档中的功能删除需求。
+
+请仔细分析文档内容，识别所有删除或废弃的功能：
+1. 明确标注为"删除"、"移除"、"废弃"的功能
+2. 不再需要的功能模块
+3. 被替代的旧功能
+4. 停止维护的特性
+
+对每个删除功能，请提供：
+- 功能ID
+- 功能名称
+- 删除原因
+- 替代方案
+- 所在位置
+
+返回JSON格式：
+{
+    "deleted_features": [
+        {
+            "feature_id": "D001",
+            "feature_name": "功能名称",
+            "description": "功能描述",
+            "deletion_reason": "删除原因",
+            "replacement": "替代方案",
+            "location": "所在位置",
+            "impact_analysis": "影响分析",
+            "cleanup_required": true/false,
+            "data_migration": "数据迁移说明"
+        }
+    ]
+}"""
+            
+            user_prompt = f"""请分析以下文档内容，识别其中的功能删除需求：
+
+文档内容：
+{content[:3000]}
+
+请按照指定的JSON格式返回分析结果。"""
+            
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=2500)
+            if response:
+                try:
+                    result = json.loads(response)
+                    return result.get("deleted_features", [])
+                except json.JSONDecodeError:
+                    return self._fallback_deleted_features_analysis(content)
+            else:
+                return self._fallback_deleted_features_analysis(content)
+            
+        except Exception as e:
+            self.logger.error(f"删除功能分析失败: {str(e)}")
+            return self._fallback_deleted_features_analysis(content)
+    
+    async def extract_key_changes(self, content: str, document_parsing: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """提取关键变更"""
+        try:
+            system_prompt = """你是一个专业的变更管理专家，专门识别文档中的关键变更点。
+
+请仔细分析文档内容，识别所有重要的变更：
+1. 架构层面的重大变更
+2. 业务流程的重要调整
+3. 技术栈的改变
+4. 数据模型的变更
+5. 接口的重大调整
+
+对每个关键变更，请提供：
+- 变更ID
+- 变更类型
+- 变更标题
+- 影响程度
+- 实施时间线
+- 风险评估
+
+返回JSON格式：
+{
+    "key_changes": [
+        {
+            "change_id": "C001",
+            "change_type": "架构变更/业务流程/技术栈/数据模型/接口调整",
+            "title": "变更标题",
+            "description": "详细描述",
+            "impact": "重大/中等/轻微",
+            "timeline": "时间线",
+            "risks": ["风险1", "风险2"],
+            "benefits": ["收益1", "收益2"],
+            "stakeholders": ["相关方"],
+            "location": "所在位置"
+        }
+    ]
+}"""
+            
+            user_prompt = f"""请分析以下文档内容，识别其中的关键变更：
+
+文档内容：
+{content[:3000]}
 
 请按照指定的JSON格式返回分析结果。"""
         
-        try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=1500)
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=2500)
             if response:
                 try:
-                    return json.loads(response)
+                    result = json.loads(response)
+                    return result.get("key_changes", [])
                 except json.JSONDecodeError:
-                    return {"raw_response": response, "parse_error": "JSON解析失败"}
+                    return self._fallback_key_changes_analysis(content)
             else:
-                return {"error": "LLM响应为空"}
+                return self._fallback_key_changes_analysis(content)
+                
         except Exception as e:
-            return {"error": f"业务需求分析失败: {str(e)}"}
+            self.logger.error(f"关键变更分析失败: {str(e)}")
+            return self._fallback_key_changes_analysis(content)
     
-    async def _complexity_assessment(self, crud_analysis: Dict[str, Any], 
-                                   business_analysis: Dict[str, Any]) -> Dict[str, Any]:
-        """技术复杂度评估"""
-        crud_count = crud_analysis.get("summary", {}).get("total_operations", 0)
-        business_processes = len(business_analysis.get("business_processes", []))
-        data_entities = len(business_analysis.get("data_entities", []))
+    # 备选分析方法（基于关键词匹配）
+    def _fallback_new_features_analysis(self, content: str) -> List[Dict[str, Any]]:
+        """备选新增功能分析"""
+        new_keywords = ["新增", "增加", "添加", "新功能", "新特性", "新建", "创建", "引入"]
+        features = []
         
-        # 复杂度评分
-        complexity_score = 0
-        complexity_score += crud_count * 2  # CRUD操作权重
-        complexity_score += business_processes * 3  # 业务流程权重
-        complexity_score += data_entities * 2  # 数据实体权重
+        for i, keyword in enumerate(new_keywords):
+            if keyword in content:
+                features.append({
+                    "feature_id": f"F{str(i+1).zfill(3)}",
+                    "feature_name": f"检测到的新增功能{i+1}",
+                    "description": f"基于关键词'{keyword}'识别的新增功能",
+                    "priority": "中",
+                    "complexity": "中等",
+                    "estimated_effort": "待评估",
+                    "location": "基于关键词匹配",
+                    "business_value": "待分析",
+                    "dependencies": [],
+                    "acceptance_criteria": []
+                })
         
-        # 复杂度等级
-        if complexity_score <= 10:
-            complexity_level = "简单"
-            estimated_days = "1-3天"
-        elif complexity_score <= 25:
-            complexity_level = "中等"
-            estimated_days = "1-2周"
-        else:
-            complexity_level = "复杂"
-            estimated_days = "2-4周"
+        return features
+    
+    def _fallback_modified_features_analysis(self, content: str) -> List[Dict[str, Any]]:
+        """备选修改功能分析"""
+        modify_keywords = ["修改", "变更", "调整", "优化", "改进", "更新", "升级"]
+        features = []
         
+        for i, keyword in enumerate(modify_keywords):
+            if keyword in content:
+                features.append({
+                    "feature_id": f"M{str(i+1).zfill(3)}",
+                    "feature_name": f"检测到的修改功能{i+1}",
+                    "change_type": "功能调整",
+                    "description": f"基于关键词'{keyword}'识别的修改功能",
+                    "original_behavior": "待分析",
+                    "new_behavior": "待分析",
+                    "impact_level": "中",
+                    "location": "基于关键词匹配",
+                    "impact_analysis": "待详细分析",
+                    "migration_required": False
+                })
+        
+        return features
+    
+    def _fallback_deleted_features_analysis(self, content: str) -> List[Dict[str, Any]]:
+        """备选删除功能分析"""
+        delete_keywords = ["删除", "移除", "废弃", "取消", "停用", "下线"]
+        features = []
+        
+        for i, keyword in enumerate(delete_keywords):
+            if keyword in content:
+                features.append({
+                    "feature_id": f"D{str(i+1).zfill(3)}",
+                    "feature_name": f"检测到的删除功能{i+1}",
+                    "description": f"基于关键词'{keyword}'识别的删除功能",
+                    "deletion_reason": "待分析",
+                    "replacement": "暂无",
+                    "location": "基于关键词匹配",
+                    "impact_analysis": "待详细分析",
+                    "cleanup_required": True,
+                    "data_migration": "待评估"
+                })
+        
+        return features
+    
+    def _fallback_key_changes_analysis(self, content: str) -> List[Dict[str, Any]]:
+        """备选关键变更分析"""
+        change_keywords = ["重大变更", "架构调整", "技术升级", "流程改进", "系统重构"]
+        changes = []
+        
+        for i, keyword in enumerate(change_keywords):
+            if keyword in content:
+                changes.append({
+                    "change_id": f"C{str(i+1).zfill(3)}",
+                    "change_type": "系统变更",
+                    "title": f"检测到的关键变更{i+1}",
+                    "description": f"基于关键词'{keyword}'识别的关键变更",
+                    "impact": "中等",
+                    "timeline": "待确定",
+                    "risks": ["待识别"],
+                    "benefits": ["待分析"],
+                    "stakeholders": ["项目团队"],
+                    "location": "基于关键词匹配"
+                })
+        
+        return changes
+    
+    def _generate_content_summary(self, new_features: List, modified_features: List, 
+                                 deleted_features: List, key_changes: List) -> Dict[str, Any]:
+        """生成内容分析摘要"""
         return {
-            "complexity_score": complexity_score,
-            "complexity_level": complexity_level,
-            "estimated_development_time": estimated_days,
-            "factors": {
-                "crud_operations": crud_count,
-                "business_processes": business_processes,
-                "data_entities": data_entities
-            },
-            "recommendations": self._get_complexity_recommendations(complexity_level)
+            "total_changes": len(new_features) + len(modified_features) + len(deleted_features) + len(key_changes),
+            "new_features_count": len(new_features),
+            "modified_features_count": len(modified_features),
+            "deleted_features_count": len(deleted_features),
+            "key_changes_count": len(key_changes),
+            "change_complexity": self._assess_change_complexity(
+                new_features, modified_features, deleted_features, key_changes
+            ),
+            "high_priority_count": self._count_high_priority_items(
+                new_features, modified_features, key_changes
+            ),
+            "estimated_total_effort": self._estimate_total_effort(
+                new_features, modified_features, deleted_features
+            )
         }
     
-    def _get_complexity_recommendations(self, complexity_level: str) -> List[str]:
-        """获取复杂度建议"""
-        recommendations = {
-            "简单": [
-                "可以使用快速开发框架",
-                "建议采用敏捷开发模式",
-                "重点关注代码质量和测试覆盖"
-            ],
-            "中等": [
-                "建议进行详细的技术设计",
-                "考虑使用微服务架构",
-                "需要完善的测试策略",
-                "建议分阶段开发和部署"
-            ],
-            "复杂": [
-                "必须进行详细的架构设计",
-                "建议使用领域驱动设计(DDD)",
-                "需要完整的CI/CD流程",
-                "建议组建专门的开发团队",
-                "需要详细的项目管理和风险控制"
-            ]
-        }
+    def _assess_change_complexity(self, new_features: List, modified_features: List,
+                                 deleted_features: List, key_changes: List) -> str:
+        """评估变更复杂度"""
+        total_items = len(new_features) + len(modified_features) + len(deleted_features) + len(key_changes)
         
-        return recommendations.get(complexity_level, []) 
+        if total_items > 20:
+            return "非常复杂"
+        elif total_items > 10:
+            return "复杂"
+        elif total_items > 5:
+            return "中等"
+        else:
+            return "简单"
+    
+    def _count_high_priority_items(self, new_features: List, modified_features: List, key_changes: List) -> int:
+        """统计高优先级项目数量"""
+        high_priority_count = 0
+        
+        for feature in new_features:
+            if feature.get("priority") == "高":
+                high_priority_count += 1
+        
+        for feature in modified_features:
+            if feature.get("impact_level") == "高":
+                high_priority_count += 1
+        
+        for change in key_changes:
+            if change.get("impact") == "重大":
+                high_priority_count += 1
+        
+        return high_priority_count
+    
+    def _estimate_total_effort(self, new_features: List, modified_features: List, deleted_features: List) -> str:
+        """估算总工作量"""
+        # 简化的工作量估算
+        total_items = len(new_features) + len(modified_features) + len(deleted_features)
+        
+        if total_items > 15:
+            return "6个月+"
+        elif total_items > 10:
+            return "3-6个月"
+        elif total_items > 5:
+            return "1-3个月"
+        else:
+            return "1个月内" 

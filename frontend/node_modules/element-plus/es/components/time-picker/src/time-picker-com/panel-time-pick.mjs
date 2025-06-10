@@ -1,5 +1,6 @@
 import { defineComponent, inject, ref, computed, openBlock, createBlock, Transition, unref, withCtx, createElementBlock, normalizeClass, createElementVNode, createVNode, toDisplayString, createCommentVNode } from 'vue';
 import dayjs from 'dayjs';
+import { PICKER_BASE_INJECTION_KEY } from '../constants.mjs';
 import { panelTimePickerProps } from '../props/panel-time-picker.mjs';
 import { useTimePanel } from '../composables/use-time-panel.mjs';
 import { useOldValue, buildAvailableTimeSlotGetter } from '../composables/use-time-picker.mjs';
@@ -16,7 +17,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
   emits: ["pick", "select-range", "set-picker-option"],
   setup(__props, { emit }) {
     const props = __props;
-    const pickerBase = inject("EP_PICKER_BASE");
+    const pickerBase = inject(PICKER_BASE_INJECTION_KEY);
     const {
       arrowControl,
       disabledHours,

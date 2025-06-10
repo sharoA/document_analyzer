@@ -1,6 +1,7 @@
 import { defineComponent, inject, ref, computed, unref, onUpdated, createVNode, nextTick } from 'vue';
 import { tableV2HeaderProps } from '../header.mjs';
 import { enforceUnit } from '../utils.mjs';
+import { TABLE_V2_GRID_INJECTION_KEY } from '../tokens.mjs';
 import { useNamespace } from '../../../../hooks/use-namespace/index.mjs';
 import { castArray } from 'lodash-unified';
 
@@ -13,7 +14,7 @@ const TableV2Header = defineComponent({
     expose
   }) {
     const ns = useNamespace("table-v2");
-    const scrollLeftInfo = inject("tableV2GridScrollLeft");
+    const scrollLeftInfo = inject(TABLE_V2_GRID_INJECTION_KEY);
     const headerRef = ref();
     const headerStyle = computed(() => enforceUnit({
       width: props.width,

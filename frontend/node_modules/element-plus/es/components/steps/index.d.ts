@@ -8,3 +8,4 @@ export default ElSteps;
 export declare const ElStep: SFCWithInstall<typeof Step>;
 export * from './src/item';
 export * from './src/steps';
+export * from './src/tokens';

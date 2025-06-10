@@ -38,6 +38,35 @@ try {
   // 暂时不配置locale，使用默认设置
   app.use(ElementPlus)
 
+  // 配置Vue开发模式
+  if (import.meta.env.DEV) {
+    app.config.warnHandler = (msg, vm, trace) => {
+      // 过滤掉Element Plus的deprecation警告
+      if (msg.includes('label') && msg.includes('deprecated')) {
+        return
+      }
+      console.warn(`[Vue warn]: ${msg}`, trace)
+    }
+  }
+
+  // 全局错误处理 - 抑制浏览器扩展错误
+  window.addEventListener('error', (event) => {
+    // 抑制Chrome扩展程序的message port错误
+    if (event.message && event.message.includes('message port closed')) {
+      event.preventDefault()
+      return false
+    }
+  })
+
+  // 抑制未处理的Promise错误（通常来自浏览器扩展）
+  window.addEventListener('unhandledrejection', (event) => {
+    if (event.reason && event.reason.message && 
+        event.reason.message.includes('message port closed')) {
+      event.preventDefault()
+      return false
+    }
+  })
+
   // 全局错误处理
   app.config.errorHandler = (err, vm, info) => {
     console.error('Vue应用错误:', err, info)
@@ -46,6 +75,12 @@ try {
   console.log('挂载应用到 #app...')
   app.mount('#app')
   console.log('analyDesign 应用初始化完成！')
+  
+  // 提示用户关于浏览器扩展错误
+  console.log('%c💡 提示：如果看到 "message port closed" 错误，这是Chrome浏览器扩展引起的，不影响应用功能', 
+    'color: #409eff; font-size: 12px;')
+  console.log('%c📝 可在控制台右侧过滤器中添加 "-message port" 来隐藏这些错误', 
+    'color: #67c23a; font-size: 12px;')
   
   // 验证应用是否成功挂载
   setTimeout(() => {

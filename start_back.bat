@@ -22,10 +22,10 @@ echo ✅ Python 版本:
 python --version
 
 :: 检查当前目录是否正确
-if not exist "src\api_server.py" (
+if not exist "src\apis\enhanced_api.py" (
     echo ❌ 错误：请在项目根目录运行此脚本
     echo 当前目录：%CD%
-    echo 应该包含 src\api_server.py 文件
+    echo 应该包含 src\apis\enhanced_api.py 文件
     pause
     exit /b 1
 )
@@ -66,14 +66,16 @@ echo ✅ 目录创建完成
 :: 检查配置文件
 echo.
 echo 🔧 检查配置文件...
-if not exist "src\simple_config.py" (
-    echo ⚠️  配置文件不存在: src\simple_config.py
-    echo 请检查配置文件
+if not exist "src\utils\volcengine_client.py" (
+    echo ❌ 配置文件不存在: src\utils\volcengine_client.py
+    echo 请确保所有文件完整
+    pause
+    exit /b 1
 )
 
-:: 检查任务存储模块
-if not exist "src\task_storage.py" (
-    echo ❌ 任务存储模块不存在: src\task_storage.py
+:: 检查主要模块
+if not exist "src\apis\enhanced_api.py" (
+    echo ❌ API模块不存在: src\apis\enhanced_api.py
     echo 请确保所有文件完整
     pause
     exit /b 1

@@ -432,6 +432,10 @@ def process_file_parsing(task: FileParsingTask):
             task_storage.save_parsing_result(task.id, parsing_result)
             task.update_progress(100, "文档解析完成", "parsed")
             analysis_logger.info(f"✅ 文件解析完成: {task.id}")
+            
+            # 🔄 自动触发内容分析（新增）
+            analysis_logger.info(f"🚀 自动开始内容分析: {task.id}")
+            executor.submit(process_content_analysis, task, parsing_result)
         else:
             # 降级到原有的解析逻辑
             task.update_progress(60, "使用传统方法解析文档", "parsing")
@@ -449,6 +453,10 @@ def process_file_parsing(task: FileParsingTask):
             task_storage.save_parsing_result(task.id, result)
             task.update_progress(100, "文档解析完成", "parsed")
             logger.info(f"文件解析完成: {task.id}")
+            
+            # 🔄 自动触发内容分析（新增）
+            analysis_logger.info(f"🚀 自动开始内容分析: {task.id}")
+            executor.submit(process_content_analysis, task, result)
         
     except Exception as e:
         error_msg = f"文件解析失败: {str(e)}"
@@ -633,6 +641,10 @@ def process_content_analysis(task: FileParsingTask, parsing_result: dict):
                 task_storage.save_content_analysis(task.id, content_result)
                 task.update_progress(100, "内容分析完成", "content_analyzed")
                 analysis_logger.info(f"✅ 内容分析完成: {task.id}")
+                
+                # 🔄 自动触发AI分析（新增）
+                analysis_logger.info(f"🚀 自动开始AI分析: {task.id}")
+                executor.submit(process_ai_analysis, task, "comprehensive", content_result, None)
                 return
                 
             except Exception as e:
@@ -694,6 +706,10 @@ def process_content_analysis(task: FileParsingTask, parsing_result: dict):
         task_storage.save_content_analysis(task.id, analysis_result)
         task.update_progress(100, "内容分析完成", "content_analyzed")
         analysis_logger.info(f"✅ 内容分析完成: {task.id}")
+        
+        # 🔄 自动触发AI分析（新增）
+        analysis_logger.info(f"🚀 自动开始AI分析: {task.id}")
+        executor.submit(process_ai_analysis, task, "comprehensive", analysis_result, analysis_result.get('crud_analysis'))
         
     except Exception as e:
         error_msg = f"内容分析失败: {str(e)}"

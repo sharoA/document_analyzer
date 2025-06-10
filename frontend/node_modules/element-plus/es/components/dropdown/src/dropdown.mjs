@@ -1,4 +1,4 @@
-import { useTooltipTriggerProps } from '../../tooltip/src/trigger2.mjs';
+import { useTooltipTriggerProps } from '../../tooltip/src/trigger.mjs';
 import { roleTypes } from '../../popper/src/popper.mjs';
 import { buildProps, definePropType } from '../../../utils/vue/props/runtime.mjs';
 import { EVENT_CODE } from '../../../constants/aria.mjs';

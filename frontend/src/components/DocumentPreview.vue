@@ -141,7 +141,25 @@ const loadWordDocument = async () => {
   wordContent.value = ''
   
   try {
-    const arrayBuffer = await props.file.raw.arrayBuffer()
+    console.log('开始加载Word文档:', props.file)
+    
+    // 安全地获取文件内容
+    let fileData = null
+    if (props.file.raw && typeof props.file.raw.arrayBuffer === 'function') {
+      // Element Plus 文件对象格式
+      fileData = props.file.raw
+    } else if (props.file instanceof File) {
+      // 原生 File 对象
+      fileData = props.file
+    } else if (props.file.raw instanceof File) {
+      // 包装的 File 对象
+      fileData = props.file.raw
+    } else {
+      throw new Error('无效的文件格式')
+    }
+    
+    console.log('获取到文件数据:', fileData)
+    const arrayBuffer = await fileData.arrayBuffer()
     const result = await mammoth.convertToHtml({ arrayBuffer })
     
     if (result.messages.length > 0) {
@@ -174,8 +192,18 @@ const loadPdfDocument = async () => {
       pdfBlobUrl.value = null
     }
     
+    // 安全地获取文件内容
+    let fileData = null
+    if (props.file.raw && props.file.raw instanceof File) {
+      fileData = props.file.raw
+    } else if (props.file instanceof File) {
+      fileData = props.file
+    } else {
+      throw new Error('无效的PDF文件格式')
+    }
+    
     // 创建新的Blob URL
-    const blob = new Blob([props.file.raw], { type: 'application/pdf' })
+    const blob = new Blob([fileData], { type: 'application/pdf' })
     pdfBlobUrl.value = URL.createObjectURL(blob)
     
     console.log('PDF Blob URL创建成功:', pdfBlobUrl.value)
@@ -203,7 +231,17 @@ const downloadPdf = () => {
   if (!props.file) return
   
   try {
-    const blob = new Blob([props.file.raw], { type: 'application/pdf' })
+    // 安全地获取文件内容
+    let fileData = null
+    if (props.file.raw && props.file.raw instanceof File) {
+      fileData = props.file.raw
+    } else if (props.file instanceof File) {
+      fileData = props.file
+    } else {
+      throw new Error('无效的文件格式')
+    }
+    
+    const blob = new Blob([fileData], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

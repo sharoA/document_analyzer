@@ -1,6 +1,5 @@
 import { getCurrentInstance, ref, computed, watch, nextTick, onMounted } from 'vue';
 import { useTimeoutFn, isClient } from '@vueuse/core';
-import { isUndefined } from 'lodash-unified';
 import { useLockscreen } from '../../../hooks/use-lockscreen/index.mjs';
 import { useZIndex } from '../../../hooks/use-z-index/index.mjs';
 import { useId } from '../../../hooks/use-id/index.mjs';
@@ -120,12 +119,17 @@ const useDialog = (props, targetRef) => {
       handleClose();
     }
   }
+  watch(() => props.zIndex, () => {
+    var _a2;
+    zIndex.value = (_a2 = props.zIndex) != null ? _a2 : nextZIndex();
+  });
   watch(() => props.modelValue, (val) => {
+    var _a2;
     if (val) {
       closed.value = false;
       open();
       rendered.value = true;
-      zIndex.value = isUndefined(props.zIndex) ? nextZIndex() : zIndex.value++;
+      zIndex.value = (_a2 = props.zIndex) != null ? _a2 : nextZIndex();
       nextTick(() => {
         emit("open");
         if (targetRef.value) {
