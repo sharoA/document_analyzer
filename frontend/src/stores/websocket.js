@@ -28,11 +28,26 @@ api.interceptors.request.use(
 // 响应拦截器
 api.interceptors.response.use(
   (response) => {
-    console.log('收到响应:', response.status, response.data)
+    console.log('收到响应:', {
+      status: response.status,
+      url: response.config.url,
+      method: response.config.method,
+      dataType: typeof response.data,
+      dataSize: JSON.stringify(response.data).length,
+      data: response.data
+    })
     return response
   },
   (error) => {
-    console.error('响应错误:', error.response?.status, error.response?.data || error.message)
+    console.error('响应错误详情:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method,
+      data: error.response?.data,
+      message: error.message,
+      code: error.code
+    })
     return Promise.reject(error)
   }
 )
@@ -1666,12 +1681,36 @@ ${task.timestamps ? `
             console.log(`📊 V2进度更新: ${progressData.current_stage}, 整体进度: ${progressData.overall_progress}%`)
           }
           
+          // 增强的完成状态检查逻辑
+          const stages = progressData.stages || {}
+          const isAllStagesCompleted = stages.document_parsing?.status === 'completed' && 
+                                     stages.content_analysis?.status === 'completed' && 
+                                     stages.ai_analysis?.status === 'completed'
+          
+          const isCompleted = progressData.overall_status === 'completed' || 
+                            progressData.overall_status === 'fully_completed' ||
+                            progressData.current_stage === 'fully_completed' ||
+                            progressData.overall_progress >= 100 ||
+                            isAllStagesCompleted
+          
+          console.log(`🔍 检查完成状态:`, {
+            overall_status: progressData.overall_status,
+            current_stage: progressData.current_stage,
+            overall_progress: progressData.overall_progress,
+            isAllStagesCompleted,
+            isCompleted
+          })
+          
           // 检查是否完成
-          if (progressData.overall_status === 'completed') {
+          if (isCompleted) {
             console.log(`🎉 V2分析完成: ${taskId}`)
             isProcessing.value = false
             
+            // 停止所有轮询
+            stopPolling(taskId, 'all')
+            
             // 获取最终结果（包含生成的markdown）
+            console.log(`📡 准备获取最终结果...`)
             await fetchFinalResultV2(taskId)
             
             // 切换到解析结果页签
@@ -1695,7 +1734,7 @@ ${task.timestamps ? `
           }
           
           // 继续轮询
-          if (progressData.overall_status === 'running' || progressData.overall_status === 'pending') {
+          if (progressData.overall_status === 'running' || progressData.overall_status === 'pending' || !isCompleted) {
             setTimeout(pollProgress, 2000) // 2秒后继续轮询
           }
           
@@ -1903,35 +1942,153 @@ ${task.timestamps ? `
   // 获取最终分析结果（V2版本，包含后端生成的markdown）
   const fetchFinalResultV2 = async (taskId) => {
     try {
+      console.log(`📡 正在获取最终分析结果: ${taskId}`)
+      
       const response = await api.get(`/api/file/result/${taskId}`)
       
-      if (response.data.success && response.data.data) {
-        const resultData = response.data.data
-        
-        // 优先使用后端生成的markdown，如果没有则前端生成
-        let markdownContent = resultData.markdown_content
-        if (!markdownContent) {
-          markdownContent = generateMarkdownContent(resultData)
-        }
-        
-        // 设置完整的分析结果
-        setAnalysisResult({
-          title: `${resultData.basic_info?.filename || 'Unknown'} - 完整分析结果`,
-          type: 'comprehensive',
-          timestamp: Date.now(),
-          fileInfo: resultData.basic_info,
-          documentParsing: resultData.document_parsing,
-          contentAnalysis: resultData.content_analysis,
-          aiAnalysis: resultData.ai_analysis,
-          analysisSummary: resultData.analysis_summary,
-          markdownContent: markdownContent
-        })
-        
-        console.log('📄 V2最终分析结果已设置（包含markdown）')
+      console.log('📄 API响应状态:', response.status)
+      console.log('📄 API响应头:', response.headers)
+      console.log('📄 获取到的原始响应:', response)
+      console.log('📄 响应数据类型:', typeof response.data)
+      console.log('📄 响应数据内容:', response.data)
+      
+      // 检查响应是否为空
+      if (!response.data) {
+        throw new Error('API返回的数据为空')
       }
       
+      // 检查是否有success字段
+      if (response.data.success === false) {
+        const errorMsg = response.data.error || response.data.message || '未知API错误'
+        throw new Error(`API调用失败: ${errorMsg}`)
+      }
+      
+      // 检查是否有data字段
+      if (!response.data.success || !response.data.data) {
+        console.warn('⚠️ API响应格式不符合预期:', response.data)
+        
+        // 尝试直接使用响应数据
+        const resultData = response.data.data || response.data
+        if (!resultData) {
+          throw new Error('API返回的数据中没有找到结果数据')
+        }
+        
+        console.log('📊 使用备选数据结构:', resultData)
+      }
+      
+      const resultData = response.data.data || response.data
+      console.log('📊 最终使用的结果数据:', resultData)
+      
+      // 提取各个接口的数据
+      const interfaces = resultData.interfaces || {}
+      const documentParsing = interfaces.document_parsing || {}
+      const contentAnalysis = interfaces.content_analysis || {}
+      const aiAnalysis = interfaces.ai_analysis || {}
+      
+      console.log('📊 接口数据解析:')
+      console.log('  - documentParsing:', documentParsing)
+      console.log('  - contentAnalysis:', contentAnalysis)
+      console.log('  - aiAnalysis:', aiAnalysis)
+      
+      // 提取文档内容
+      const documentContent = documentParsing.data?.content || 
+                             documentParsing.data?.text_content || 
+                             documentParsing.content ||
+                             documentParsing.text_content || 
+                             resultData.content || ''
+      
+      console.log('📄 提取的文档内容长度:', documentContent.length)
+      
+      // 提取内容分析结果
+      const contentAnalysisData = contentAnalysis.data || contentAnalysis
+      console.log('📊 内容分析数据:', contentAnalysisData)
+      
+      // 提取AI分析结果  
+      const aiAnalysisData = aiAnalysis.data || aiAnalysis
+      console.log('🤖 AI分析数据:', aiAnalysisData)
+      
+      // 生成或使用后端提供的markdown内容
+      let markdownContent = resultData.markdown_content
+      if (!markdownContent && resultData.interfaces) {
+        console.log('📝 后端未提供markdown，使用前端生成')
+        markdownContent = generateMarkdownReport(resultData)
+      }
+      
+      console.log('📝 Markdown内容长度:', markdownContent?.length || 0)
+      
+      // 设置完整的分析结果
+      const analysisResultData = {
+        title: `${resultData.file_info?.name || 'Unknown'} - 完整分析结果`,
+        type: 'comprehensive', 
+        timestamp: Date.now(),
+        fileInfo: {
+          name: resultData.file_info?.name || 'Unknown',
+          type: resultData.file_info?.type || 'Unknown', 
+          size: resultData.file_info?.size || 0
+        },
+        details: {
+          type: resultData.file_info?.type || 'unknown',
+          length: documentContent.length,
+          parsing_duration: documentParsing.processing_time || 0
+        },
+        content: documentContent,
+        contentAnalysis: {
+          document_type: contentAnalysisData.document_type || 'unknown',
+          language: contentAnalysisData.language || 'zh',
+          summary: contentAnalysisData.summary || '',
+          keyword_extraction: contentAnalysisData.keywords || [],
+          statistics: {
+            character_count: contentAnalysisData.char_count || documentContent.length,
+            word_count: contentAnalysisData.word_count || 0
+          },
+          structure_analysis: contentAnalysisData.structure_analysis || {},
+          requirements_analysis: contentAnalysisData.crud_analysis || {}
+        },
+        aiAnalysis: {
+          analysis_type: 'comprehensive',
+          analysis_model: 'Doubao',
+          confidence_score: 0.95,
+          analyzed_at: Date.now(),
+          analysis_duration: aiAnalysis.processing_time || 0,
+          ai_response: aiAnalysisData.analysis_result || aiAnalysisData.ai_response || '分析完成',
+          custom_prompt: aiAnalysisData.custom_prompt || ''
+        },
+        markdownContent: markdownContent
+      }
+      
+      console.log('📊 构建的分析结果对象:', analysisResultData)
+      
+      setAnalysisResult(analysisResultData)
+      
+      console.log('✅ V2最终分析结果已设置（包含markdown）')
+      
+      // 显示成功消息
+      ElMessage.success('分析完成！结果已更新')
+      
     } catch (error) {
-      console.error('获取V2最终结果失败:', error)
+      console.error('❌ 获取V2最终结果详细错误:', {
+        error: error,
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      })
+      
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          '网络请求失败'
+      
+      console.error('❌ 处理后的错误信息:', errorMessage)
+      ElMessage.error(`获取分析结果失败: ${errorMessage}`)
+      
+      // 设置错误状态
+      setAnalysisResult({
+        title: '获取结果失败',
+        type: 'error',
+        timestamp: Date.now(),
+        error: errorMessage,
+        content: `获取分析结果时发生错误: ${errorMessage}`
+      })
     }
   }
 
