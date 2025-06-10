@@ -1,4 +1,6 @@
 export declare const timeUnits: readonly ["hours", "minutes", "seconds"];
+export declare const PICKER_BASE_INJECTION_KEY = "EP_PICKER_BASE";
+export declare const PICKER_POPPER_OPTIONS_INJECTION_KEY = "ElPopperOptions";
 export declare const DEFAULT_FORMATS_TIME = "HH:mm:ss";
 export declare const DEFAULT_FORMATS_DATE = "YYYY-MM-DD";
 export declare const DEFAULT_FORMATS_DATEPICKER: {

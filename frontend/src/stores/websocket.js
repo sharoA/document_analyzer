@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 // 创建axios实例
 const api = axios.create({
@@ -63,11 +65,20 @@ export const useWebSocketStore = defineStore('websocket', () => {
   const currentParsingTask = ref(null)
   const parsingStatus = ref('idle') // idle, uploading, parsing, content_analyzing, ai_analyzing, completed, failed
   const parsingProgress = ref(0)
+  const isProcessing = ref(false) // 新增：处理状态标志
   
   // 处理步骤
   const processingSteps = ref([])
   const currentProcessing = ref(null)
   const analysisResult = ref(null)
+  
+  // 节点进度状态
+  const nodeProgress = ref({
+    document_parsing: { progress: 0, message: '等待开始', status: 'pending', canStart: false },
+    content_analysis: { progress: 0, message: '等待开始', status: 'pending', canStart: false },
+    ai_analysis: { progress: 0, message: '等待开始', status: 'pending', canStart: false },
+    document_generation: { progress: 0, message: '等待开始', status: 'pending', canStart: false }
+  })
   
   // 添加轮询管理
   const activePolls = ref(new Map()) // 存储活跃的轮询定时器
@@ -568,7 +579,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
         timestamp: new Date().toLocaleTimeString()
       })
 
-      const response = await api.post(`/api/file/analyze/${taskId}`)
+      const response = await api.post(`/api/file/analyze/${taskId}`, {})
       
       if (response.data.success) {
         // 开始轮询内容分析状态
@@ -855,15 +866,15 @@ export const useWebSocketStore = defineStore('websocket', () => {
         
         if (response.data.success) {
           const task = response.data
-          console.log(`🤖 AI分析状态: ${task.status}, 进度: ${task.progress || 0}%`)
+          console.log(`🤖 AI分析状态: ${task.current_step || task.status}, 进度: ${task.overall_progress || task.progress || 0}%`)
           
           const localTask = parsingTasks.value.get(taskId)
           
           if (localTask) {
-            localTask.status = task.status
-            localTask.result = task.parsing_result
-            localTask.contentAnalysis = task.content_analysis
-            localTask.aiAnalysis = task.ai_analysis
+            localTask.status = task.current_step || task.status
+            localTask.result = task.interfaces?.document_parsing?.data || task.parsing_result
+            localTask.contentAnalysis = task.interfaces?.content_analysis?.data || task.content_analysis
+            localTask.aiAnalysis = task.interfaces?.ai_analysis?.data || task.ai_analysis
             localTask.updatedAt = new Date()
           }
           
@@ -906,8 +917,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
             return
           }
           
-          // 严格检查：只有当状态为 'fully_completed' 时才完成
-          if (task.status === 'fully_completed') {
+          // 严格检查：当AI分析完成时就停止轮询
+          if (task.current_step === 'ai_analyzed' || task.status === 'fully_completed' || 
+              (task.interfaces && task.interfaces.ai_analysis && task.interfaces.ai_analysis.status === 'completed')) {
             console.log('🎉 AI分析完成，开始生成Markdown文档！')
             // AI分析完成 - 立即停止所有轮询
             stopPolling(taskId, 'all') // 停止该任务的所有轮询
@@ -964,9 +976,9 @@ export const useWebSocketStore = defineStore('websocket', () => {
             if (currentParsingTask.value && currentParsingTask.value.id === taskId) {
               currentParsingTask.value.status = 'fully_completed'
               currentParsingTask.value.progress = 100
-              currentParsingTask.value.result = task.parsing_result
-              currentParsingTask.value.contentAnalysis = task.content_analysis
-              currentParsingTask.value.aiAnalysis = task.ai_analysis
+              currentParsingTask.value.result = task.interfaces?.document_parsing?.data || task.parsing_result
+              currentParsingTask.value.contentAnalysis = task.interfaces?.content_analysis?.data || task.content_analysis
+              currentParsingTask.value.aiAnalysis = task.interfaces?.ai_analysis?.data || task.ai_analysis
               currentParsingTask.value.markdownContent = markdownContent // 添加Markdown内容
               currentParsingTask.value.updatedAt = new Date()
               
@@ -991,20 +1003,21 @@ export const useWebSocketStore = defineStore('websocket', () => {
             }
             
             // 设置完整的分析结果，包含Markdown内容
-            if (task.parsing_result) {
+            const parsingData = task.interfaces?.document_parsing?.data || task.parsing_result
+            if (parsingData || task.file_info) {
               setAnalysisResult({
-                title: `${task.parsing_result.file_name} - 完整分析结果`,
-                type: task.parsing_result.type,
+                title: `${task.file_info?.name || parsingData?.file_name || '未知文件'} - 完整分析结果`,
+                type: parsingData?.type || 'document',
                 timestamp: Date.now(),
                 fileInfo: {
-                  name: task.parsing_result.file_name,
-                  type: task.parsing_result.file_type,
-                  size: task.parsing_result.file_size
+                  name: task.file_info?.name || parsingData?.file_name || '未知文件',
+                  type: task.file_info?.type || parsingData?.file_type || 'unknown',
+                  size: task.file_info?.size || parsingData?.file_size || 0
                 },
-                content: task.parsing_result.text_content || task.parsing_result.content,
-                details: task.parsing_result,
-                contentAnalysis: task.content_analysis,
-                aiAnalysis: task.ai_analysis,
+                content: parsingData?.text_content || parsingData?.content || '',
+                details: parsingData,
+                contentAnalysis: task.interfaces?.content_analysis?.data || task.content_analysis,
+                aiAnalysis: task.interfaces?.ai_analysis?.data || task.ai_analysis,
                 markdownContent: markdownContent // 添加Markdown内容
               })
             }
@@ -1022,7 +1035,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
             return
           }
           
-          if (task.status === 'ai_failed') {
+          if (task.current_step === 'ai_failed' || task.status === 'ai_failed') {
             console.log('❌ AI分析失败，停止轮询')
             parsingStatus.value = 'failed'
             stopPolling(taskId, 'all') // 停止所有轮询
@@ -1550,6 +1563,410 @@ ${task.timestamps ? `
     return markdown
   }
 
+  // 开始完整分析流程（V2版本）
+  const startFullAnalysisV2 = async (file) => {
+    try {
+      isProcessing.value = true
+      
+      // 将文件转换为base64
+      const fileContent = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => resolve(e.target.result.split(',')[1]) // 去掉data:xxx;base64,前缀
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      
+      // 调用V2启动接口
+      const response = await api.post('/api/v2/analysis/start', {
+        file_info: {
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          content: fileContent
+        }
+      })
+      
+      if (response.data.success) {
+        const taskId = response.data.task_id
+        
+        // 创建任务对象
+        const task = {
+          id: taskId,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          status: 'starting',
+          progress: 0,
+          description: '分析流程启动中',
+          stages: response.data.stages,
+          startTime: Date.now(),
+          updatedAt: new Date()
+        }
+        
+        // 更新状态
+        currentParsingTask.value = task
+        parsingTasks.value.set(taskId, task)
+        
+        // 初始化处理步骤（确保UI显示所有阶段）
+        initProcessingStepsV2()
+        
+        // 开始轮询进度
+        startProgressPolling(taskId)
+        
+        console.log(`🚀 V2 完整分析已启动: ${file.name}, 任务ID: ${taskId}`)
+        
+        return {
+          success: true,
+          taskId,
+          message: '完整分析流程已启动'
+        }
+      } else {
+        throw new Error(response.data.error || '启动分析失败')
+      }
+      
+    } catch (error) {
+      console.error('启动完整分析失败:', error)
+      isProcessing.value = false
+      
+      ElMessage.error(`启动分析失败: ${error.message}`)
+      
+      return {
+        success: false,
+        error: error.message
+      }
+    }
+  }
+  
+  // V2版本进度轮询
+  const startProgressPolling = (taskId) => {
+    console.log(`📊 开始V2进度轮询: ${taskId}`)
+    
+    const pollProgress = async () => {
+      try {
+        const response = await api.get(`/api/v2/analysis/progress/${taskId}`)
+        
+        if (response.data.success) {
+          const progressData = response.data
+          
+          // 更新任务状态
+          if (currentParsingTask.value && currentParsingTask.value.id === taskId) {
+            currentParsingTask.value.status = progressData.current_stage
+            currentParsingTask.value.progress = progressData.overall_progress
+            currentParsingTask.value.stages = progressData.stages
+            currentParsingTask.value.overallStatus = progressData.overall_status
+            currentParsingTask.value.error = progressData.error
+            currentParsingTask.value.updatedAt = new Date()
+            
+            // 更新节点进度状态
+            updateNodeProgress(progressData.stages)
+            
+            // 更新处理步骤显示（兼容老的UI系统）
+            updateProcessingStepsV2(progressData.stages, progressData.current_stage)
+            
+            console.log(`📊 V2进度更新: ${progressData.current_stage}, 整体进度: ${progressData.overall_progress}%`)
+          }
+          
+          // 检查是否完成
+          if (progressData.overall_status === 'completed') {
+            console.log(`🎉 V2分析完成: ${taskId}`)
+            isProcessing.value = false
+            
+            // 获取最终结果（包含生成的markdown）
+            await fetchFinalResultV2(taskId)
+            
+            // 切换到解析结果页签
+            setTimeout(() => {
+              // 通过自定义事件通知父组件切换页签
+              window.dispatchEvent(new CustomEvent('switchToResultsTab', {
+                detail: { tab: 'files' }
+              }))
+            }, 1000)
+            
+            return // 停止轮询
+          }
+          
+          // 检查是否失败
+          if (progressData.overall_status === 'failed') {
+            console.error(`❌ V2分析失败: ${taskId}`, progressData.error)
+            isProcessing.value = false
+            
+            ElMessage.error(`分析失败: ${progressData.error || '未知错误'}`)
+            return // 停止轮询
+          }
+          
+          // 继续轮询
+          if (progressData.overall_status === 'running' || progressData.overall_status === 'pending') {
+            setTimeout(pollProgress, 2000) // 2秒后继续轮询
+          }
+          
+        } else {
+          console.error('获取进度失败:', response.data.error)
+          
+          // 如果是404错误，任务可能不存在，停止轮询
+          if (response.status === 404) {
+            isProcessing.value = false
+            ElMessage.error('任务不存在或已过期')
+            return
+          }
+          
+          // 其他错误，继续轮询但降低频率
+          setTimeout(pollProgress, 5000)
+        }
+        
+      } catch (error) {
+        console.error('轮询进度失败:', error)
+        
+        // 网络错误等，继续轮询但降低频率
+        setTimeout(pollProgress, 5000)
+      }
+    }
+    
+    // 开始第一次轮询
+    pollProgress()
+  }
+  
+  // 更新节点进度状态
+  const updateNodeProgress = (stages) => {
+    if (!stages) return
+    
+    // 更新三个阶段的进度
+    Object.keys(stages).forEach(stageName => {
+      const stage = stages[stageName]
+      
+      if (nodeProgress.value[stageName]) {
+        nodeProgress.value[stageName].progress = stage.progress || 0
+        nodeProgress.value[stageName].message = stage.message || ''
+        nodeProgress.value[stageName].status = stage.status || 'pending'
+        
+        // 设置是否可以开始
+        if (stage.status === 'pending' && stageName === 'document_parsing') {
+          nodeProgress.value[stageName].canStart = true
+        } else if (stage.status === 'pending' && stageName === 'content_analysis' && 
+                   stages.document_parsing?.status === 'completed') {
+          nodeProgress.value[stageName].canStart = true
+        } else if (stage.status === 'pending' && stageName === 'ai_analysis' && 
+                   stages.content_analysis?.status === 'completed') {
+          nodeProgress.value[stageName].canStart = true
+        } else {
+          nodeProgress.value[stageName].canStart = false
+        }
+      }
+    })
+  }
+  
+  // V2版本：初始化处理步骤
+  const initProcessingStepsV2 = () => {
+    // 清空之前的步骤
+    clearProcessingSteps()
+    
+    // 创建所有处理步骤
+    const steps = [
+      {
+        id: 'step_upload',
+        title: '文档上传',
+        description: '文档上传完成',
+        status: 'success',
+        progress: 100,
+        timestamp: new Date().toLocaleTimeString()
+      },
+      {
+        id: 'step_parsing',
+        title: '文档解析',
+        description: '准备开始文档解析...',
+        status: 'pending',
+        progress: 0,
+        timestamp: new Date().toLocaleTimeString()
+      },
+      {
+        id: 'step_content_analysis',
+        title: '内容分析',
+        description: '等待文档解析完成...',
+        status: 'pending',
+        progress: 0,
+        timestamp: new Date().toLocaleTimeString()
+      },
+      {
+        id: 'step_ai_analysis',
+        title: 'AI智能分析',
+        description: '等待内容分析完成...',
+        status: 'pending',
+        progress: 0,
+        timestamp: new Date().toLocaleTimeString()
+      },
+      {
+        id: 'step_document_generation',
+        title: '生成文档',
+        description: '等待AI分析完成...',
+        status: 'pending',
+        progress: 0,
+        timestamp: new Date().toLocaleTimeString()
+      }
+    ]
+    
+    steps.forEach(step => addProcessingStep(step))
+    console.log('🔄 V2处理步骤已初始化')
+  }
+  
+  // V2版本：更新处理步骤（兼容老的UI系统）
+  const updateProcessingStepsV2 = (stages, currentStage) => {
+    if (!stages) return
+    
+    // 映射关系：后端阶段名 -> 前端步骤ID
+    const stageMapping = {
+      'document_parsing': 'step_parsing',
+      'content_analysis': 'step_content_analysis', 
+      'ai_analysis': 'step_ai_analysis',
+      'document_generation': 'step_document_generation'
+    }
+    
+    // 标题映射
+    const titleMapping = {
+      'document_parsing': '文档解析',
+      'content_analysis': '内容分析',
+      'ai_analysis': 'AI智能分析',
+      'document_generation': '生成文档'
+    }
+    
+    // 更新各个阶段的步骤
+    Object.keys(stages).forEach(stageName => {
+      const stage = stages[stageName]
+      const stepId = stageMapping[stageName]
+      
+      if (stepId) {
+        let stepStatus = 'pending'
+        if (stage.status === 'running') {
+          stepStatus = 'primary'
+        } else if (stage.status === 'completed') {
+          stepStatus = 'success'
+        } else if (stage.status === 'failed') {
+          stepStatus = 'danger'
+        }
+        
+        updateProcessingStep({
+          id: stepId,
+          title: titleMapping[stageName] || stageName,
+          description: stage.message || `${titleMapping[stageName]}中...`,
+          status: stepStatus,
+          progress: stage.progress || 0,
+          timestamp: new Date().toLocaleTimeString()
+        })
+      }
+    })
+    
+    console.log(`🔄 V2处理步骤已更新，当前阶段: ${currentStage}`)
+  }
+  
+  // 生成Markdown内容
+  const generateMarkdownContent = (resultData) => {
+    if (!resultData) return ''
+    
+    let markdown = '# 文档分析报告\n\n'
+    
+    // 基本信息
+    if (resultData.basic_info) {
+      markdown += '## 📄 基本信息\n\n'
+      markdown += `- **文件名**: ${resultData.basic_info.filename || 'Unknown'}\n`
+      markdown += `- **文件大小**: ${resultData.basic_info.filesize || 'Unknown'}\n`
+      markdown += `- **文件类型**: ${resultData.basic_info.file_type || 'Unknown'}\n\n`
+    }
+    
+    // 文档解析结果
+    if (resultData.document_parsing) {
+      markdown += '## 📖 文档解析\n\n'
+      if (resultData.document_parsing.content_elements?.text_content) {
+        markdown += '### 文档内容\n\n'
+        markdown += resultData.document_parsing.content_elements.text_content.substring(0, 500) + '...\n\n'
+      }
+    }
+    
+    // 内容分析结果
+    if (resultData.content_analysis) {
+      markdown += '## 🔍 内容分析\n\n'
+      markdown += resultData.content_analysis + '\n\n'
+    }
+    
+    // AI分析结果
+    if (resultData.ai_analysis) {
+      markdown += '## 🤖 AI智能分析\n\n'
+      markdown += resultData.ai_analysis + '\n\n'
+    }
+    
+    // 分析总结
+    if (resultData.analysis_summary) {
+      markdown += '## 📝 分析总结\n\n'
+      markdown += resultData.analysis_summary + '\n\n'
+    }
+    
+    return markdown
+  }
+  
+  // 获取最终分析结果（V2版本，包含后端生成的markdown）
+  const fetchFinalResultV2 = async (taskId) => {
+    try {
+      const response = await api.get(`/api/file/result/${taskId}`)
+      
+      if (response.data.success && response.data.data) {
+        const resultData = response.data.data
+        
+        // 优先使用后端生成的markdown，如果没有则前端生成
+        let markdownContent = resultData.markdown_content
+        if (!markdownContent) {
+          markdownContent = generateMarkdownContent(resultData)
+        }
+        
+        // 设置完整的分析结果
+        setAnalysisResult({
+          title: `${resultData.basic_info?.filename || 'Unknown'} - 完整分析结果`,
+          type: 'comprehensive',
+          timestamp: Date.now(),
+          fileInfo: resultData.basic_info,
+          documentParsing: resultData.document_parsing,
+          contentAnalysis: resultData.content_analysis,
+          aiAnalysis: resultData.ai_analysis,
+          analysisSummary: resultData.analysis_summary,
+          markdownContent: markdownContent
+        })
+        
+        console.log('📄 V2最终分析结果已设置（包含markdown）')
+      }
+      
+    } catch (error) {
+      console.error('获取V2最终结果失败:', error)
+    }
+  }
+
+  // 获取最终分析结果
+  const fetchFinalResult = async (taskId) => {
+    try {
+      const response = await api.get(`/api/file/result/${taskId}`)
+      
+      if (response.data.success && response.data.data) {
+        const resultData = response.data.data
+        
+        // 生成Markdown内容
+        const markdownContent = generateMarkdownContent(resultData)
+        
+        // 设置完整的分析结果
+        setAnalysisResult({
+          title: `${resultData.basic_info?.filename || 'Unknown'} - 完整分析结果`,
+          type: 'comprehensive',
+          timestamp: Date.now(),
+          fileInfo: resultData.basic_info,
+          documentParsing: resultData.document_parsing,
+          contentAnalysis: resultData.content_analysis,
+          aiAnalysis: resultData.ai_analysis,
+          analysisSummary: resultData.analysis_summary,
+          markdownContent: markdownContent
+        })
+        
+        console.log('📄 最终分析结果已设置')
+      }
+      
+    } catch (error) {
+      console.error('获取最终结果失败:', error)
+    }
+  }
+
   return {
     // 状态
     socket,
@@ -1565,11 +1982,13 @@ ${task.timestamps ? `
     currentParsingTask,
     parsingProgress,
     parsingStatus,
+    isProcessing,
     
     // 处理步骤
     processingSteps,
     currentProcessing,
     analysisResult,
+    nodeProgress,
     
     // 添加轮询管理
     activePolls,
@@ -1609,6 +2028,14 @@ ${task.timestamps ? `
     generateClientId: () => generateClientId(),
     generateSessionId: () => generateSessionId(),
     // 导出Markdown生成函数
-    generateMarkdownReport
+    generateMarkdownReport,
+    generateMarkdownContent,
+    startFullAnalysisV2,
+    startProgressPolling,
+    updateNodeProgress,
+    initProcessingStepsV2,
+    updateProcessingStepsV2,
+    fetchFinalResult,
+    fetchFinalResultV2,
   }
 }) 

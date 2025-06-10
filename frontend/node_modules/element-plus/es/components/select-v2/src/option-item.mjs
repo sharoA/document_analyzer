@@ -1,14 +1,14 @@
 import { defineComponent, inject, openBlock, createElementBlock, normalizeStyle, normalizeClass, withModifiers, renderSlot, createElementVNode, toDisplayString } from 'vue';
 import { useOption } from './useOption.mjs';
 import { useProps } from './useProps.mjs';
-import { OptionProps, optionEmits } from './defaults.mjs';
+import { optionV2Props, optionV2Emits } from './defaults.mjs';
 import { selectV2InjectionKey } from './token.mjs';
 import _export_sfc from '../../../_virtual/plugin-vue_export-helper.mjs';
 import { useNamespace } from '../../../hooks/use-namespace/index.mjs';
 
 const _sfc_main = defineComponent({
-  props: OptionProps,
-  emits: optionEmits,
+  props: optionV2Props,
+  emits: optionV2Emits,
   setup(props, { emit }) {
     const select = inject(selectV2InjectionKey);
     const ns = useNamespace("select");

@@ -6,6 +6,7 @@ import SubMenu from './src/sub-menu.mjs';
 export { subMenuProps } from './src/sub-menu.mjs';
 export { menuItemEmits, menuItemProps } from './src/menu-item.mjs';
 export { menuItemGroupProps } from './src/menu-item-group.mjs';
+export { MENU_INJECTION_KEY, SUB_MENU_INJECTION_KEY } from './src/tokens.mjs';
 import { withInstall, withNoopInstall } from '../../utils/vue/install.mjs';
 
 const ElMenu = withInstall(Menu, {

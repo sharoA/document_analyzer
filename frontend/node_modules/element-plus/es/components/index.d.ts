@@ -75,6 +75,7 @@ export * from './tour';
 export * from './anchor';
 export * from './segmented';
 export * from './mention';
+export * from './splitter';
 export * from './infinite-scroll';
 export * from './loading';
 export * from './message';

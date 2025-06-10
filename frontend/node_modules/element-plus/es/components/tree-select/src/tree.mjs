@@ -13,7 +13,7 @@ const useTree = (props, { attrs, slots, emit }, {
   tree,
   key
 }) => {
-  watch(() => props.modelValue, () => {
+  watch([() => props.modelValue, tree], () => {
     if (props.showCheckbox) {
       nextTick(() => {
         const treeInstance = tree.value;

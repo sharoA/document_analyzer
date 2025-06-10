@@ -1,7 +1,6 @@
-import type { IOptionV2Props } from './token';
-import type { OptionEmitFn } from './defaults';
-export declare function useOption(props: IOptionV2Props, { emit }: {
-    emit: OptionEmitFn;
+import type { OptionV2EmitFn, OptionV2Props } from './defaults';
+export declare function useOption(props: OptionV2Props, { emit }: {
+    emit: OptionV2EmitFn;
 }): {
     hoverItem: () => void;
     selectOptionClick: () => void;

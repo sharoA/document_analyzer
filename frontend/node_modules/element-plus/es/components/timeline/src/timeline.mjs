@@ -1,11 +1,12 @@
 import { defineComponent, provide, h, renderSlot } from 'vue';
+import { TIMELINE_INJECTION_KEY } from './tokens.mjs';
 import { useNamespace } from '../../../hooks/use-namespace/index.mjs';
 
 const Timeline = defineComponent({
   name: "ElTimeline",
   setup(_, { slots }) {
     const ns = useNamespace("timeline");
-    provide("timeline", slots);
+    provide(TIMELINE_INJECTION_KEY, slots);
     return () => {
       return h("ul", { class: [ns.b()] }, [renderSlot(slots, "default")]);
     };

@@ -5,13 +5,16 @@
       <p>{{ errorMessage }}</p>
       <el-button @click="retryInit" type="primary">重试</el-button>
     </div>
-    <router-view v-else />
+    <div v-else>
+      <ChatInterface />
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onErrorCaptured } from 'vue'
 import { useWebSocketStore } from './stores/websocket'
+import ChatInterface from './components/ChatInterface.vue'
 
 const hasError = ref(false)
 const errorMessage = ref('')

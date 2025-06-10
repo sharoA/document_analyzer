@@ -1,8 +1,8 @@
-import Checkbox from './src/checkbox.mjs';
+import Checkbox from './src/checkbox2.mjs';
 import CheckboxButton from './src/checkbox-button.mjs';
 import CheckboxGroup from './src/checkbox-group2.mjs';
 export { checkboxGroupEmits, checkboxGroupProps } from './src/checkbox-group.mjs';
-export { checkboxEmits, checkboxProps } from './src/checkbox2.mjs';
+export { checkboxEmits, checkboxProps } from './src/checkbox.mjs';
 export { checkboxGroupContextKey } from './src/constants.mjs';
 import { withInstall, withNoopInstall } from '../../utils/vue/install.mjs';
 

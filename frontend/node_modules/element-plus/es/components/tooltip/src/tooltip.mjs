@@ -1,5 +1,5 @@
 import { useTooltipContentProps } from './content.mjs';
-import { useTooltipTriggerProps } from './trigger2.mjs';
+import { useTooltipTriggerProps } from './trigger.mjs';
 import { popperProps } from '../../popper/src/popper.mjs';
 import { popperArrowProps } from '../../popper/src/arrow.mjs';
 import { createModelToggleComposable } from '../../../hooks/use-model-toggle/index.mjs';

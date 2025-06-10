@@ -56,9 +56,21 @@ class TaskStorage:
                         result_data TEXT,
                         parsing_result TEXT,
                         content_analysis TEXT,
-                        ai_analysis TEXT
+                        ai_analysis TEXT,
+                        markdown_content TEXT
                     )
                 ''')
+                
+                # 检查并添加markdown_content字段（如果表已存在）
+                try:
+                    cursor.execute("ALTER TABLE tasks ADD COLUMN markdown_content TEXT")
+                    logger.info("已添加markdown_content字段到现有数据库表")
+                except sqlite3.OperationalError as e:
+                    if "duplicate column name" in str(e).lower():
+                        # 字段已存在，忽略错误
+                        pass
+                    else:
+                        logger.warning(f"添加markdown_content字段时出现错误: {e}")
                 
                 # 创建步骤表
                 cursor.execute('''
@@ -298,6 +310,25 @@ class TaskStorage:
                 
         except Exception as e:
             logger.error(f"保存AI分析结果失败: {e}")
+            raise
+    
+    def save_markdown_content(self, task_id: str, markdown_content: str):
+        """保存Markdown内容"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    UPDATE tasks 
+                    SET markdown_content = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                ''', (markdown_content, task_id))
+                
+                conn.commit()
+                logger.info(f"Markdown内容保存成功: {task_id}")
+                
+        except Exception as e:
+            logger.error(f"保存Markdown内容失败: {e}")
             raise
     
     def get_task(self, task_id: str) -> Optional[Dict]:

@@ -8,7 +8,7 @@
 ### 核心组件
 - **前端界面**：Vue 3 + Element Plus - 文件上传、进度展示、结果查看
 - **API服务器**：Flask + Redis - 业务接口和数据缓存
-- **WebSocket服务**：实时通信（可选，当前采用轮询方案）
+- **http服务**：通信（可选，当前采用轮询方案）
 - **分析引擎**：analysis_services模块 - 文档解析、内容分析、AI智能分析
 - **数据存储**：Redis - 进度状态和分析结果缓存
 - **LLM服务**：火山引擎 - AI智能分析能力
@@ -30,8 +30,7 @@ analyDesign/
 │ │ ├── content_analyzer.py # 内容分析服务
 │ │ └── ai_analyzer.py # AI分析服务
 │ ├── apis/
-│ │ ├── analysis_api.py # 文件上传/结果查询接口
-│ │ └── websocket_api.py # WebSocket分析控制接口
+│ │ ├── analysis_api.py # 文件上传/结果查询接口/分析控制接口
 │ ├── resource/
 │ │ └── config.py # 统一配置管理
 │ └── utils/
@@ -79,7 +78,7 @@ analysis:
   upload_dir: "uploads"
   temp_dir: "temp"
 # 启动命令
-# 前端: cd frontend && npm run dev
+# 前端: cd frontend &&git npm run dev
 # 后端: python run.py
 ```
 
@@ -88,18 +87,21 @@ analysis:
 POST /api/file/upload # 文件上传，返回task_id
 GET /api/file/result/{task_id} # 获取最终完整结果
 
-### WebSocket接口（实时通信）
+### http接口（轮询）
 #### 执行控制
-start_full_analysis # 启动完整流程（自动执行三阶段）
-start_document_parsing # 只启动文档解析
-start_content_analysis # 只启动内容分析
-start_ai_analysis # 只启动AI分析
-#### 状态推送（服务端 → 前端）
-progress_update # 实时进度更新
-analysis_started # 启动确认
-stage_completed # 单阶段完成
-analysis_completed # 全部完成
-analysis_error # 错误通知
+POST /api/v2/analysis/start 启动完整流程（自动执行三阶段）
+
+
+
+#### HTTP接口设计（服务端）
+
+GET /api/v2/analysis/progress/{task_id} # 实时进度更新
+GET /api/v2/analysis/status/{task_id} # 启动确认
+GET /api/v2/analysis/progress/{task_id} # 单阶段完成
+GET /api/v2/analysis/progress/{task_id}  # 全部完成
+GET /api/v2/analysis/progress/{task_id}  # 错误通知
+
+
 ## 4. 分析阶段职责
 ### 阶段1：文档解析（Document Parsing）
 **输入**：原始文档文件  
@@ -109,9 +111,9 @@ analysis_error # 错误通知
 - 文件格式识别和基本信息
 - 文档结构解析（目录、章节、页码）
 - 内容元素提取（文本、表格、图片、代码、链接）
-- 文档质量分析（可读性、完整性、格式）
+- 使用大模型进行文档质量分析（可读性、完整性、格式）
 - 版本信息和元数据提取
-- 总结摘要
+- 使用大模型生成摘要、关键字
 
 ### 阶段2：内容分析（Content Analysis）
 **输入**：文档解析结果  
@@ -136,13 +138,10 @@ analysis_error # 错误通知
 
 ## 5. 核心实现要点
 
-### WebSocket分析控制器
+### 分析控制器
 ```python
-# 支持两种执行模式
+# 执行模式
 @socketio.on('start_full_analysis')     # 自动模式：三阶段连续执行
-@socketio.on('start_document_parsing')  # 手动模式：分阶段控制
-@socketio.on('start_content_analysis')  
-@socketio.on('start_ai_analysis')
 
 # 统一的阶段执行函数
 def run_document_parsing_stage(task_id) -> bool
@@ -154,6 +153,13 @@ def check_stage_completed(task_id, stage) -> bool
 def mark_stage_completed(task_id, stage)
 def save_final_result(task_id)
 ```
+### 接口说明
+- **启动接口**: 文件上传 + 立即启动三阶段分析，返回task_id
+- **进度接口**: 包含启动确认、阶段进度、完成状态、错误信息等所有状态
+- **结果接口**: 分析完成后获取完整结果
+
+
+
 
 ### Redis存储策略
 
@@ -166,8 +172,7 @@ analysis:{task_id}:stage:{stage} # 阶段完成状态
 analysis:{task_id}:result # 最终完整结果
 ### 前端状态管理
 ```javascript
-// 支持两种分析模式
-analysisMode: 'manual/auto'  // 手动控制 / 自动执行
+文件上传 → 启动分析 → 轮询进度 → 获取结果
 
 // 节点状态跟踪
 nodeProgress: {
@@ -179,8 +184,7 @@ nodeProgress: {
 // 核心方法
 startFullAnalysis(file)      // 上传 + 自动执行全流程
 uploadFile(file)             // 仅上传文件
-startStage(stage)            // 手动启动指定阶段
-updateStageAvailability()    // 更新阶段可执行状态
+updateStageAvailability()    // 更新阶段状态
 ```
 
 ## 6. analysis_services接口规范
@@ -188,7 +192,7 @@ updateStageAvailability()    // 更新阶段可执行状态
 ```python
 def identify_file_type(file_path) -> dict          # 文件格式识别
 def parse_document_structure(file_path) -> dict    # 结构解析
-def extract_content_elements(file_path) -> dict    # 内容提取
+def extract_content_elements(file_path) -> dict    # 内容提取，摘要和关键字
 def analyze_document_quality(file_path) -> dict    # 质量分析
 def extract_version_info(file_path) -> dict        # 版本信息
 def extract_metadata(file_path) -> dict            # 元数据
@@ -373,29 +377,21 @@ def generate_analysis_summary(...) -> str                           # 分析总�
 ### 完整流程模式
 1. 用户上传文件 → 选择"完整分析" → 系统自动执行三阶段 → 获取结果
 
-### 分阶段控制模式  
-1. 用户上传文件 → 手动启动"文档解析" → 查看解析结果
-2. 满意后启动"内容分析" → 查看分析结果  
-3. 最后启动"AI分析" → 获取完整结果
 
 ### 前端交互特性
-- **实时进度**：WebSocket推送，进度条实时更新
-- **灵活控制**：支持暂停/继续，分阶段验证
+- **实时进度**：http轮询，进度条实时更新
 - **状态恢复**：页面刷新后自动恢复分析状态
 - **错误处理**：详细错误信息，支持重试机制
 ### 解析内容流程补充
 1. **文件上传**：验证格式、大小，保存文件信息
-2. **WebSocket连接**：建立实时通信通道
-3. **分析启动**：通过WebSocket启动后台分析线程
-4. **实时进度**：三个阶段的详细进度实时推送
-5. **结果保存**：完整分析结果存储到Redis
-6. **结果获取**：前端自动获取并展示分析报告
+3. **分析启动**：通过开始解析按钮启动上传文件->文档解析->内容分析->智能解析->跳转需求文档分析
+4. **结果保存**：完整分析结果存储到Redis
+5. **结果获取**：前端跳转到需求文档分析页签自动result，将json转成markdown展示分析报告
 
 ## 9. 技术特色
 
 ### 核心优势
-- **实时性能**：WebSocket零延迟进度推送
-- **灵活控制**：完整自动 + 分阶段手动双模式
+- **http轮询**：可靠并且易于实现调试
 - **深度解析**：支持9种文档格式，OCR图片识别
 - **智能分析**：AI驱动的需求理解和技术设计
 - **可靠存储**：Redis持久化，支持系统重启恢复

@@ -108,7 +108,7 @@ const pdfBlobUrl = ref(null)
 // 计算属性
 const isWordDocument = computed(() => {
   if (!props.file) return false
-  const type = props.file.raw?.type || ''
+  const type = props.file.type || ''
   const name = props.file.name || ''
   return type.includes('word') || 
          type.includes('document') || 
@@ -118,7 +118,7 @@ const isWordDocument = computed(() => {
 
 const isPdfDocument = computed(() => {
   if (!props.file) return false
-  const type = props.file.raw?.type || ''
+  const type = props.file.type || ''
   const name = props.file.name || ''
   return type === 'application/pdf' || name.toLowerCase().endsWith('.pdf')
 })
@@ -141,7 +141,7 @@ const loadWordDocument = async () => {
   wordContent.value = ''
   
   try {
-    const arrayBuffer = await props.file.raw.arrayBuffer()
+    const arrayBuffer = await props.file.arrayBuffer()
     const result = await mammoth.convertToHtml({ arrayBuffer })
     
     if (result.messages.length > 0) {
@@ -175,7 +175,7 @@ const loadPdfDocument = async () => {
     }
     
     // 创建新的Blob URL
-    const blob = new Blob([props.file.raw], { type: 'application/pdf' })
+    const blob = new Blob([props.file], { type: 'application/pdf' })
     pdfBlobUrl.value = URL.createObjectURL(blob)
     
     console.log('PDF Blob URL创建成功:', pdfBlobUrl.value)
@@ -203,7 +203,7 @@ const downloadPdf = () => {
   if (!props.file) return
   
   try {
-    const blob = new Blob([props.file.raw], { type: 'application/pdf' })
+    const blob = new Blob([props.file], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

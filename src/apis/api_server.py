@@ -159,6 +159,7 @@ class FileParsingTask:
         self.result = None
         self.content_analysis = None
         self.ai_analysis = None
+        self.markdown_content = None
         self.error = None
         self.created_at = datetime.now()
         self.updated_at = datetime.now()
@@ -246,6 +247,7 @@ class FileParsingTask:
             "result": self.result,
             "content_analysis": self.content_analysis,
             "ai_analysis": self.ai_analysis,
+            "markdown_content": self.markdown_content,
             "error": self.error,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
@@ -274,6 +276,7 @@ class FileParsingTask:
         task.result = data.get('parsing_result') or data.get('result')
         task.content_analysis = data.get('content_analysis')
         task.ai_analysis = data.get('ai_analysis')
+        task.markdown_content = data.get('markdown_content')
         task.error = data.get('error')
         task.created_at = datetime.fromisoformat(data['created_at']) if isinstance(data['created_at'], str) else data['created_at']
         task.updated_at = datetime.fromisoformat(data['updated_at']) if isinstance(data['updated_at'], str) else data['updated_at']
@@ -461,9 +464,9 @@ def process_file_parsing(task: FileParsingTask):
 def process_content_analysis(task: FileParsingTask, parsing_result: dict):
     """处理内容分析任务 - 使用分析服务模块"""
     try:
-        # 检查前置条件
-        if task.status != "parsed":
-            raise ValueError(f"任务状态不正确，期望 'parsed'，实际 '{task.status}'")
+        # 检查前置条件 - 允许 content_analyzing 状态（V2流程中已经预先设置了状态）
+        if task.status not in ["parsed", "content_analyzing"]:
+            raise ValueError(f"任务状态不正确，期望 'parsed' 或 'content_analyzing'，实际 '{task.status}'")
         
         if not task.result:
             raise ValueError("解析结果不存在，无法进行内容分析")
@@ -706,9 +709,9 @@ def process_content_analysis(task: FileParsingTask, parsing_result: dict):
 def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensive", content_analysis_result: dict = None, crud_operations: dict = None):
     """处理AI分析任务 - 使用分析服务模块"""
     try:
-        # 检查前置条件
-        if task.status != "content_analyzed":
-            raise ValueError(f"任务状态不正确，期望 'content_analyzed'，实际 '{task.status}'")
+        # 检查前置条件 - 允许 ai_analyzing 状态（V2流程中已经预先设置了状态）
+        if task.status not in ["content_analyzed", "ai_analyzing"]:
+            raise ValueError(f"任务状态不正确，期望 'content_analyzed' 或 'ai_analyzing'，实际 '{task.status}'")
         
         if not task.content_analysis:
             raise ValueError("内容分析结果不存在，无法进行AI分析")
@@ -1449,6 +1452,18 @@ def get_analysis_result(task_id):
                 "interface_progress": interface_progress,
                 "current_step": task.status or "unknown",
                 "processing_steps": task.steps or [],
+                # 新增：后端生成的markdown内容
+                "markdown_content": task.markdown_content,
+                # 兼容旧版本的数据结构
+                "basic_info": {
+                    "filename": task.file_info.get("filename", "Unknown"),
+                    "filesize": f"{task.file_info.get('size', 0) / 1024:.1f} KB",
+                    "file_type": task.file_info.get("type", "Unknown"),
+                    "uploaded_at": task.created_at.isoformat() if task.created_at else None
+                },
+                "document_parsing": task.result,
+                "content_analysis": task.content_analysis,
+                "ai_analysis": task.ai_analysis,
                 "interfaces": {
                     "document_parsing": parsing_object,
                     "content_analysis": content_object,
@@ -1566,6 +1581,435 @@ def delete_file(task_id):
             "success": False,
             "error": f"删除文件失败: {str(e)}"
         }), 500
+
+@app.route('/api/v2/analysis/start', methods=['POST'])
+def start_analysis_v2():
+    """V2版本：启动完整流程（自动执行三阶段）"""
+    try:
+        # 检查请求类型
+        if request.content_type and 'application/json' in request.content_type:
+            # JSON格式上传（前端使用）
+            data = request.get_json()
+            if not data or 'file_info' not in data:
+                return jsonify({
+                    "success": False,
+                    "error": "请求数据格式错误，缺少file_info"
+                }), 400
+            
+            file_info = data['file_info']
+            
+            # 验证必要字段
+            if not all(key in file_info for key in ['name', 'content']):
+                return jsonify({
+                    "success": False,
+                    "error": "文件信息不完整，缺少name或content字段"
+                }), 400
+            
+            # 解码base64文件内容
+            try:
+                import base64
+                file_content = base64.b64decode(file_info['content'])
+            except Exception as e:
+                return jsonify({
+                    "success": False,
+                    "error": f"文件内容解码失败: {str(e)}"
+                }), 400
+            
+            # 更新文件信息
+            file_info['size'] = len(file_content)
+            filename = file_info['name']
+            
+        else:
+            # multipart/form-data格式上传（传统方式）
+            if 'file' not in request.files:
+                return jsonify({
+                    "success": False,
+                    "error": "没有文件被上传"
+                }), 400
+            
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({
+                    "success": False,
+                    "error": "没有选择文件"
+                }), 400
+            
+            # 读取文件内容
+            file_content = file.read()
+            filename = file.filename
+            
+            # 构建文件信息
+            file_info = {
+                "name": filename,
+                "type": file.content_type or "application/octet-stream",
+                "size": len(file_content)
+            }
+        
+        # 使用分析服务进行文件验证
+        file_validation = validate_file_upload(filename, len(file_content))
+        if not all(file_validation.values()):
+            validation_errors = [k for k, v in file_validation.items() if not v]
+            return jsonify({
+                "success": False,
+                "error": f"文件验证失败: {', '.join(validation_errors)}",
+                "validation_details": file_validation
+            }), 400
+        
+        # 生成任务ID
+        task_id = str(uuid.uuid4())
+        
+        # 保存文件到uploads/temp目录
+        uploads_dir = "uploads/temp"
+        os.makedirs(uploads_dir, exist_ok=True)
+        file_path = os.path.join(uploads_dir, f"{task_id}_{filename}")
+        
+        with open(file_path, 'wb') as f:
+            f.write(file_content)
+        
+        # 创建解析任务
+        task = FileParsingTask(
+            task_id=task_id,
+            file_info=file_info,
+            file_content=file_content,
+            file_path=file_path
+        )
+        
+        # 设置初始进度状态为"启动中"
+        task.update_progress(0, "分析流程启动中", "starting")
+        
+        # 启动完整的三阶段分析流程
+        executor.submit(run_full_analysis_pipeline, task)
+        
+        logger.info(f"V2 完整分析启动成功: {filename}, 任务ID: {task_id}, 大小: {len(file_content)} bytes")
+        analysis_logger.info(f"🚀 V2 完整分析启动: {filename}, 任务ID: {task_id}")
+        
+        return jsonify({
+            "success": True,
+            "task_id": task_id,
+            "file_info": file_info,
+            "message": "完整分析流程已启动",
+            "stages": [
+                {"name": "document_parsing", "title": "文档解析", "status": "pending"},
+                {"name": "content_analysis", "title": "内容分析", "status": "pending"},
+                {"name": "ai_analysis", "title": "AI智能分析", "status": "pending"},
+                {"name": "document_generation", "title": "生成文档", "status": "pending"}
+            ],
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"V2 分析启动失败: {e}")
+        analysis_logger.error(f"❌ V2 分析启动失败: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"分析启动失败: {str(e)}"
+        }), 500
+
+@app.route('/api/v2/analysis/progress/<task_id>', methods=['GET'])
+def get_analysis_progress_v2(task_id):
+    """V2版本：获取实时进度更新"""
+    try:
+        task = get_task(task_id)
+        if not task:
+            return jsonify({
+                "success": False,
+                "error": "任务不存在"
+            }), 404
+        
+        # 计算各阶段进度
+        stages = {
+            "document_parsing": {
+                "title": "文档解析",
+                "status": "pending",
+                "progress": 0,
+                "message": "等待开始"
+            },
+            "content_analysis": {
+                "title": "内容分析", 
+                "status": "pending",
+                "progress": 0,
+                "message": "等待开始"
+            },
+            "ai_analysis": {
+                "title": "AI智能分析",
+                "status": "pending", 
+                "progress": 0,
+                "message": "等待开始"
+            },
+            "document_generation": {
+                "title": "生成文档",
+                "status": "pending",
+                "progress": 0,
+                "message": "等待开始"
+            }
+        }
+        
+        # 获取最新的步骤描述
+        def get_latest_description(task):
+            if task.steps and len(task.steps) > 0 and isinstance(task.steps[-1], dict):
+                return task.steps[-1].get("description", "处理中...")
+            return "处理中..."
+        
+        # 根据任务状态更新阶段信息
+        if task.status in ["parsing", "parsed"]:
+            stages["document_parsing"]["status"] = "running" if task.status == "parsing" else "completed"
+            stages["document_parsing"]["progress"] = task.progress if task.status == "parsing" else 100
+            stages["document_parsing"]["message"] = get_latest_description(task) if task.status == "parsing" else "文档解析完成"
+            
+        if task.status in ["content_analyzing", "content_analyzed"]:
+            stages["document_parsing"]["status"] = "completed"
+            stages["document_parsing"]["progress"] = 100
+            stages["document_parsing"]["message"] = "文档解析完成"
+            
+            stages["content_analysis"]["status"] = "running" if task.status == "content_analyzing" else "completed"
+            stages["content_analysis"]["progress"] = task.progress if task.status == "content_analyzing" else 100
+            stages["content_analysis"]["message"] = get_latest_description(task) if task.status == "content_analyzing" else "内容分析完成"
+            
+        if task.status in ["ai_analyzing", "ai_analyzed", "document_generating", "document_generated", "fully_completed"]:
+            stages["document_parsing"]["status"] = "completed"
+            stages["document_parsing"]["progress"] = 100
+            stages["document_parsing"]["message"] = "文档解析完成"
+            
+            stages["content_analysis"]["status"] = "completed"
+            stages["content_analysis"]["progress"] = 100
+            stages["content_analysis"]["message"] = "内容分析完成"
+            
+            stages["ai_analysis"]["status"] = "running" if task.status == "ai_analyzing" else "completed"
+            stages["ai_analysis"]["progress"] = task.progress if task.status == "ai_analyzing" else 100
+            stages["ai_analysis"]["message"] = get_latest_description(task) if task.status == "ai_analyzing" else "AI分析完成"
+            
+        if task.status in ["document_generating", "document_generated", "fully_completed"]:
+            stages["document_generation"]["status"] = "running" if task.status == "document_generating" else "completed"
+            stages["document_generation"]["progress"] = task.progress if task.status == "document_generating" else 100
+            stages["document_generation"]["message"] = get_latest_description(task) if task.status == "document_generating" else "文档生成完成"
+        
+        # 计算整体进度
+        total_progress = 0
+        completed_stages = 0
+        
+        for stage in stages.values():
+            if stage["status"] == "completed":
+                completed_stages += 1
+                total_progress += 100
+            elif stage["status"] == "running":
+                total_progress += stage["progress"]
+        
+        overall_progress = total_progress // 4
+        
+        # 确定整体状态
+        overall_status = "pending"
+        if task.status == "fully_completed":
+            overall_status = "completed"
+        elif task.status in ["failed", "ai_failed", "content_failed"]:
+            overall_status = "failed"
+        elif completed_stages > 0 or any(stage["status"] == "running" for stage in stages.values()):
+            overall_status = "running"
+        
+        return jsonify({
+            "success": True,
+            "task_id": task_id,
+            "overall_status": overall_status,
+            "overall_progress": overall_progress,
+            "current_stage": task.status,
+            "stages": stages,
+            "file_info": task.file_info,
+            "error": task.error,
+            "started_at": task.created_at.isoformat() if task.created_at else None,
+            "updated_at": task.updated_at.isoformat() if task.updated_at else None,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"获取V2进度失败: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"获取进度失败: {str(e)}"
+        }), 500
+
+def process_document_generation(task: FileParsingTask):
+    """生成Markdown文档"""
+    try:
+        logger.info(f"开始生成文档: {task.id}")
+        analysis_logger.info(f"📄 开始文档生成任务: {task.id}")
+        
+        # 更新进度
+        task.update_progress(10, "准备生成文档", "document_generating")
+        
+        # 获取所有分析结果
+        task.update_progress(30, "获取分析结果数据", "document_generating")
+        
+        # 构建完整的结果数据
+        result_data = {
+            "basic_info": {
+                "filename": task.file_info.get("filename", "Unknown"),
+                "filesize": f"{task.file_info.get('size', 0) / 1024:.1f} KB",
+                "file_type": task.file_info.get("type", "Unknown"),
+                "uploaded_at": task.created_at.isoformat() if task.created_at else None
+            },
+            "document_parsing": task.result,
+            "content_analysis": task.content_analysis,
+            "ai_analysis": task.ai_analysis
+        }
+        
+        # 调试信息
+        logger.info(f"生成文档数据结构: basic_info={bool(result_data.get('basic_info'))}, "
+                   f"document_parsing={bool(result_data.get('document_parsing'))}, "
+                   f"content_analysis={bool(result_data.get('content_analysis'))}, "
+                   f"ai_analysis={bool(result_data.get('ai_analysis'))}")
+        
+        # 生成Markdown内容
+        task.update_progress(60, "转换为Markdown格式", "document_generating")
+        markdown_content = generate_markdown_report(result_data)
+        
+        # 保存Markdown内容到任务中
+        task.update_progress(90, "保存文档内容", "document_generating")
+        task.markdown_content = markdown_content
+        
+        # 保存到数据库
+        task_storage.save_markdown_content(task.id, markdown_content)
+        
+        # 更新任务状态
+        task.update_progress(100, "文档生成完成", "document_generated")
+        logger.info(f"文档生成完成: {task.id}")
+        analysis_logger.info(f"✅ 文档生成完成: {task.id}")
+        
+    except Exception as e:
+        logger.error(f"文档生成失败 {task.id}: {e}")
+        task.update_progress(0, f"文档生成失败: {str(e)}", "document_failed")
+        analysis_logger.error(f"❌ 文档生成失败: {task.id} - {e}")
+        raise
+
+def generate_markdown_report(result_data):
+    """将JSON结果转换为Markdown格式"""
+    logger.info(f"开始生成Markdown报告，数据键: {list(result_data.keys()) if result_data else 'None'}")
+    
+    if not result_data:
+        logger.warning("结果数据为空，生成基础报告")
+        return "# 📋 文档分析报告\n\n**错误**: 没有可用的分析数据\n"
+    
+    markdown = "# 📋 文档分析报告\n\n"
+    
+    # 基本信息
+    if result_data.get("basic_info"):
+        basic_info = result_data["basic_info"]
+        markdown += "## 📄 基本信息\n\n"
+        markdown += f"- **文件名**: {basic_info.get('filename', 'Unknown')}\n"
+        markdown += f"- **文件大小**: {basic_info.get('filesize', 'Unknown')}\n"
+        markdown += f"- **文件类型**: {basic_info.get('file_type', 'Unknown')}\n"
+        if basic_info.get('uploaded_at'):
+            markdown += f"- **上传时间**: {basic_info['uploaded_at']}\n"
+        markdown += "\n---\n\n"
+    
+    # 文档解析结果
+    if result_data.get("document_parsing"):
+        parsing_result = result_data["document_parsing"]
+        markdown += "## 📖 文档解析结果\n\n"
+        
+        if parsing_result.get("content_elements", {}).get("text_content"):
+            text_content = parsing_result["content_elements"]["text_content"]
+            markdown += "### 📝 文档内容\n\n"
+            # 限制显示长度，避免过长
+            if len(text_content) > 2000:
+                markdown += f"{text_content[:2000]}...\n\n"
+                markdown += f"*（内容过长，仅显示前2000个字符）*\n\n"
+            else:
+                markdown += f"{text_content}\n\n"
+        
+        if parsing_result.get("content_elements", {}).get("statistics"):
+            stats = parsing_result["content_elements"]["statistics"]
+            markdown += "### 📊 文档统计\n\n"
+            markdown += f"- **字符总数**: {stats.get('total_chars', 0)}\n"
+            markdown += f"- **段落数**: {stats.get('paragraphs', 0)}\n"
+            markdown += f"- **表格数**: {stats.get('tables', 0)}\n"
+            markdown += f"- **图片数**: {stats.get('images', 0)}\n\n"
+        
+        markdown += "---\n\n"
+    
+    # 内容分析结果
+    if result_data.get("content_analysis"):
+        markdown += "## 🔍 内容分析结果\n\n"
+        content_analysis = result_data["content_analysis"]
+        if isinstance(content_analysis, str):
+            markdown += f"{content_analysis}\n\n"
+        elif isinstance(content_analysis, dict):
+            for key, value in content_analysis.items():
+                markdown += f"### {key}\n\n{value}\n\n"
+        markdown += "---\n\n"
+    
+    # AI智能分析结果
+    if result_data.get("ai_analysis"):
+        markdown += "## 🤖 AI智能分析结果\n\n"
+        ai_analysis = result_data["ai_analysis"]
+        if isinstance(ai_analysis, str):
+            markdown += f"{ai_analysis}\n\n"
+        elif isinstance(ai_analysis, dict):
+            for key, value in ai_analysis.items():
+                markdown += f"### {key}\n\n{value}\n\n"
+        markdown += "---\n\n"
+    
+    # 分析总结
+    markdown += "## 📝 分析总结\n\n"
+    markdown += "本次分析已完成文档解析、内容分析和AI智能分析三个阶段。"
+    markdown += "如需更详细的分析结果，请联系系统管理员。\n\n"
+    
+    # 时间戳
+    from datetime import datetime
+    markdown += f"*报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n"
+    
+    logger.info(f"Markdown报告生成完成，长度: {len(markdown)} 字符")
+    return markdown
+
+def run_full_analysis_pipeline(task: FileParsingTask):
+    """运行完整的三阶段分析流程"""
+    try:
+        logger.info(f"开始完整分析流程: {task.id}")
+        
+        # 阶段1: 文档解析
+        task.update_progress(10, "开始文档解析", "parsing")
+        process_file_parsing(task)
+        
+        # 检查文档解析是否成功
+        if task.status != "parsed":
+            logger.error(f"文档解析失败，停止后续流程: {task.id}")
+            return
+        
+        # 阶段2: 内容分析
+        task.update_progress(40, "开始内容分析", "content_analyzing")
+        process_content_analysis(task, task.result)
+        
+        # 检查内容分析是否成功
+        if task.status != "content_analyzed":
+            logger.error(f"内容分析失败，停止后续流程: {task.id}")
+            return
+        
+        # 阶段3: AI智能分析
+        task.update_progress(70, "开始AI智能分析", "ai_analyzing")
+        process_ai_analysis(task, "comprehensive", task.content_analysis, {})
+        
+        # 检查AI分析是否成功
+        if task.status != "ai_analyzed":
+            logger.error(f"AI分析失败: {task.id}")
+            return
+        
+        # 阶段4: 生成文档
+        task.update_progress(90, "开始生成文档", "document_generating")
+        process_document_generation(task)
+        
+        # 检查文档生成是否成功
+        if task.status != "document_generated":
+            logger.error(f"文档生成失败: {task.id}")
+            return
+        
+        # 完成所有分析
+        task.update_progress(100, "完整分析流程完成", "fully_completed")
+        logger.info(f"完整分析流程成功完成: {task.id}")
+        analysis_logger.info(f"🎉 完整分析流程完成: {task.id}")
+        
+    except Exception as e:
+        logger.error(f"完整分析流程失败: {task.id}, 错误: {e}")
+        task.error = f"分析流程失败: {str(e)}"
+        task.status = "failed"
+        task.update_progress(task.progress, f"分析失败: {str(e)}", "failed")
 
 def create_app():
     """创建Flask应用"""

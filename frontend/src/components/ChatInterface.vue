@@ -23,11 +23,12 @@
         </div>
         
         <div class="task-description">
-          <h4>智能文档分析</h4>
-          <p>支持 Word、PDF、TXT、Markdown 格式文档分析</p>
+          <h4>智能对话助手</h4>
+          <p>专业的需求分析、访谈提纲生成和问卷设计助手</p>
           
           <div class="feature-tips">
-            <p>💡 点击下方"附件"按钮上传文档，点击上传文档后面开始分析按钮进行解析</p>
+            <p>💡 可以上传文档进行基于文档内容的智能对话</p>
+            <p>📎 支持 Word、PDF、TXT、Markdown 格式文档</p>
           </div>
         </div>
       </div>
@@ -81,13 +82,10 @@
           />
           
           <!-- 显示已上传的文件 -->
-          <div v-if="uploadedFile" class="uploaded-file-info">
-            <div class="file-info-container">
+          <div v-if="uploadedFile" class="uploaded-file-card">
+            <div class="file-card-header">
               <el-icon class="file-icon"><Document /></el-icon>
-              <div class="file-details">
-                <div class="file-name">{{ uploadedFile.name }}</div>
-                <div class="file-size">{{ formatFileSize(uploadedFile.size) }}</div>
-              </div>
+              <span class="file-name">{{ uploadedFile.name }}</span>
               <el-button 
                 type="text" 
                 size="small" 
@@ -97,15 +95,19 @@
                 <el-icon><Close /></el-icon>
               </el-button>
             </div>
-            <el-button 
-              type="primary" 
-              size="small" 
-              @click="analyzeDocument"
-              :loading="isAnalyzing"
-              class="analyze-btn"
-            >
-              开始分析
-            </el-button>
+            <div class="file-card-footer">
+              <span class="file-size">{{ formatFileSize(uploadedFile.size) }}</span>
+              <el-button 
+                type="primary" 
+                size="small" 
+                @click="analyzeDocument"
+                :loading="isAnalyzing"
+                class="analyze-btn"
+              >
+                <el-icon><Promotion /></el-icon>
+                开始文档解析
+              </el-button>
+            </div>
           </div>
           
           <el-input
@@ -117,7 +119,7 @@
             :disabled="isTyping"
             resize="none"
           />
-          <div class="input-actions">
+                      <div class="input-actions">
             <el-button-group>
               <el-button size="small" @click="attachFile">
                 <el-icon><Paperclip /></el-icon>
@@ -289,20 +291,32 @@
           <div class="tab-content">
             <div v-if="!analysisResult" class="empty-state">
               <el-empty description="暂无解析结果">
-                <el-button type="primary" @click="activeTab = 'preview'">
+                <el-button v-if="!uploadedFile" type="primary" @click="activeTab = 'preview'">
                   上传文档开始分析
+                </el-button>
+                <el-button v-else type="primary" size="large" @click="analyzeDocument" :loading="isAnalyzing">
+                  <el-icon><Promotion /></el-icon>
+                  开始分析文档
                 </el-button>
               </el-empty>
             </div>
             
             <div v-else class="analysis-result">
               <div class="result-header">
-                <h4>{{ analysisResult.title || '文档解析结果' }}</h4>
-                <div class="result-meta">
-                  <el-tag size="small" :type="getResultTypeTag(analysisResult.type)">
-                    {{ getResultTypeText(analysisResult.type) }}
-                  </el-tag>
-                  <span class="result-time">{{ formatTime(analysisResult.timestamp) }}</span>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <div>
+                    <h4>{{ analysisResult.title || '文档解析结果' }}</h4>
+                    <div class="result-meta">
+                      <el-tag size="small" :type="getResultTypeTag(analysisResult.type)">
+                        {{ getResultTypeText(analysisResult.type) }}
+                      </el-tag>
+                      <span class="result-time">{{ formatTime(analysisResult.timestamp) }}</span>
+                    </div>
+                  </div>
+                  <el-button v-if="uploadedFile" type="primary" size="small" @click="analyzeDocument" :loading="isAnalyzing">
+                    <el-icon><Promotion /></el-icon>
+                    重新分析
+                  </el-button>
                 </div>
               </div>
               
@@ -499,6 +513,30 @@
                     </div>
                   </el-card>
                   
+                  <!-- Markdown分析报告 -->
+                  <el-card class="info-card" v-if="analysisResult.markdownContent">
+                    <template #header>
+                      <div class="markdown-header">
+                        <h5>📋 分析报告</h5>
+                        <el-button-group size="small">
+                          <el-button @click="copyMarkdownContent">
+                            <el-icon><DocumentCopy /></el-icon>
+                            复制报告
+                          </el-button>
+                          <el-button @click="downloadMarkdownContent">
+                            <el-icon><Download /></el-icon>
+                            下载Markdown
+                          </el-button>
+                        </el-button-group>
+                      </div>
+                    </template>
+                    <div class="markdown-content">
+                      <el-scrollbar height="600px">
+                        <div class="markdown-preview" v-html="renderMarkdown(analysisResult.markdownContent)"></div>
+                      </el-scrollbar>
+                    </div>
+                  </el-card>
+                  
                   <!-- 文档内容预览 -->
                   <el-card class="content-card" v-if="analysisResult.content">
                     <template #header>
@@ -690,7 +728,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useWebSocketStore } from '../stores/websocket'
 import { 
   ChatDotRound, 
@@ -717,6 +755,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DocumentPreview from './DocumentPreview.vue'
+import MarkdownIt from 'markdown-it'
 
 // 响应式数据
 const currentMessage = ref('')
@@ -825,7 +864,7 @@ const getFileType = (file) => {
     'text/plain': '纯文本文档',
     'text/markdown': 'Markdown 文档'
   }
-  return typeMap[file.raw.type] || '未知文档类型'
+  return typeMap[file.type] || '未知文档类型'
 }
 
 const getFileExtension = (fileName) => {
@@ -920,13 +959,14 @@ const handleFileChange = (file) => {
   
   // 检查文件大小（21MB限制）
   const maxFileSize = 21 * 1024 * 1024 // 21MB
-  if (file.size > maxFileSize) {
-    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1)
+  if (file.raw.size > maxFileSize) {
+    const fileSizeMB = (file.raw.size / (1024 * 1024)).toFixed(1)
     ElMessage.error(`文件大小 ${fileSizeMB}MB 超过限制，最大允许 21MB`)
     return false
   }
   
-  uploadedFile.value = file
+  // 存储原始的File对象，而不是Element Plus的包装对象
+  uploadedFile.value = file.raw
   console.log('uploadedFile设置完成:', uploadedFile.value)
   
   // 使用nextTick确保DOM更新后再切换页签
@@ -942,7 +982,7 @@ const handleFileChange = (file) => {
     }, 100)
   })
   
-  const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1)
+  const fileSizeMB = (file.raw.size / (1024 * 1024)).toFixed(1)
   ElMessage.success(`文件 ${file.name} (${fileSizeMB}MB) 已选择，点击"开始分析"进行处理`)
 }
 
@@ -975,20 +1015,20 @@ const analyzeDocument = async () => {
       progress: 100
     })
     
-    // 使用WebSocket store的文件上传功能
-    const result = await wsStore.uploadFile(uploadedFile.value)
+    // 使用V2版本的完整分析流程
+    const result = await wsStore.startFullAnalysisV2(uploadedFile.value)
     
     if (result.success) {
-      ElMessage.success('文档解析已开始，请查看实时进度')
+      ElMessage.success('完整分析流程已启动，请查看实时进度')
       
       // 监听解析状态变化
       const checkStatus = () => {
         if (wsStore.parsingStatus === 'completed') {
-          ElMessage.success('文档解析完成')
+          ElMessage.success('完整分析完成')
           activeTab.value = 'files'
           isAnalyzing.value = false
         } else if (wsStore.parsingStatus === 'failed') {
-          ElMessage.error('文档解析失败')
+          ElMessage.error('分析失败')
           isAnalyzing.value = false
         } else if (wsStore.isFileProcessing) {
           // 继续监听
@@ -1000,11 +1040,11 @@ const analyzeDocument = async () => {
       
       checkStatus()
     } else {
-      throw new Error('文件上传失败')
+      throw new Error(result.error || '启动分析失败')
     }
     
   } catch (error) {
-    ElMessage.error('文档分析失败: ' + error.message)
+    ElMessage.error('分析启动失败: ' + error.message)
     isAnalyzing.value = false
     
     // 添加失败步骤
@@ -1148,6 +1188,23 @@ onMounted(() => {
   console.log('组件已挂载')
   console.log('初始uploadedFile:', uploadedFile.value)
   console.log('初始activeTab:', activeTab.value)
+  
+  // 监听切换到结果页签的事件
+  window.addEventListener('switchToResultsTab', handleSwitchToResultsTab)
+})
+
+// 事件处理函数
+const handleSwitchToResultsTab = (event) => {
+  const { tab } = event.detail
+  if (tab) {
+    activeTab.value = tab
+    ElMessage.success('分析完成，已自动切换到解析结果页签')
+  }
+}
+
+// 组件卸载时清理事件监听器
+onUnmounted(() => {
+  window.removeEventListener('switchToResultsTab', handleSwitchToResultsTab)
 })
 
 const getResultTypeTag = (type) => {
@@ -1285,6 +1342,52 @@ const formatAIResponse = (response) => {
     .replace(/^\d+\.\s*(.*?)(?=\n|$)/gm, '<li>$1</li>')
     .replace(/^-\s*(.*?)(?=\n|$)/gm, '<li>$1</li>')
 }
+
+// 创建markdown渲染器实例
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true
+})
+
+// Markdown渲染方法
+const renderMarkdown = (content) => {
+  if (!content) return ''
+  return md.render(content)
+}
+
+// Markdown操作方法
+const copyMarkdownContent = async () => {
+  if (!analysisResult.value?.markdownContent) {
+    ElMessage.warning('没有可复制的报告内容')
+    return
+  }
+  
+  try {
+    await navigator.clipboard.writeText(analysisResult.value.markdownContent)
+    ElMessage.success('分析报告已复制到剪贴板')
+  } catch (error) {
+    ElMessage.error('复制失败')
+  }
+}
+
+const downloadMarkdownContent = () => {
+  if (!analysisResult.value?.markdownContent) {
+    ElMessage.warning('没有可下载的报告内容')
+    return
+  }
+  
+  const blob = new Blob([analysisResult.value.markdownContent], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${analysisResult.value.fileInfo?.name || 'document'}_analysis_report.md`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  ElMessage.success('分析报告下载开始')
+}
 </script>
 
 <style lang="scss" scoped>
@@ -1388,6 +1491,7 @@ const formatAIResponse = (response) => {
     padding: 15px 20px;
     overflow-y: auto;
     min-height: 0;
+    max-height: calc(100vh - 400px); /* 为输入区域预留更多空间 */
 
     .message {
       margin-bottom: 16px;
@@ -1509,79 +1613,85 @@ const formatAIResponse = (response) => {
     padding: 20px;
     border-top: 1px solid #e4e7ed;
     background: white;
+    min-height: 160px; /* 确保有足够的高度显示按钮 */
 
     .input-container {
-      .uploaded-file-info {
-        display: flex;
-        align-items: flex-start;
+      .uploaded-file-card {
         margin-bottom: 12px;
-        padding: 0;
-        flex-wrap: wrap;
-        gap: 8px;
-        width: 100%;
-        box-sizing: border-box;
+        background: #ffffff;
+        border: 1px solid #e4e7ed;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        transition: all 0.3s ease;
+        overflow: hidden;
         
-        .file-info-container {
+        &:hover {
+          border-color: #409eff;
+          box-shadow: 0 4px 16px rgba(64, 158, 255, 0.15);
+        }
+        
+        .file-card-header {
           display: flex;
-          align-items: flex-start;
-          flex: 1;
-          min-width: 0;
-          max-width: calc(100% - 80px);
-          padding: 8px 12px;
-          background: #f0f9ff;
-          border: 1px solid #b3d8ff;
-          border-radius: 6px;
-          overflow: hidden;
+          align-items: center;
+          padding: 12px 16px 8px 16px;
           
           .file-icon {
             flex-shrink: 0;
             margin-right: 8px;
-            margin-top: 2px;
-            color: #67c23a;
+            color: #409eff;
+            font-size: 16px;
           }
           
-          .file-details {
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
+          .file-name {
             flex: 1;
-            overflow: hidden;
-            
-            .file-name {
-              word-break: break-all;
-              overflow-wrap: break-word;
-              line-height: 1.3;
-              white-space: normal;
-              font-size: 14px;
-              color: #303133;
-              margin-bottom: 2px;
-            }
-            
-            .file-size {
-              font-size: 12px;
-              color: #909399;
-              white-space: nowrap;
-            }
-          }
-        }
-        
-        .close-btn {
-          flex-shrink: 0;
-          align-self: flex-start;
-          margin-left: 6px;
-          margin-top: 2px;
-          padding: 4px;
-          
-          :deep(.el-icon) {
             font-size: 14px;
+            font-weight: 500;
+            color: #303133;
+            word-break: break-all;
+            overflow-wrap: break-word;
+            line-height: 1.4;
+          }
+          
+          .close-btn {
+            flex-shrink: 0;
+            padding: 4px;
+            color: #909399;
+            
+            &:hover {
+              color: #f56c6c;
+            }
+            
+            :deep(.el-icon) {
+              font-size: 14px;
+            }
           }
         }
         
-        .analyze-btn {
-          flex-shrink: 0;
-          align-self: flex-start;
-          min-width: 72px;
+        .file-card-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 16px 12px 16px;
+          background: #f8f9fa;
+          border-top: 1px solid #f0f0f0;
+          
+          .file-size {
+            font-size: 12px;
+            color: #909399;
+          }
+          
+          .analyze-btn {
+            border-radius: 4px;
+            font-size: 12px;
+            padding: 4px 12px;
+            height: 28px;
+            
+            :deep(.el-icon) {
+              font-size: 12px;
+            }
+          }
         }
+
       }
       
       .input-actions {
@@ -1589,6 +1699,8 @@ const formatAIResponse = (response) => {
         justify-content: space-between;
         align-items: center;
         margin-top: 12px;
+        padding: 8px 0; /* 添加内边距 */
+        min-height: 40px; /* 确保按钮区域有足够高度 */
       }
     }
   }
@@ -2154,6 +2266,133 @@ const formatAIResponse = (response) => {
       border-radius: 4px;
       margin: 0;
       font-style: italic;
+    }
+  }
+}
+
+// Markdown样式
+.markdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.markdown-content {
+  .markdown-preview {
+    padding: 16px;
+    background: #fafafa;
+    border-radius: 6px;
+    
+    :deep(h1), :deep(h2), :deep(h3), :deep(h4), :deep(h5), :deep(h6) {
+      color: #303133;
+      margin: 16px 0 8px 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e4e7ed;
+      font-weight: 600;
+    }
+    
+    :deep(h1) { font-size: 28px; }
+    :deep(h2) { font-size: 24px; }
+    :deep(h3) { font-size: 20px; }
+    :deep(h4) { font-size: 18px; }
+    :deep(h5) { font-size: 16px; }
+    :deep(h6) { font-size: 14px; }
+    
+    :deep(p) {
+      margin: 8px 0;
+      line-height: 1.6;
+      color: #606266;
+    }
+    
+    :deep(ul), :deep(ol) {
+      margin: 8px 0;
+      padding-left: 24px;
+      
+      li {
+        margin: 4px 0;
+        line-height: 1.5;
+        color: #606266;
+      }
+    }
+    
+    :deep(blockquote) {
+      margin: 16px 0;
+      padding: 8px 16px;
+      background: #f4f4f5;
+      border-left: 4px solid #409eff;
+      color: #606266;
+      font-style: italic;
+    }
+    
+    :deep(code) {
+      padding: 2px 4px;
+      background: #f1f2f3;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #e6a23c;
+    }
+    
+    :deep(pre) {
+      margin: 16px 0;
+      padding: 16px;
+      background: #2d3748;
+      color: #e2e8f0;
+      border-radius: 6px;
+      overflow-x: auto;
+      
+      code {
+        background: none;
+        color: inherit;
+        padding: 0;
+      }
+    }
+    
+    :deep(table) {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      
+      th, td {
+        padding: 8px 12px;
+        border: 1px solid #e4e7ed;
+        text-align: left;
+      }
+      
+      th {
+        background: #f5f7fa;
+        font-weight: 600;
+        color: #303133;
+      }
+      
+      td {
+        color: #606266;
+      }
+    }
+    
+    :deep(hr) {
+      margin: 24px 0;
+      border: none;
+      border-top: 2px solid #e4e7ed;
+    }
+    
+    :deep(strong) {
+      font-weight: 600;
+      color: #303133;
+    }
+    
+    :deep(em) {
+      font-style: italic;
+      color: #909399;
+    }
+    
+    :deep(a) {
+      color: #409eff;
+      text-decoration: none;
+      
+      &:hover {
+        text-decoration: underline;
+      }
     }
   }
 }
