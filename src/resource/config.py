@@ -333,28 +333,32 @@ def get_logs_dir() -> str:
 
 def get_uploads_dir() -> str:
     """获取上传目录"""
-    config = get_config()
-    uploads_dir = config.get('directories.uploads', 'uploads')
+    # 确保使用项目根目录的uploads
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    uploads_dir = os.path.join(project_root, 'uploads')
     os.makedirs(uploads_dir, exist_ok=True)
     return uploads_dir
 
 def get_temp_dir() -> str:
     """获取临时目录"""
-    config = get_config()
-    temp_dir = config.get('directories.temp', 'uploads/temp')
+    # 确保使用项目根目录的uploads/temp
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    temp_dir = os.path.join(project_root, 'uploads', 'temp')
     os.makedirs(temp_dir, exist_ok=True)
     return temp_dir
 
 def get_analysis_results_dir() -> str:
     """获取分析结果目录"""
-    config = get_config()
-    results_dir = config.get('directories.analysis_results', 'uploads/analysis_results')
+    # 确保使用项目根目录的uploads/analysis_results
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    results_dir = os.path.join(project_root, 'uploads', 'analysis_results')
     os.makedirs(results_dir, exist_ok=True)
     return results_dir
 
 def get_cache_dir() -> str:
     """获取缓存目录"""
-    config = get_config()
-    cache_dir = config.get('directories.cache', 'uploads/cache')
+    # 确保使用项目根目录的uploads/cache
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    cache_dir = os.path.join(project_root, 'uploads', 'cache')
     os.makedirs(cache_dir, exist_ok=True)
     return cache_dir 

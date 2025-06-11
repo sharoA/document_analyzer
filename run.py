@@ -25,6 +25,11 @@ def check_environment():
     for directory in directories:
         Path(directory).mkdir(exist_ok=True)
     
+    # 确保uploads子目录存在
+    upload_subdirs = ["uploads/temp", "uploads/analysis_results", "uploads/cache"]
+    for directory in upload_subdirs:
+        Path(directory).mkdir(exist_ok=True)
+    
     # 检查配置文件
     config_file = Path("src/resource/config.py")
     if not config_file.exists():

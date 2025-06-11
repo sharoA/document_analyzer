@@ -1173,7 +1173,7 @@ def upload_file():
         task_id = str(uuid.uuid4())
         
         # 保存文件到uploads/temp目录（使用分析服务的目录结构）
-        uploads_dir = "uploads/temp"
+        uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "temp")
         os.makedirs(uploads_dir, exist_ok=True)
         file_path = os.path.join(uploads_dir, f"{task_id}_{filename}")
         
@@ -1390,173 +1390,43 @@ def get_analysis_result(task_id):
         task = get_task(task_id)
         if task:
             
-            # 构建文档解析结果对象
-            parsing_object = {
-                "interface_name": "文档解析接口",
-                "endpoint": f"/api/file/parsing/{task_id}",
-                "status": "completed" if parsing_result else "pending",
-                "data": {
-                    "text_content": parsing_result.get("text_content", ""),
-                    "file_type": parsing_result.get("file_type", "unknown"),
-                    "file_size": parsing_result.get("file_size", 0),
-                    "analysis_method": parsing_result.get("analysis_method", "basic"),
-                    "char_count": parsing_result.get("char_count", 0),
-                    "line_count": parsing_result.get("line_count", 0),
-                    "message": parsing_result.get("message", ""),
-                    "summary": parsing_result.get("summary", ""),
-                    "keywords": parsing_result.get("keywords", [])
-                },
-                "metadata": {
-                    "processing_time": parsing_result.get("processing_time", 0),
-                    "success": bool(parsing_result),
-                    "timestamp": task.created_at.isoformat() if task.created_at else ""
-                }
-            }
-            
-            # 构建内容分析结果对象
-            content_object = {
-                "interface_name": "内容分析接口",
-                "endpoint": f"/api/file/analyze/{task_id}",
-                "status": "completed" if content_analysis else "pending",
-                "data": {
-                    "content_type": content_analysis.get("content_type", "document"),
-                    "document_type": content_analysis.get("document_type", "未知"),
-                    "language": content_analysis.get("language", "zh-CN"),
-                    "word_count": content_analysis.get("word_count", 0),
-                    "char_count": content_analysis.get("char_count", 0),
-                    "summary": content_analysis.get("summary", ""),
-                    "keywords": content_analysis.get("keywords", []),
-                    "complexity_level": content_analysis.get("complexity_level", "中等"),
-                    "structure_analysis": content_analysis.get("structure_analysis", {
-                        "paragraphs": 0,
-                        "lines": 0,
-                        "sections": 0
-                    }),
-                    "crud_analysis": content_analysis.get("crud_analysis", {
-                        "operations": [],
-                        "requirements": [],
-                        "changes": [],
-                        "total_operations": 0,
-                        "operation_types": []
-                    }),
-                    "business_insights": content_analysis.get("business_insights", {
-                        "main_functions": [],
-                        "technical_requirements": [],
-                        "estimated_development_time": "0天",
-                        "priority_features": []
-                    })
-                },
-                "metadata": {
-                    "analysis_version": content_analysis.get("analysis_metadata", {}).get("analysis_version", "2.0"),
-                    "confidence_score": content_analysis.get("analysis_metadata", {}).get("confidence_score", 0.0),
-                    "analyzed_at": content_analysis.get("analysis_metadata", {}).get("analyzed_at", ""),
-                    "parsing_input_used": content_analysis.get("analysis_metadata", {}).get("parsing_input_used", False),
-                    "success": bool(content_analysis)
-                }
-            }
-            
-            # 构建AI分析结果对象
-            ai_object = {
-                "interface_name": "AI智能分析接口",
-                "endpoint": f"/api/file/ai-analyze/{task_id}",
-                "status": "completed" if ai_analysis else "pending",
-                "data": {
-                    "analysis_type": ai_analysis.get("analysis_type", "comprehensive"),
-                    "api_interfaces": ai_analysis.get("api_interfaces", []),
-                    "mq_configuration": ai_analysis.get("mq_configuration", {}),
-                    "technical_specifications": ai_analysis.get("technical_specifications", {}),
-                    "implementation_priority": ai_analysis.get("implementation_priority", []),
-                    "integration_points": ai_analysis.get("integration_points", []),
-                    "ai_insights": ai_analysis.get("ai_insights", {
-                        "api_interfaces": [],
-                        "mq_configuration": {},
-                        "technical_specifications": {},
-                        "implementation_priority": [],
-                        "integration_points": []
-                    })
-                },
-                "metadata": {
-                    "confidence_score": ai_analysis.get("confidence_score", 0.0),
-                    "analysis_model": ai_analysis.get("analysis_model", ""),
-                    "analysis_duration": ai_analysis.get("analysis_duration", 0.0),
-                    "analyzed_at": ai_analysis.get("analyzed_at", ""),
-                    "success": ai_analysis.get("success", False),
-                    "input_data": ai_analysis.get("input_data", {
-                        "crud_operations_processed": 0,
-                        "content_analysis_used": False,
-                        "document_type": "未知"
-                    }),
-                    "error": ai_analysis.get("error", "")
-                }
-            }
-            
-            # 计算整体完成状态
-            overall_status = "pending"
-            if task.status == "fully_completed":
-                overall_status = "completed"
-            elif task.status in ["ai_failed", "content_failed", "failed"]:
-                overall_status = "failed"
-            elif task.status in ["ai_analyzing", "content_analyzing", "parsing"]:
-                overall_status = "processing"
-            
-            # 计算整体进度
-            interface_progress = {
-                "parsing": 100 if parsing_result else 0,
-                "content_analysis": 100 if content_analysis else 0,
-                "ai_analysis": 100 if ai_analysis and ai_analysis.get("success") else 0
-            }
-            overall_progress = sum(interface_progress.values()) // 3
+            # 获取生成的markdown内容 - 从Redis获取，因为内存中的任务对象可能不是最新的
+            markdown_content = redis_task_storage.get_markdown_content(task_id) or ""
             
             # 构建最终的整合结果
             result = {
                 "success": True,
                 "task_id": task_id,
-                "overall_status": overall_status,
-                "overall_progress": overall_progress,
-                "interface_progress": interface_progress,
-                "current_step": task.status or "unknown",
-                "processing_steps": task.steps or [],
-                # 新增：后端生成的markdown内容
-                "markdown_content": task.markdown_content,
-                # 兼容旧版本的数据结构
+        
+                  # 基本信息
                 "basic_info": {
                     "filename": task.file_info.get("filename", "Unknown"),
                     "filesize": f"{task.file_info.get('size', 0) / 1024:.1f} KB",
-                    "file_type": task.file_info.get("type", "Unknown"),
-                    "uploaded_at": task.created_at.isoformat() if task.created_at else None
+                    "file_type": task.file_info.get("type", "Unknown")
                 },
+                #文档解析返回结果
                 "document_parsing": parsing_result,
+                #内容分析返回结果
                 "content_analysis": content_analysis,
+                #AI分析返回结果
                 "ai_analysis": ai_analysis,
-                "interfaces": {
-                    "document_parsing": parsing_object,
-                    "content_analysis": content_object,
-                    "ai_analysis": ai_object
-                },
+                # 后端生成的markdown内容 - 修复：从Redis获取而非从task对象
+                "markdown_content": markdown_content,
                 "summary": {
-                    "total_interfaces": 3,
-                    "completed_interfaces": sum(1 for obj in [parsing_object, content_object, ai_object] if obj["status"] == "completed"),
-                    "document_type": content_analysis.get("document_type", "未知"),
                     "complexity_level": content_analysis.get("complexity_level", "中等"),
                     "crud_operations_count": len(content_analysis.get("crud_analysis", {}).get("operations", [])),
                     "api_interfaces_count": len(ai_analysis.get("api_interfaces", [])),
                     "mq_topics_count": len(ai_analysis.get("mq_configuration", {}).get("topics", [])),
                     "estimated_development_time": content_analysis.get("business_insights", {}).get("estimated_development_time", "未知")
                 },
-                "data_flow": {
-                    "step1": "文档解析 → 提取文本内容和基础信息",
-                    "step2": "内容分析 → 识别CRUD操作和业务需求",
-                    "step3": "AI分析 → 生成接口设计和MQ配置",
-                    "integration": "三个接口结果整合为完整的开发方案"
-                },
                 "error": task.error or "",
                 "file_info": task.file_info or {},
                 "timestamps": {
                     "created_at": task.created_at.isoformat() if task.created_at else "",
                     "updated_at": task.updated_at.isoformat() if task.updated_at else "",
-                    "parsing_completed": parsing_object["metadata"]["timestamp"],
-                    "content_analysis_completed": content_object["metadata"]["analyzed_at"],
-                    "ai_analysis_completed": ai_object["metadata"]["analyzed_at"]
+                    "parsing_completed": task.created_at.isoformat() if task.created_at else "",
+                    "content_analysis_completed":content_analysis.get("analysis_metadata", {}).get("analyzed_at", ""),
+                    "ai_analysis_completed": ai_analysis.get("analyzed_at", "")
                 }
             }
             
@@ -1723,7 +1593,7 @@ def start_analysis_v2():
         task_id = str(uuid.uuid4())
         
         # 保存文件到uploads/temp目录
-        uploads_dir = "uploads/temp"
+        uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "temp")
         os.makedirs(uploads_dir, exist_ok=True)
         file_path = os.path.join(uploads_dir, f"{task_id}_{filename}")
         
@@ -1930,12 +1800,15 @@ def process_document_generation(task: FileParsingTask):
         task.update_progress(60, "转换为Markdown格式", "document_generating")
         markdown_content = generate_markdown_report(ai_analysis)
         
-        # 保存Markdown内容到任务中
+        # 保存Markdown内容到任务中和Redis
         task.update_progress(90, "保存文档内容", "document_generating")
         task.markdown_content = markdown_content
         
-        # 保存到数据库
-        task_storage.save_markdown_content(task.id, markdown_content)
+        # 保存到Redis用于接口返回
+        redis_task_storage.save_markdown_content(task.id, markdown_content)
+        
+        # 注释：不需要保存到SQLite数据库，因为没有地方会读取
+        # task_storage.save_markdown_content(task.id, markdown_content)
         
         # 更新任务状态
         task.update_progress(100, "文档生成完成", "document_generated")
@@ -1954,60 +1827,13 @@ def generate_markdown_report(result_data):
     
     if not result_data:
         logger.warning("结果数据为空，生成基础报告")
-        return "# 📋 文档分析报告\n\n**错误**: 没有可用的分析数据\n"
+        return "# 📋 开发设计方案\n\n**错误**: 没有可用的分析数据\n"
     
-    markdown = "# 📋 文档分析报告\n\n"
+    markdown = "# 📋 开发设计方案\n\n"
     
-    # 基本信息
-    if result_data.get("basic_info"):
-        basic_info = result_data["basic_info"]
-        markdown += "## 📄 基本信息\n\n"
-        markdown += f"- **文件名**: {basic_info.get('filename', 'Unknown')}\n"
-        markdown += f"- **文件大小**: {basic_info.get('filesize', 'Unknown')}\n"
-        markdown += f"- **文件类型**: {basic_info.get('file_type', 'Unknown')}\n"
-        if basic_info.get('uploaded_at'):
-            markdown += f"- **上传时间**: {basic_info['uploaded_at']}\n"
-        markdown += "\n---\n\n"
-    
-    # 文档解析结果
-    if result_data.get("document_parsing"):
-        parsing_result = result_data["document_parsing"]
-        markdown += "## 📖 文档解析结果\n\n"
-        
-        if parsing_result.get("content_elements", {}).get("text_content"):
-            text_content = parsing_result["content_elements"]["text_content"]
-            markdown += "### 📝 文档内容\n\n"
-            # 限制显示长度，避免过长
-            if len(text_content) > 2000:
-                markdown += f"{text_content[:2000]}...\n\n"
-                markdown += f"*（内容过长，仅显示前2000个字符）*\n\n"
-            else:
-                markdown += f"{text_content}\n\n"
-        
-        if parsing_result.get("content_elements", {}).get("statistics"):
-            stats = parsing_result["content_elements"]["statistics"]
-            markdown += "### 📊 文档统计\n\n"
-            markdown += f"- **字符总数**: {stats.get('total_chars', 0)}\n"
-            markdown += f"- **段落数**: {stats.get('paragraphs', 0)}\n"
-            markdown += f"- **表格数**: {stats.get('tables', 0)}\n"
-            markdown += f"- **图片数**: {stats.get('images', 0)}\n\n"
-        
-        markdown += "---\n\n"
-    
-    # 内容分析结果
-    if result_data.get("content_analysis"):
-        markdown += "## 🔍 内容分析结果\n\n"
-        content_analysis = result_data["content_analysis"]
-        if isinstance(content_analysis, str):
-            markdown += f"{content_analysis}\n\n"
-        elif isinstance(content_analysis, dict):
-            for key, value in content_analysis.items():
-                markdown += f"### {key}\n\n{value}\n\n"
-        markdown += "---\n\n"
-    
+  
     # AI智能分析结果
     if result_data.get("ai_analysis"):
-        markdown += "## 🤖 AI智能分析结果\n\n"
         ai_analysis = result_data["ai_analysis"]
         if isinstance(ai_analysis, str):
             markdown += f"{ai_analysis}\n\n"
@@ -2016,10 +1842,12 @@ def generate_markdown_report(result_data):
                 markdown += f"### {key}\n\n{value}\n\n"
         markdown += "---\n\n"
     
-    # 分析总结
-    markdown += "## 📝 分析总结\n\n"
-    markdown += "本次分析已完成文档解析、内容分析和AI智能分析三个阶段。"
-    markdown += "如需更详细的分析结果，请联系系统管理员。\n\n"
+    # 技术执行要求
+    markdown += "## 📝执行要求\n\n"
+    markdown += "1. 严格遵循设计文档中的架构、命名规范、代码结构\n"
+    markdown += "2. 只对指定部分进行修改\n"
+    markdown += "3. 保持其他部分完全不变\n"
+    markdown += "4. 如有疑问，先询问再执行\n"
     
     # 时间戳
     from datetime import datetime
@@ -2029,7 +1857,7 @@ def generate_markdown_report(result_data):
     return markdown
 
 def run_full_analysis_pipeline(task: FileParsingTask):
-    """运行完整的三阶段分析流程"""
+    """运行完整的阶段分析流程"""
     try:
         logger.info(f"开始完整分析流程: {task.id}")
         

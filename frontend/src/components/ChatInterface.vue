@@ -272,7 +272,7 @@
                 
                 <!-- 操作按钮 -->
                 <div style="margin-top: 24px; text-align: center; padding: 20px; border-top: 1px solid #e4e7ed;">
-                  <el-button type="primary" size="large" @click="analyzeDocument" :loading="isAnalyzing">
+                  <el-button size="large" @click="analyzeDocument" :loading="isAnalyzing">
                     <el-icon><Promotion /></el-icon>
                     开始分析文档
                   </el-button>
@@ -324,7 +324,7 @@
               
               <!-- 分析结果显示区域 -->
               <div class="results-container">
-                <el-scrollbar max-height="calc(70vh - 80px)" class="analysis-scrollbar">
+                <el-scrollbar height="calc(100vh - 320px)" class="analysis-scrollbar">
                   <div class="result-content">
                   <!-- 文件基本信息 -->
                   <el-card class="info-card" v-if="analysisResult">
@@ -466,7 +466,7 @@
                       <div class="ai-response-content">
                         <h6>智能分析报告</h6>
                         <div class="ai-response-text">
-                          <el-scrollbar max-height="40vh" class="ai-content-scrollbar">
+                          <el-scrollbar max-height="60vh" class="ai-content-scrollbar">
                             <div v-if="analysisResult.aiAnalysis.ai_response" v-html="formatAIResponse(analysisResult.aiAnalysis.ai_response)"></div>
                             <div v-else class="no-content">{{ analysisResult.aiAnalysis.ai_response || '分析完成' }}</div>
                           </el-scrollbar>
@@ -493,9 +493,25 @@
                       </div>
                     </template>
                     <div class="markdown-content">
-                      <el-scrollbar max-height="50vh" class="markdown-content-scrollbar">
+                      <el-scrollbar max-height="70vh" class="markdown-content-scrollbar">
                         <div class="markdown-preview" v-html="renderMarkdown(analysisResult.markdownContent)"></div>
                       </el-scrollbar>
+                    </div>
+                    
+                    <!-- 移动到此处的操作按钮 -->
+                    <div class="markdown-actions" style="margin-top: 16px; text-align: center; padding: 16px; border-top: 1px solid #e4e7ed;">
+                      <el-button type="primary" @click="analyzeWithAI">
+                        <el-icon><Promotion /></el-icon>
+                        智能处理
+                      </el-button>
+                      <el-button @click="exportResult">
+                        <el-icon><Download /></el-icon>
+                        立即出结果
+                      </el-button>
+                      <el-button @click="clearResult">
+                        <el-icon><Delete /></el-icon>
+                        访问全结果
+                      </el-button>
                     </div>
                   </el-card>
                   
@@ -536,7 +552,7 @@
                     </template>
                     
                     <div class="content-preview">
-                      <el-scrollbar max-height="30vh" class="document-content-scrollbar">
+                      <el-scrollbar max-height="50vh" class="document-content-scrollbar">
                         <pre class="content-text">{{ analysisResult.content }}</pre>
                       </el-scrollbar>
                     </div>
@@ -605,22 +621,6 @@
                   
                   </div>
                 </el-scrollbar>
-                
-                <!-- 悬浮操作按钮 -->
-                <div class="result-actions-float" v-if="analysisResult">
-                  <el-button type="primary" @click="analyzeWithAI">
-                    <el-icon><Promotion /></el-icon>
-                    智能处理
-                  </el-button>
-                  <el-button @click="exportResult">
-                    <el-icon><Download /></el-icon>
-                    导出结果
-                  </el-button>
-                  <el-button @click="clearResult">
-                    <el-icon><Delete /></el-icon>
-                    清空结果
-                  </el-button>
-                </div>
               </div>
             </div>
           </div>
@@ -1767,12 +1767,12 @@ const getAnalysisCharacterCount = () => {
     :deep(.el-tabs__content) {
       padding: 0;
       height: calc(100vh - 120px);
-      overflow-y: auto;
+      overflow-y: hidden;
     }
 
     .tab-content {
       padding: 24px;
-      height: 100%;
+      height: calc(100vh - 180px);
       overflow-y: auto;
 
       .status-header {
@@ -1827,6 +1827,10 @@ const getAnalysisCharacterCount = () => {
       }
 
       .analysis-result {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        
         .result-header {
           margin-bottom: 20px;
 
@@ -2541,8 +2545,18 @@ const getAnalysisCharacterCount = () => {
   padding: 20px;
 }
 
+// 结果容器样式优化
+        .results-container {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
 // 自适应滚动条样式优化
 .analysis-scrollbar {
+  flex: 1;
+  height: calc(100vh - 320px);
+  
   :deep(.el-scrollbar__wrap) {
     overflow-x: hidden;
   }
@@ -2610,37 +2624,37 @@ const getAnalysisCharacterCount = () => {
 // 响应式适配
 @media (max-width: 1200px) {
   .analysis-scrollbar {
-    max-height: 65vh !important;
+    height: calc(100vh - 340px) !important;
   }
   
   .ai-content-scrollbar {
-    max-height: 35vh !important;
+    max-height: 55vh !important;
   }
   
   .markdown-content-scrollbar {
-    max-height: 45vh !important;
+    max-height: 65vh !important;
   }
   
   .document-content-scrollbar {
-    max-height: 25vh !important;
+    max-height: 45vh !important;
   }
 }
 
 @media (max-width: 768px) {
   .analysis-scrollbar {
-    max-height: 60vh !important;
+    height: calc(100vh - 360px) !important;
   }
   
   .ai-content-scrollbar {
-    max-height: 30vh !important;
+    max-height: 50vh !important;
   }
   
   .markdown-content-scrollbar {
-    max-height: 40vh !important;
+    max-height: 60vh !important;
   }
   
   .document-content-scrollbar {
-    max-height: 20vh !important;
+    max-height: 40vh !important;
   }
 }
 </style> 

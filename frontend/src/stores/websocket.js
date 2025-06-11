@@ -1656,112 +1656,133 @@ ${task.timestamps ? `
   const startProgressPolling = (taskId) => {
     console.log(`📊 开始V2进度轮询: ${taskId}`)
     
+    let pollTimeout // 声明轮询定时器变量
+    
     const pollProgress = async () => {
       try {
+        // 更新当前进行中节点显示轮询状态
+        updateCurrentNodeMessage('正在检查进度...')
+        
         const response = await api.get(`/api/v2/analysis/progress/${taskId}`)
         
         if (response.data.success) {
           const progressData = response.data
           
-          // 更新任务状态
-          if (currentParsingTask.value && currentParsingTask.value.id === taskId) {
-            currentParsingTask.value.status = progressData.current_stage
-            currentParsingTask.value.progress = progressData.overall_progress
-            currentParsingTask.value.stages = progressData.stages
-            currentParsingTask.value.overallStatus = progressData.overall_status
-            currentParsingTask.value.error = progressData.error
-            currentParsingTask.value.updatedAt = new Date()
+                      // 轮询成功，清理轮询状态显示
+            clearCurrentNodePollingMessage()
             
-            // 更新节点进度状态
-            updateNodeProgress(progressData.stages)
+            // 更新任务状态
+            updateTaskProgress(progressData)
             
-            // 更新处理步骤显示（兼容老的UI系统）
-            updateProcessingStepsV2(progressData.stages, progressData.current_stage)
+            // 检查是否有错误
+            if (progressData.error) {
+              console.error('任务执行出错:', progressData.error)
+              isProcessing.value = false
+              ElMessage.error(`分析失败: ${progressData.error}`)
+              return
+            }
             
-            console.log(`📊 V2进度更新: ${progressData.current_stage}, 整体进度: ${progressData.overall_progress}%`)
-          }
-          
-          // 增强的完成状态检查逻辑
-          const stages = progressData.stages || {}
-          const isAllStagesCompleted = stages.document_parsing?.status === 'completed' && 
-                                     stages.content_analysis?.status === 'completed' && 
-                                     stages.ai_analysis?.status === 'completed'
-          
-          const isCompleted = progressData.overall_status === 'completed' || 
-                            progressData.overall_status === 'fully_completed' ||
-                            progressData.current_stage === 'fully_completed' ||
-                            progressData.overall_progress >= 100 ||
-                            isAllStagesCompleted
-          
-          console.log(`🔍 检查完成状态:`, {
-            overall_status: progressData.overall_status,
-            current_stage: progressData.current_stage,
-            overall_progress: progressData.overall_progress,
-            isAllStagesCompleted,
-            isCompleted
-          })
-          
-          // 检查是否完成
-          if (isCompleted) {
-            console.log(`🎉 V2分析完成: ${taskId}`)
-            isProcessing.value = false
+            // 增强的完成状态检查逻辑
+            const stages = progressData.stages || {}
+            const isAllStagesCompleted = stages.document_parsing?.status === 'completed' && 
+                                       stages.content_analysis?.status === 'completed' && 
+                                       stages.ai_analysis?.status === 'completed'
             
-            // 停止所有轮询
-            stopPolling(taskId, 'all')
+            const isCompleted = progressData.overall_status === 'completed' || 
+                              progressData.overall_status === 'fully_completed' ||
+                              progressData.current_stage === 'fully_completed' ||
+                              progressData.overall_progress >= 100 ||
+                              isAllStagesCompleted
             
-            // 获取最终结果（包含生成的markdown）
-            console.log(`📡 准备获取最终结果...`)
-            await fetchFinalResultV2(taskId)
+            // 如果任务完成，停止轮询
+            if (isCompleted) {
+              console.log(`🎉 V2分析完成: ${taskId}`)
+              isProcessing.value = false
+              
+              // 停止所有轮询
+              stopPolling(taskId, 'all')
+              
+              // 获取最终结果（包含生成的markdown）
+              console.log(`📡 准备获取最终结果...`)
+              await fetchFinalResultV2(taskId)
+              
+              // 切换到解析结果页签
+              setTimeout(() => {
+                window.dispatchEvent(new CustomEvent('switchToResultsTab', {
+                  detail: { tab: 'files' }
+                }))
+              }, 1000)
+              
+              return
+            }
             
-            // 切换到解析结果页签
-            setTimeout(() => {
-              // 通过自定义事件通知父组件切换页签
-              window.dispatchEvent(new CustomEvent('switchToResultsTab', {
-                detail: { tab: 'files' }
-              }))
-            }, 1000)
+            // 检查是否失败
+            if (progressData.overall_status === 'failed') {
+              console.error(`❌ V2分析失败: ${taskId}`, progressData.error)
+              isProcessing.value = false
+              ElMessage.error(`分析失败: ${progressData.error || '未知错误'}`)
+              return
+            }
             
-            return // 停止轮询
-          }
-          
-          // 检查是否失败
-          if (progressData.overall_status === 'failed') {
-            console.error(`❌ V2分析失败: ${taskId}`, progressData.error)
-            isProcessing.value = false
+            // 继续轮询，根据当前进度调整间隔
+            const hasRunningStage = Object.values(progressData.stages || {}).some(stage => stage.status === 'running')
+            const interval = hasRunningStage ? 2000 : 5000 // 有运行中的阶段时更频繁轮询
             
-            ElMessage.error(`分析失败: ${progressData.error || '未知错误'}`)
-            return // 停止轮询
-          }
-          
-          // 继续轮询
-          if (progressData.overall_status === 'running' || progressData.overall_status === 'pending' || !isCompleted) {
-            setTimeout(pollProgress, 2000) // 2秒后继续轮询
-          }
-          
+            pollTimeout = setTimeout(pollProgress, interval)
         } else {
           console.error('获取进度失败:', response.data.error)
           
+          // 显示错误信息
+          updateCurrentNodeMessage(`获取进度失败: ${response.data.error}`)
+          
           // 如果是404错误，任务可能不存在，停止轮询
           if (response.status === 404) {
-            isProcessing.value = false
-            ElMessage.error('任务不存在或已过期')
+            console.log('任务不存在，停止轮询')
             return
           }
           
-          // 其他错误，继续轮询但降低频率
-          setTimeout(pollProgress, 5000)
+          // 其他错误继续轮询
+          pollTimeout = setTimeout(pollProgress, 5000)
         }
-        
       } catch (error) {
         console.error('轮询进度失败:', error)
         
+        // 显示网络错误信息
+        updateCurrentNodeMessage('网络错误，正在重试...')
+        
         // 网络错误等，继续轮询但降低频率
-        setTimeout(pollProgress, 5000)
+        pollTimeout = setTimeout(pollProgress, 5000)
       }
     }
     
-    // 开始第一次轮询
     pollProgress()
+  }
+  
+  // 更新当前进行中节点的message显示
+  const updateCurrentNodeMessage = (pollingMessage) => {
+    Object.keys(nodeProgress.value).forEach(stageName => {
+      const node = nodeProgress.value[stageName]
+      if (node.status === 'running') {
+        // 保存原始message（如果还没保存的话）
+        if (!node.originalMessage) {
+          node.originalMessage = node.message
+        }
+        // 更新显示的message
+        node.message = `${node.originalMessage} (${pollingMessage})`
+      }
+    })
+  }
+  
+  // 清理当前节点的轮询信息显示
+  const clearCurrentNodePollingMessage = () => {
+    Object.keys(nodeProgress.value).forEach(stageName => {
+      const node = nodeProgress.value[stageName]
+      if (node.originalMessage) {
+        // 恢复原始message
+        node.message = node.originalMessage
+        delete node.originalMessage
+      }
+    })
   }
   
   // 更新节点进度状态
@@ -1773,6 +1794,12 @@ ${task.timestamps ? `
       const stage = stages[stageName]
       
       if (nodeProgress.value[stageName]) {
+        // 如果状态发生变化，清理轮询状态
+        if (nodeProgress.value[stageName].status !== stage.status && nodeProgress.value[stageName].originalMessage) {
+          nodeProgress.value[stageName].message = nodeProgress.value[stageName].originalMessage
+          delete nodeProgress.value[stageName].originalMessage
+        }
+        
         nodeProgress.value[stageName].progress = stage.progress || 0
         nodeProgress.value[stageName].message = stage.message || ''
         nodeProgress.value[stageName].status = stage.status || 'pending'
@@ -2155,6 +2182,26 @@ ${task.timestamps ? `
       
     } catch (error) {
       console.error('获取最终结果失败:', error)
+    }
+  }
+
+  // 更新任务进度状态
+  const updateTaskProgress = (progressData) => {
+    if (currentParsingTask.value && currentParsingTask.value.id === progressData.task_id) {
+      currentParsingTask.value.status = progressData.current_stage
+      currentParsingTask.value.progress = progressData.overall_progress
+      currentParsingTask.value.stages = progressData.stages
+      currentParsingTask.value.overallStatus = progressData.overall_status
+      currentParsingTask.value.error = progressData.error
+      currentParsingTask.value.updatedAt = new Date()
+      
+      // 更新节点进度状态
+      updateNodeProgress(progressData.stages)
+      
+      // 更新处理步骤显示（兼容老的UI系统）
+      updateProcessingStepsV2(progressData.stages, progressData.current_stage)
+      
+      console.log(`📊 V2进度更新: ${progressData.current_stage}, 整体进度: ${progressData.overall_progress}%`)
     }
   }
 
