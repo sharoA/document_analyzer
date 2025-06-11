@@ -14,16 +14,17 @@ from .vector_database import VectorDatabaseFactory, initialize_sample_data
 class AnalysisServiceManager:
     """分析服务管理器"""
     
-    def __init__(self, llm_client=None, vector_db_type: str = "mock", **vector_db_kwargs):
+    def __init__(self, llm_client=None, vector_db_type: str = "weaviate", **vector_db_kwargs):
         """
         初始化服务管理器
         
         Args:
-            llm_client: 大语言模型客户端
-            vector_db_type: 向量数据库类型 ("mock" 或 "chroma")
+            llm_client: 大语言模型客户端（火山引擎）
+            vector_db_type: 向量数据库类型 ("mock" 或 "chroma" or "weaviate", current "weaviate")
             **vector_db_kwargs: 向量数据库初始化参数
         """
         self.logger = logging.getLogger(self.__class__.__name__)
+        # 使用火山引擎作为大语言模型客户端
         self.llm_client = llm_client
         
         # 初始化向量数据库

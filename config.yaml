@@ -47,7 +47,7 @@ openai:
   temperature: 0.7
 vector_database:
   # 向量数据库类型: faiss 或 weaviate
-  type: faiss
+  type: weaviate
   dimension: 768
   # FAISS 配置
   faiss:

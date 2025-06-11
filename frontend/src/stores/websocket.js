@@ -1021,8 +1021,8 @@ export const useWebSocketStore = defineStore('websocket', () => {
             const parsingData = task.interfaces?.document_parsing?.data || task.parsing_result
             if (parsingData || task.file_info) {
               setAnalysisResult({
-                title: `${task.file_info?.name || parsingData?.file_name || '未知文件'} - 完整分析结果`,
-                type: parsingData?.type || 'document',
+                title: `📄 ${task.file_info?.name || parsingData?.file_name || '未知文件'} - 分析报告`,
+                type: 'comprehensive',
                 timestamp: Date.now(),
                 fileInfo: {
                   name: task.file_info?.name || parsingData?.file_name || '未知文件',
@@ -1899,24 +1899,7 @@ ${task.timestamps ? `
   const generateMarkdownContent = (resultData) => {
     if (!resultData) return ''
     
-    let markdown = '# 文档分析报告\n\n'
-    
-    // 基本信息
-    if (resultData.basic_info) {
-      markdown += '## 📄 基本信息\n\n'
-      markdown += `- **文件名**: ${resultData.basic_info.filename || 'Unknown'}\n`
-      markdown += `- **文件大小**: ${resultData.basic_info.filesize || 'Unknown'}\n`
-      markdown += `- **文件类型**: ${resultData.basic_info.file_type || 'Unknown'}\n\n`
-    }
-    
-    // 文档解析结果
-    if (resultData.document_parsing) {
-      markdown += '## 📖 文档解析\n\n'
-      if (resultData.document_parsing.content_elements?.text_content) {
-        markdown += '### 文档内容\n\n'
-        markdown += resultData.document_parsing.content_elements.text_content.substring(0, 500) + '...\n\n'
-      }
-    }
+    let markdown = '# 开发指导设计方案\n\n'
     
     // 内容分析结果
     if (resultData.content_analysis) {
@@ -1928,12 +1911,6 @@ ${task.timestamps ? `
     if (resultData.ai_analysis) {
       markdown += '## 🤖 AI智能分析\n\n'
       markdown += resultData.ai_analysis + '\n\n'
-    }
-    
-    // 分析总结
-    if (resultData.analysis_summary) {
-      markdown += '## 📝 分析总结\n\n'
-      markdown += resultData.analysis_summary + '\n\n'
     }
     
     return markdown
@@ -1980,22 +1957,28 @@ ${task.timestamps ? `
       console.log('📊 最终使用的结果数据:', resultData)
       
       // 提取各个接口的数据
-      const interfaces = resultData.interfaces || {}
-      const documentParsing = interfaces.document_parsing || {}
-      const contentAnalysis = interfaces.content_analysis || {}
-      const aiAnalysis = interfaces.ai_analysis || {}
+      const documentParsing = resultData.document_parsing || {}
+      const contentAnalysis = resultData.content_analysis || {}
+      const aiAnalysis = resultData.ai_analysis || {}
       
       console.log('📊 接口数据解析:')
       console.log('  - documentParsing:', documentParsing)
       console.log('  - contentAnalysis:', contentAnalysis)
       console.log('  - aiAnalysis:', aiAnalysis)
       
-      // 提取文档内容
-      const documentContent = documentParsing.data?.content || 
-                             documentParsing.data?.text_content || 
-                             documentParsing.content ||
-                             documentParsing.text_content || 
-                             resultData.content || ''
+      // 提取文档内容 - 从多个可能的位置获取
+      let documentContent = ''
+      
+      // 尝试从文档解析结果获取内容
+      const docParsingData = documentParsing.data || documentParsing
+      if (docParsingData.textContent?.textBlocks) {
+        documentContent = docParsingData.textContent.textBlocks
+          .map(block => block.content)
+          .join('\n')
+          .replace(/\r/g, '') // 移除回车符
+      } else if (docParsingData.content || docParsingData.text_content) {
+        documentContent = docParsingData.content || docParsingData.text_content
+      }
       
       console.log('📄 提取的文档内容长度:', documentContent.length)
       
@@ -2017,31 +2000,81 @@ ${task.timestamps ? `
       console.log('📝 Markdown内容长度:', markdownContent?.length || 0)
       
       // 设置完整的分析结果
+      // 从多个来源提取文件信息
+      const basicInfo = resultData.basic_info || {}
+      const docParsingInfo = documentParsing.data || documentParsing
+      const fileFormatInfo = docParsingInfo.fileFormat || {}
+      const metadataInfo = docParsingInfo.metadata?.documentInfo || {}
+      
+      // 提取文件名 - 优先使用文档标题，回退到其他来源
+      let fileName = metadataInfo.title || 
+                    basicInfo.filename || 
+                    basicInfo.name || 
+                    'test_requirements.txt'  // 从上传的文件名获取
+      
+      // 清理文件名中的特殊字符
+      fileName = fileName.replace(/\r|\n/g, '').trim()
+      
+      // 提取文件类型
+      const fileType = fileFormatInfo.subType || 
+                      fileFormatInfo.primaryType || 
+                      basicInfo.file_type || 
+                      'txt'
+      
+      // 提取文件大小 - 从文档解析结果获取实际大小
+      const fileSize = fileFormatInfo.basicInfo?.fileSize || 
+                      docParsingInfo.fileFormat?.technicalDetails?.charCount || 
+                      0
+      
+      // 提取字符数
+      const characterCount = docParsingInfo.fileFormat?.technicalDetails?.charCount || 
+                            docParsingInfo.textContent?.paragraphs || 
+                            documentContent.length
+      
+      console.log('📄 文件基本信息:', { 
+        fileName, 
+        fileType, 
+        fileSize, 
+        characterCount,
+        basicInfo, 
+        fileFormatInfo,
+        metadataInfo 
+      })
+      
+      // 辅助函数：格式化文件大小
+      const formatFileSize = (bytes) => {
+        if (bytes === 0) return '0 B'
+        const k = 1024
+        const sizes = ['B', 'KB', 'MB', 'GB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+      }
+      
       const analysisResultData = {
-        title: `${resultData.file_info?.name || 'Unknown'} - 完整分析结果`,
+        title: `📄 ${fileName} - 分析报告`,
         type: 'comprehensive', 
         timestamp: Date.now(),
         fileInfo: {
-          name: resultData.file_info?.name || 'Unknown',
-          type: resultData.file_info?.type || 'Unknown', 
-          size: resultData.file_info?.size || 0
+          name: fileName,
+          type: fileType,
+          size: typeof fileSize === 'string' ? fileSize : formatFileSize(fileSize)
         },
         details: {
-          type: resultData.file_info?.type || 'unknown',
+          type: fileType,
           length: documentContent.length,
           parsing_duration: documentParsing.processing_time || 0
         },
         content: documentContent,
         contentAnalysis: {
-          document_type: contentAnalysisData.document_type || 'unknown',
-          language: contentAnalysisData.language || 'zh',
-          summary: contentAnalysisData.summary || '',
-          keyword_extraction: contentAnalysisData.keywords || [],
+          document_type: contentAnalysisData.document_type || metadataInfo.documentType || 'unknown',
+          language: fileFormatInfo.basicInfo?.language || contentAnalysisData.language || 'zh',
+          summary: contentAnalysisData.summary || metadataInfo.description || '',
+          keyword_extraction: contentAnalysisData.keywords || docParsingInfo.contentKeyWord?.primaryKeywords || [],
           statistics: {
-            character_count: contentAnalysisData.char_count || documentContent.length,
-            word_count: contentAnalysisData.word_count || 0
+            character_count: characterCount,
+            word_count: fileFormatInfo.technicalDetails?.wordCount || contentAnalysisData.word_count || 0
           },
-          structure_analysis: contentAnalysisData.structure_analysis || {},
+          structure_analysis: contentAnalysisData.structure_analysis || docParsingInfo.documentStructure || {},
           requirements_analysis: contentAnalysisData.crud_analysis || {}
         },
         aiAnalysis: {
@@ -2053,6 +2086,7 @@ ${task.timestamps ? `
           ai_response: aiAnalysisData.analysis_result || aiAnalysisData.ai_response || '分析完成',
           custom_prompt: aiAnalysisData.custom_prompt || ''
         },
+        analysisSummary: resultData.analysis_summary || '',
         markdownContent: markdownContent
       }
       
@@ -2105,7 +2139,7 @@ ${task.timestamps ? `
         
         // 设置完整的分析结果
         setAnalysisResult({
-          title: `${resultData.basic_info?.filename || 'Unknown'} - 完整分析结果`,
+          title: `📄 ${resultData.basic_info?.filename || '未知文件'} - 分析报告`,
           type: 'comprehensive',
           timestamp: Date.now(),
           fileInfo: resultData.basic_info,

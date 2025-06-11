@@ -305,7 +305,9 @@
               <div class="result-header">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                   <div>
-                    <h4>{{ analysisResult.title || '文档解析结果' }}</h4>
+                    <div class="result-title">
+                      <h4>{{ analysisResult.title || '📄 文档解析结果' }}</h4>
+                    </div>
                     <div class="result-meta">
                       <el-tag size="small" :type="getResultTypeTag(analysisResult.type)">
                         {{ getResultTypeText(analysisResult.type) }}
@@ -320,70 +322,56 @@
                 </div>
               </div>
               
-              <el-scrollbar height="500px">
-                <div class="result-content">
+              <!-- 分析结果显示区域 -->
+              <div class="results-container">
+                <el-scrollbar max-height="calc(70vh - 80px)" class="analysis-scrollbar">
+                  <div class="result-content">
                   <!-- 文件基本信息 -->
-                  <el-card class="info-card" v-if="analysisResult.fileInfo">
+                  <el-card class="info-card" v-if="analysisResult">
                     <template #header>
-                      <h5>文件信息</h5>
+                      <h5>当前文件信息</h5>
                     </template>
                     <el-descriptions :column="2" border size="small">
-                      <el-descriptions-item label="文件名">
-                        {{ analysisResult.fileInfo.name }}
+                      <el-descriptions-item label="文件名称">
+                        {{ getAnalysisFileName() }}
                       </el-descriptions-item>
                       <el-descriptions-item label="文件类型">
-                        {{ analysisResult.fileInfo.type }}
+                        {{ getAnalysisFileType() }}
                       </el-descriptions-item>
                       <el-descriptions-item label="文件大小">
-                        {{ formatFileSize(analysisResult.fileInfo.size) }}
+                        {{ getAnalysisFileSize() }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="字符数">
+                        {{ getAnalysisCharacterCount() }}
                       </el-descriptions-item>
                       <el-descriptions-item label="解析时间">
                         {{ formatTime(analysisResult.timestamp) }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="文档状态">
+                        <el-tag size="small" :type="getResultTypeTag(analysisResult.type)">
+                          {{ getResultTypeText(analysisResult.type) }}
+                        </el-tag>
                       </el-descriptions-item>
                     </el-descriptions>
                   </el-card>
                   
                   <!-- 解析统计信息 -->
-                  <el-card class="info-card" v-if="analysisResult.details">
+                  <el-card class="info-card" v-if="analysisResult">
                     <template #header>
                       <h5>解析统计</h5>
                     </template>
                     <el-descriptions :column="2" border size="small">
-                      <el-descriptions-item 
-                        v-if="analysisResult.details.length"
-                        label="内容长度"
-                      >
-                        {{ analysisResult.details.length }} 字符
+                      <el-descriptions-item label="内容长度">
+                        {{ getAnalysisCharacterCount() }} 字符
                       </el-descriptions-item>
-                      <el-descriptions-item 
-                        v-if="analysisResult.details.lines"
-                        label="行数"
-                      >
-                        {{ analysisResult.details.lines }} 行
+                      <el-descriptions-item label="文件类型">
+                        {{ getAnalysisFileType() }}
                       </el-descriptions-item>
-                      <el-descriptions-item 
-                        v-if="analysisResult.details.paragraph_count"
-                        label="段落数"
-                      >
-                        {{ analysisResult.details.paragraph_count }} 段
+                      <el-descriptions-item label="解析状态">
+                        <el-tag type="success" size="small">解析完成</el-tag>
                       </el-descriptions-item>
-                      <el-descriptions-item 
-                        v-if="analysisResult.details.table_count"
-                        label="表格数"
-                      >
-                        {{ analysisResult.details.table_count }} 个
-                      </el-descriptions-item>
-                      <el-descriptions-item 
-                        v-if="analysisResult.details.page_count"
-                        label="页数"
-                      >
-                        {{ analysisResult.details.page_count }} 页
-                      </el-descriptions-item>
-                      <el-descriptions-item 
-                        v-if="analysisResult.details.parsing_duration"
-                        label="解析耗时"
-                      >
-                        {{ analysisResult.details.parsing_duration.toFixed(2) }} 秒
+                      <el-descriptions-item label="解析耗时">
+                        {{ analysisResult.details?.parsing_duration?.toFixed(2) || '0.00' }} 秒
                       </el-descriptions-item>
                     </el-descriptions>
                   </el-card>
@@ -397,10 +385,10 @@
                       <!-- 基础信息 -->
                       <el-descriptions :column="2" border size="small" style="margin-bottom: 16px;">
                         <el-descriptions-item label="文档类型">
-                          {{ getDocumentTypeText(analysisResult.contentAnalysis.document_type) }}
+                          {{ analysisResult.contentAnalysis.document_type || '未知类型' }}
                         </el-descriptions-item>
                         <el-descriptions-item label="文档语言">
-                          {{ getLanguageText(analysisResult.contentAnalysis.language) }}
+                          {{ analysisResult.contentAnalysis.language || 'zh-CN' }}
                         </el-descriptions-item>
                         <el-descriptions-item label="字符数">
                           {{ analysisResult.contentAnalysis.statistics?.character_count || 0 }}
@@ -410,36 +398,15 @@
                         </el-descriptions-item>
                       </el-descriptions>
                       
-                      <!-- 文档摘要 -->
-                      <div v-if="analysisResult.contentAnalysis.summary" class="analysis-section">
-                        <h6>文档摘要</h6>
-                        <p class="summary-text">{{ analysisResult.contentAnalysis.summary }}</p>
-                      </div>
-                      
-                      <!-- 关键词 -->
-                      <div v-if="analysisResult.contentAnalysis.keyword_extraction?.length" class="analysis-section">
-                        <h6>关键词</h6>
-                        <div class="keywords">
-                          <el-tag 
-                            v-for="[keyword, freq] in analysisResult.contentAnalysis.keyword_extraction" 
-                            :key="keyword"
-                            size="small"
-                            class="keyword-tag"
-                          >
-                            {{ keyword }} ({{ freq }})
-                          </el-tag>
-                        </div>
-                      </div>
-                      
                       <!-- 文档结构 -->
                       <div v-if="analysisResult.contentAnalysis.structure_analysis" class="analysis-section">
                         <h6>文档结构</h6>
                         <el-descriptions :column="2" border size="small">
                           <el-descriptions-item label="总行数">
-                            {{ analysisResult.contentAnalysis.structure_analysis.total_lines }}
+                            {{ analysisResult.contentAnalysis.structure_analysis.total_lines || '' }}
                           </el-descriptions-item>
                           <el-descriptions-item label="空行数">
-                            {{ analysisResult.contentAnalysis.structure_analysis.empty_lines }}
+                            {{ analysisResult.contentAnalysis.structure_analysis.empty_lines || '' }}
                           </el-descriptions-item>
                           <el-descriptions-item label="标题数">
                             {{ analysisResult.contentAnalysis.structure_analysis.headings?.length || 0 }}
@@ -474,7 +441,7 @@
                       <div class="ai-analysis-header">
                         <h5>智能处理结果</h5>
                         <el-tag size="small" type="success">
-                          {{ getAnalysisTypeText(analysisResult.aiAnalysis.analysis_type) }}
+                          {{ analysisResult.aiAnalysis.analysis_type || '全面分析' }}
                         </el-tag>
                       </div>
                     </template>
@@ -482,16 +449,16 @@
                       <!-- AI分析信息 -->
                       <el-descriptions :column="2" border size="small" style="margin-bottom: 16px;">
                         <el-descriptions-item label="分析模型">
-                          {{ analysisResult.aiAnalysis.analysis_model }}
+                          {{ analysisResult.aiAnalysis.analysis_model || 'Doubao' }}
                         </el-descriptions-item>
                         <el-descriptions-item label="置信度">
-                          {{ (analysisResult.aiAnalysis.confidence_score * 100).toFixed(1) }}%
+                          {{ ((analysisResult.aiAnalysis.confidence_score || 0.95) * 100).toFixed(1) }}%
                         </el-descriptions-item>
                         <el-descriptions-item label="分析时间">
-                          {{ formatTime(analysisResult.aiAnalysis.analyzed_at) }}
+                          {{ formatTime(analysisResult.aiAnalysis.analyzed_at || Date.now()) }}
                         </el-descriptions-item>
                         <el-descriptions-item label="分析耗时">
-                          {{ analysisResult.aiAnalysis.analysis_duration?.toFixed(2) || 0 }} 秒
+                          {{ analysisResult.aiAnalysis.analysis_duration?.toFixed(2) || '0.00' }} 秒
                         </el-descriptions-item>
                       </el-descriptions>
                       
@@ -499,16 +466,11 @@
                       <div class="ai-response-content">
                         <h6>智能分析报告</h6>
                         <div class="ai-response-text">
-                          <el-scrollbar height="300px">
-                            <div v-html="formatAIResponse(analysisResult.aiAnalysis.ai_response)"></div>
+                          <el-scrollbar max-height="40vh" class="ai-content-scrollbar">
+                            <div v-if="analysisResult.aiAnalysis.ai_response" v-html="formatAIResponse(analysisResult.aiAnalysis.ai_response)"></div>
+                            <div v-else class="no-content">{{ analysisResult.aiAnalysis.ai_response || '分析完成' }}</div>
                           </el-scrollbar>
                         </div>
-                      </div>
-                      
-                      <!-- 自定义提示（如果有） -->
-                      <div v-if="analysisResult.aiAnalysis.custom_prompt" class="custom-prompt-section">
-                        <h6>自定义分析提示</h6>
-                        <p class="custom-prompt-text">{{ analysisResult.aiAnalysis.custom_prompt }}</p>
                       </div>
                     </div>
                   </el-card>
@@ -517,7 +479,7 @@
                   <el-card class="info-card" v-if="analysisResult.markdownContent">
                     <template #header>
                       <div class="markdown-header">
-                        <h5>📋 分析报告</h5>
+                        <h5>📋 {{ getAnalysisFileName() }} - 分析报告</h5>
                         <el-button-group size="small">
                           <el-button @click="copyMarkdownContent">
                             <el-icon><DocumentCopy /></el-icon>
@@ -531,9 +493,27 @@
                       </div>
                     </template>
                     <div class="markdown-content">
-                      <el-scrollbar height="600px">
+                      <el-scrollbar max-height="50vh" class="markdown-content-scrollbar">
                         <div class="markdown-preview" v-html="renderMarkdown(analysisResult.markdownContent)"></div>
                       </el-scrollbar>
+                    </div>
+                  </el-card>
+                  
+                  <!-- 分析总结 -->
+                  <el-card class="info-card" v-if="analysisResult.analysisSummary">
+                    <template #header>
+                      <div class="summary-header">
+                        <h5>📝 {{ getAnalysisFileName() }} - 分析总结</h5>
+                        <el-button-group size="small">
+                          <el-button @click="copySummary">
+                            <el-icon><DocumentCopy /></el-icon>
+                            复制总结
+                          </el-button>
+                        </el-button-group>
+                      </div>
+                    </template>
+                    <div class="summary-content">
+                      <div class="summary-text" v-html="formatSummary(analysisResult.analysisSummary)"></div>
                     </div>
                   </el-card>
                   
@@ -556,7 +536,7 @@
                     </template>
                     
                     <div class="content-preview">
-                      <el-scrollbar height="300px">
+                      <el-scrollbar max-height="30vh" class="document-content-scrollbar">
                         <pre class="content-text">{{ analysisResult.content }}</pre>
                       </el-scrollbar>
                     </div>
@@ -623,23 +603,25 @@
                     </div>
                   </el-card>
                   
-                  <!-- 操作按钮 -->
-                  <div class="result-actions">
-                    <el-button type="primary" @click="analyzeWithAI">
-                      <el-icon><Promotion /></el-icon>
-                      智能处理
-                    </el-button>
-                    <el-button @click="exportResult">
-                      <el-icon><Download /></el-icon>
-                      导出结果
-                    </el-button>
-                    <el-button @click="clearResult">
-                      <el-icon><Delete /></el-icon>
-                      清空结果
-                    </el-button>
                   </div>
+                </el-scrollbar>
+                
+                <!-- 悬浮操作按钮 -->
+                <div class="result-actions-float" v-if="analysisResult">
+                  <el-button type="primary" @click="analyzeWithAI">
+                    <el-icon><Promotion /></el-icon>
+                    智能处理
+                  </el-button>
+                  <el-button @click="exportResult">
+                    <el-icon><Download /></el-icon>
+                    导出结果
+                  </el-button>
+                  <el-button @click="clearResult">
+                    <el-icon><Delete /></el-icon>
+                    清空结果
+                  </el-button>
                 </div>
-              </el-scrollbar>
+              </div>
             </div>
           </div>
         </el-tab-pane>
@@ -1268,11 +1250,12 @@ const downloadContent = () => {
     return
   }
   
+  const fileName = getAnalysisFileName().replace(/\.[^/.]+$/, "") // 移除原文件扩展名
   const blob = new Blob([analysisResult.value.content], { type: 'text/plain;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${analysisResult.value.fileInfo?.name || 'document'}_content.txt`
+  a.download = `${fileName}_content.txt`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
@@ -1381,16 +1364,53 @@ const downloadMarkdownContent = () => {
     return
   }
   
+  const fileName = getAnalysisFileName().replace(/\.[^/.]+$/, "") // 移除原文件扩展名
   const blob = new Blob([analysisResult.value.markdownContent], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${analysisResult.value.fileInfo?.name || 'document'}_analysis_report.md`
+  a.download = `${fileName}_analysis_report.md`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
   ElMessage.success('分析报告下载开始')
+}
+
+const formatSummary = (summary) => {
+  if (!summary) return ''
+  return summary.replace(/\n/g, '<br>')
+}
+
+const copySummary = async () => {
+  if (!analysisResult.value?.analysisSummary) {
+    ElMessage.warning('没有可复制的总结内容')
+    return
+  }
+  
+  try {
+    await navigator.clipboard.writeText(analysisResult.value.analysisSummary)
+    ElMessage.success('总结已复制到剪贴板')
+  } catch (error) {
+    ElMessage.error('复制失败')
+  }
+}
+
+const getAnalysisFileName = () => {
+  return analysisResult.value?.fileInfo?.name || '未知文件'
+}
+
+const getAnalysisFileType = () => {
+  return analysisResult.value?.fileInfo?.type || analysisResult.value?.details?.type || '未知类型'
+}
+
+const getAnalysisFileSize = () => {
+  return formatFileSize(analysisResult.value?.fileInfo?.size || 0)
+}
+
+const getAnalysisCharacterCount = () => {
+  return analysisResult.value?.contentAnalysis?.statistics?.character_count || 
+         analysisResult.value?.details?.length || 0
 }
 </script>
 
@@ -1810,11 +1830,20 @@ const downloadMarkdownContent = () => {
         .result-header {
           margin-bottom: 20px;
 
-          h4 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #303133;
-            margin: 0 0 8px 0;
+          .result-title {
+            h4 {
+              font-size: 18px;
+              font-weight: 600;
+              color: #303133;
+              margin: 0 0 8px 0;
+              display: flex;
+              align-items: center;
+              
+              // 文件图标样式
+              &:first-child {
+                margin-right: 8px;
+              }
+            }
           }
 
           .result-meta {
@@ -2137,15 +2166,78 @@ const downloadMarkdownContent = () => {
   .agent-workspace {
     height: 50vh;
   }
+  
+  // 移动端悬浮按钮优化
+  .result-actions-float {
+    padding: 12px 16px;
+    gap: 8px;
+    
+    .el-button {
+      flex: 1;
+      max-width: none;
+      height: 32px;
+      font-size: 12px;
+      
+      .el-icon {
+        font-size: 14px;
+      }
+    }
+  }
 }
 
-.result-actions {
+// 结果容器样式
+.results-container {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+// 悬浮操作按钮样式
+.result-actions-float {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: center;
   gap: 12px;
-  padding-top: 20px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
   border-top: 1px solid #e4e7ed;
-  margin-top: 20px;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  }
+  
+  .el-button {
+    flex: 1;
+    max-width: 120px;
+    height: 36px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    &.el-button--primary {
+      background: linear-gradient(135deg, #409eff, #1890ff);
+      border: none;
+      
+      &:hover {
+        background: linear-gradient(135deg, #1890ff, #096dd9);
+      }
+    }
+  }
 }
 
 // 内容分析结果样式
@@ -2281,6 +2373,47 @@ const downloadMarkdownContent = () => {
   align-items: center;
 }
 
+// 分析总结样式
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
+  h5 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #303133;
+  }
+}
+
+.summary-content {
+  .summary-text {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #606266;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #67c23a;
+    margin: 0;
+    
+    :deep(br) {
+      margin-bottom: 8px;
+    }
+    
+    :deep(strong) {
+      color: #303133;
+      font-weight: 600;
+    }
+    
+    :deep(em) {
+      color: #909399;
+      font-style: italic;
+    }
+  }
+}
+
 .markdown-content {
   .markdown-preview {
     padding: 16px;
@@ -2398,6 +2531,116 @@ const downloadMarkdownContent = () => {
         text-decoration: underline;
       }
     }
+  }
+}
+
+.no-content {
+  color: #909399;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+// 自适应滚动条样式优化
+.analysis-scrollbar {
+  :deep(.el-scrollbar__wrap) {
+    overflow-x: hidden;
+  }
+  
+  :deep(.el-scrollbar__view) {
+    padding: 0;
+  }
+}
+
+.ai-content-scrollbar,
+.markdown-content-scrollbar,
+.document-content-scrollbar {
+  :deep(.el-scrollbar__wrap) {
+    overflow-x: hidden;
+  }
+  
+  :deep(.el-scrollbar__view) {
+    padding: 8px 0;
+  }
+  
+  :deep(.el-scrollbar__bar) {
+    .el-scrollbar__thumb {
+      background-color: rgba(144, 147, 153, 0.5);
+      border-radius: 4px;
+      
+      &:hover {
+        background-color: rgba(144, 147, 153, 0.8);
+      }
+    }
+  }
+}
+
+// 不同滚动区域的特殊优化
+.ai-content-scrollbar {
+  // AI内容区域的特殊样式
+  :deep(.el-scrollbar__view) {
+    min-height: 200px;
+  }
+}
+
+.markdown-content-scrollbar {
+  // Markdown内容区域的特殊样式
+  :deep(.el-scrollbar__view) {
+    min-height: 300px;
+  }
+}
+
+.document-content-scrollbar {
+  // 文档内容区域的特殊样式
+  :deep(.el-scrollbar__view) {
+    min-height: 150px;
+  }
+  
+  .content-text {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #303133;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0;
+  }
+}
+
+// 响应式适配
+@media (max-width: 1200px) {
+  .analysis-scrollbar {
+    max-height: 65vh !important;
+  }
+  
+  .ai-content-scrollbar {
+    max-height: 35vh !important;
+  }
+  
+  .markdown-content-scrollbar {
+    max-height: 45vh !important;
+  }
+  
+  .document-content-scrollbar {
+    max-height: 25vh !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .analysis-scrollbar {
+    max-height: 60vh !important;
+  }
+  
+  .ai-content-scrollbar {
+    max-height: 30vh !important;
+  }
+  
+  .markdown-content-scrollbar {
+    max-height: 40vh !important;
+  }
+  
+  .document-content-scrollbar {
+    max-height: 20vh !important;
   }
 }
 </style> 

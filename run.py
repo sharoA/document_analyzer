@@ -57,16 +57,12 @@ def start_api_server():
     print("❤️  健康检查: http://localhost:8082/api/health")
     
     try:
-        # 切换到src/apis目录并启动服务器
-        os.chdir('src/apis')
-        subprocess.run([sys.executable, 'api_server.py'])
+        # 直接运行API服务器模块
+        subprocess.run([sys.executable, '-m', 'src.apis.api_server'])
     except KeyboardInterrupt:
         print("\n👋 API服务器已停止")
     except Exception as e:
         print(f"❌ API服务器启动失败: {e}")
-    finally:
-        # 切换回原目录
-        os.chdir('../..')
 
 def start_websocket_server():
     """启动WebSocket服务器"""
@@ -94,12 +90,7 @@ def start_full_service():
         try:
             # 启动API服务器
             def start_api():
-                original_dir = os.getcwd()
-                try:
-                    os.chdir('src/apis')
-                    subprocess.run([sys.executable, 'api_server.py'])
-                finally:
-                    os.chdir(original_dir)
+                subprocess.run([sys.executable, '-m', 'src.apis.api_server'])
             
             api_future = executor.submit(start_api)
             

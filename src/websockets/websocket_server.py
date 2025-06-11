@@ -259,14 +259,43 @@ if __name__ == '__main__':
     print("=" * 60)
     
     try:
-        socketio.run(
-            app,
-            host='0.0.0.0',
-            port=8081,
-            debug=True,
-            allow_unsafe_werkzeug=True
-        )
+        # 检查werkzeug版本并选择合适的启动方式
+        try:
+            import werkzeug
+            werkzeug_version = werkzeug.__version__
+            print(f"🔧 检测到Werkzeug版本: {werkzeug_version}")
+            
+            # 尝试不同的启动方式
+            try:
+                # 首先尝试不带unsafe参数
+                socketio.run(
+                    app,
+                    host='0.0.0.0',
+                    port=8081,
+                    debug=True
+                )
+            except TypeError as te:
+                if 'allow_unsafe_werkzeug' in str(te):
+                    print("⚠️  新版本Werkzeug不支持allow_unsafe_werkzeug参数")
+                    print("🔄 使用标准模式启动...")
+                    # 使用标准模式重新启动
+                    socketio.run(
+                        app,
+                        host='0.0.0.0',
+                        port=8081,
+                        debug=False  # 关闭debug模式避免兼容性问题
+                    )
+                else:
+                    raise te
+        except ImportError:
+            print("❌ 无法导入werkzeug模块")
+            # 降级启动方式
+            app.run(host='0.0.0.0', port=8081, debug=True)
     except KeyboardInterrupt:
         print("\n🛑 服务器已停止")
     except Exception as e:
-        print(f"❌ 服务器启动失败: {e}") 
+        print(f"❌ 服务器启动失败: {e}")
+        print("💡 提示: 如果遇到werkzeug版本问题，请尝试:")
+        print("   pip install werkzeug==2.0.3")
+        print("   或")
+        print("   pip install --upgrade werkzeug") 

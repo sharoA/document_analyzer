@@ -19,12 +19,21 @@ from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, request, jsonify, make_response
 from flask_cors import CORS
 
-# 配置日志 - 移到最前面
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# 导入统一日志配置
+try:
+    from ..utils.logger_config import initialize_logging, get_logger, log_api_request, log_analysis_step
+except ImportError:
+    # 如果相对导入失败，使用绝对导入
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    from src.utils.logger_config import initialize_logging, get_logger, log_api_request, log_analysis_step
+
+# 初始化日志系统
+initialize_logging()
+
+# 获取日志器
+logger = get_logger('api_server')
 
 # 导入配置和工具类
 try:
@@ -89,6 +98,26 @@ CORS(app,
      allow_headers=["Content-Type", "Authorization"],
      supports_credentials=True)
 
+# 添加请求日志中间件
+@app.before_request
+def log_request_info():
+    """记录请求信息"""
+    import time
+    request.start_time = time.time()
+
+@app.after_request  
+def log_request_result(response):
+    """记录请求结果"""
+    import time
+    duration = time.time() - getattr(request, 'start_time', time.time())
+    log_api_request(
+        method=request.method,
+        endpoint=request.endpoint or request.path,
+        status_code=response.status_code,
+        duration=duration
+    )
+    return response
+
 # 确保分析服务目录结构存在
 ensure_analysis_directories()
 
@@ -121,9 +150,28 @@ except Exception as e:
 # 初始化分析服务管理器
 try:
     # 先初始化分析服务管理器
+    # 从配置文件读取向量数据库类型和配置
+    vector_db_config = config.get_vector_database_config()
+    vector_db_type = vector_db_config.get('type', 'mock')  # 默认使用mock
+    
+    # 准备向量数据库参数
+    vector_db_kwargs = {}
+    if vector_db_type.lower() == 'weaviate':
+        weaviate_config = vector_db_config.get('weaviate', {})
+        vector_db_kwargs.update({
+            'host': weaviate_config.get('host', 'localhost'),
+            'port': weaviate_config.get('port', 8080),
+            'grpc_port': weaviate_config.get('grpc_port', 50051),
+            'scheme': weaviate_config.get('scheme', 'http'),
+            'api_key': weaviate_config.get('api_key'),
+            'collection_name': weaviate_config.get('default_collection', {}).get('name', 'AnalyDesignDocuments')
+        })
+        logger.info(f"Weaviate配置: {weaviate_config.get('scheme', 'http')}://{weaviate_config.get('host', 'localhost')}:{weaviate_config.get('port', 8080)}")
+    
     analysis_service_manager = initialize_analysis_service_manager(
         llm_client=volcano_client,
-        vector_db_type="mock"  # 可以根据需要配置为 "chroma"
+        vector_db_type=vector_db_type,
+        **vector_db_kwargs
     )
     logger.info("分析服务管理器初始化成功")
     analysis_logger.info("分析服务管理器已集成到API服务器")
@@ -396,6 +444,7 @@ def parse_text_document(file_content: bytes, file_name: str) -> dict:
 def process_file_parsing(task: FileParsingTask):
     """处理文件解析任务 - 使用分析服务模块"""
     try:
+        log_analysis_step(task.id, "文件解析", "开始", f"文件: {task.file_info.get('name', 'unknown')}")
         task.update_progress(10, "开始解析文件", "parsing")
         
         file_info = task.file_info
@@ -444,6 +493,7 @@ def process_file_parsing(task: FileParsingTask):
             # 保存解析结果到Redis
             redis_task_storage.save_parsing_result(task.id, parsing_result)
             task.update_progress(100, "文档解析完成", "parsed")
+            log_analysis_step(task.id, "文件解析", "完成", f"解析结果已保存")
             analysis_logger.info(f"✅ 文件解析完成: {task.id}")
         else:
             # 降级到原有的解析逻辑
@@ -466,6 +516,7 @@ def process_file_parsing(task: FileParsingTask):
     except Exception as e:
         error_msg = f"文件解析失败: {str(e)}"
         logger.error(f"任务 {task.id} 解析失败: {e}")
+        log_analysis_step(task.id, "文件解析", "失败", str(e))
         analysis_logger.error(f"❌ 任务 {task.id} 解析失败: {e}")
         task.error = error_msg
         task.status = "failed"
@@ -481,6 +532,7 @@ def process_content_analysis(task: FileParsingTask, parsing_result: dict):
         if not task.result:
             raise ValueError("解析结果不存在，无法进行内容分析")
         
+        log_analysis_step(task.id, "内容分析", "开始", f"状态: {task.status}, 进度: {task.progress}%")
         analysis_logger.info(f"🔍 开始内容分析任务: {task.id}")
         analysis_logger.info(f"📊 任务当前状态: {task.status}")
         analysis_logger.info(f"📊 任务当前进度: {task.progress}%")
@@ -1596,7 +1648,7 @@ def delete_file(task_id):
 
 @app.route('/api/v2/analysis/start', methods=['POST'])
 def start_analysis_v2():
-    """V2版本：启动完整流程（自动执行三阶段）"""
+    """V2版本：启动完整流程（自动执行4阶段）"""
     try:
         # 检查请求类型
         if request.content_type and 'application/json' in request.content_type:
@@ -1689,7 +1741,7 @@ def start_analysis_v2():
         # 设置初始进度状态为"启动中"
         task.update_progress(0, "分析流程启动中", "starting")
         
-        # 启动完整的三阶段分析流程
+        # 启动完整的4阶段分析流程
         executor.submit(run_full_analysis_pipeline, task)
         
         logger.info(f"V2 完整分析启动成功: {filename}, 任务ID: {task_id}, 大小: {len(file_content)} bytes")
@@ -1874,9 +1926,9 @@ def process_document_generation(task: FileParsingTask):
                    f"content_analysis={bool(result_data.get('content_analysis'))}, "
                    f"ai_analysis={bool(result_data.get('ai_analysis'))}")
         
-        # 生成Markdown内容
+        # 生成Markdown内容，将ai_analysis转换为Markdown格式    
         task.update_progress(60, "转换为Markdown格式", "document_generating")
-        markdown_content = generate_markdown_report(result_data)
+        markdown_content = generate_markdown_report(ai_analysis)
         
         # 保存Markdown内容到任务中
         task.update_progress(90, "保存文档内容", "document_generating")
