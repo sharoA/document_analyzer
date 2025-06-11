@@ -16,12 +16,22 @@
 - 具体开发接口、接口设计入反参数
 
 ## 智能分析架构流程
-文件上传 → Redis存储基本信息
+文件上传 → SQLite存储基本信息
     ↓
-阶段1：文档解析 → Redis存储结果
+阶段1：文档解析 → Redis存储解析结果
     ↓
-阶段2：内容分析 ← Redis读取前阶段结果 → Redis存储结果  
+阶段2：内容分析 ← Redis读取解析结果 → Redis存储内容分析结果  
     ↓
-阶段3：AI智能分析 ← Redis读取前阶段结果 → Redis存储结果
+阶段3：AI智能分析 ← Redis读取内容分析结果 → Redis存储AI分析结果
     ↓
-组装最终结果 → JSON转Markdown → 前端展示
+result接口 ← Redis读取所有分析结果 → JSON响应 → 前端展示
+
+### 数据存储策略
+- **SQLite**: 存储任务基本信息（task_id、文件信息、状态、进度）
+- **Redis**: 存储所有分析结果（文档解析、内容分析、AI智能解析）
+- **Redis键结构**:
+  - `task:{task_id}` - 任务基本信息
+  - `result:{task_id}:parsing` - 文档解析结果
+  - `result:{task_id}:content_analysis` - 内容分析结果
+  - `result:{task_id}:ai_analysis` - AI分析结果
+

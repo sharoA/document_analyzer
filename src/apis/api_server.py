@@ -32,6 +32,7 @@ try:
     from ..utils.volcengine_client import VolcengineClient, VolcengineConfig
     from ..utils.llm_logger import LLMLogger
     from ..utils.task_storage import get_task_storage
+    from ..utils.redis_task_storage import get_redis_task_storage
     # 导入分析服务模块
     from ..analysis_services import (
         AnalysisServiceManager,
@@ -57,6 +58,7 @@ except ImportError:
     from src.utils.volcengine_client import VolcengineClient, VolcengineConfig
     from src.utils.llm_logger import LLMLogger
     from src.utils.task_storage import get_task_storage
+    from src.utils.redis_task_storage import get_redis_task_storage
     # 导入分析服务模块
     from src.analysis_services import (
         AnalysisServiceManager,
@@ -77,6 +79,7 @@ except ImportError:
 # 获取配置
 config = get_config()
 task_storage = get_task_storage()
+redis_task_storage = get_redis_task_storage()
 
 app = Flask(__name__)
 # 配置CORS，允许所有来源和方法
@@ -170,8 +173,15 @@ class FileParsingTask:
     def _save_to_db(self):
         """保存任务到数据库"""
         try:
-            # 使用新的任务存储系统
+            # 保存到SQLite数据库
             task_storage.create_task(
+                filename=self.file_info.get('filename', ''),
+                file_size=self.file_info.get('size', 0),
+                file_type=self.file_info.get('type', ''),
+                task_id=self.id
+            )
+            # 同时保存到Redis
+            redis_task_storage.create_task(
                 filename=self.file_info.get('filename', ''),
                 file_size=self.file_info.get('size', 0),
                 file_type=self.file_info.get('type', ''),
@@ -431,8 +441,8 @@ def process_file_parsing(task: FileParsingTask):
             
             # 更新任务结果
             task.result = parsing_result
-            # 保存解析结果到数据库
-            task_storage.save_parsing_result(task.id, parsing_result)
+            # 保存解析结果到Redis
+            redis_task_storage.save_parsing_result(task.id, parsing_result)
             task.update_progress(100, "文档解析完成", "parsed")
             analysis_logger.info(f"✅ 文件解析完成: {task.id}")
         else:
@@ -448,8 +458,8 @@ def process_file_parsing(task: FileParsingTask):
                 raise ValueError(f"不支持的文件类型: {file_type}")
             
             task.result = result
-            # 保存解析结果到数据库
-            task_storage.save_parsing_result(task.id, result)
+            # 保存解析结果到Redis
+            redis_task_storage.save_parsing_result(task.id, result)
             task.update_progress(100, "文档解析完成", "parsed")
             logger.info(f"文件解析完成: {task.id}")
         
@@ -632,8 +642,8 @@ def process_content_analysis(task: FileParsingTask, parsing_result: dict):
                 
                 # 更新任务的内容分析结果
                 task.content_analysis = content_result
-                # 保存内容分析结果到数据库
-                task_storage.save_content_analysis(task.id, content_result)
+                # 保存内容分析结果到Redis
+                redis_task_storage.save_content_analysis(task.id, content_result)
                 task.update_progress(100, "内容分析完成", "content_analyzed")
                 analysis_logger.info(f"✅ 内容分析完成: {task.id}")
                 return
@@ -693,8 +703,8 @@ def process_content_analysis(task: FileParsingTask, parsing_result: dict):
         }
         
         task.content_analysis = analysis_result
-        # 保存内容分析结果到数据库
-        task_storage.save_content_analysis(task.id, analysis_result)
+        # 保存内容分析结果到Redis
+        redis_task_storage.save_content_analysis(task.id, analysis_result)
         task.update_progress(100, "内容分析完成", "content_analyzed")
         analysis_logger.info(f"✅ 内容分析完成: {task.id}")
         
@@ -737,8 +747,8 @@ def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensi
             
             # 更新任务的AI分析结果
             task.ai_analysis = ai_result
-            # 保存AI分析结果到数据库
-            task_storage.save_ai_analysis(task.id, ai_result)
+            # 保存AI分析结果到Redis
+            redis_task_storage.save_ai_analysis(task.id, ai_result)
             task.update_progress(100, "AI分析完成", "ai_analyzed")
             analysis_logger.info(f"✅ AI分析完成: {task.id}")
             
@@ -812,8 +822,8 @@ def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensi
                 }
                 
                 task.ai_analysis = ai_analysis_result
-                # 保存AI分析结果到数据库
-                task_storage.save_ai_analysis(task.id, ai_analysis_result)
+                # 保存AI分析结果到Redis
+                redis_task_storage.save_ai_analysis(task.id, ai_analysis_result)
                 task.update_progress(100, "AI分析完成", "ai_analyzed")
                 logger.info(f"AI分析完成: {task.id}")
             else:
@@ -1317,14 +1327,16 @@ def ai_analyze(task_id):
 
 @app.route('/api/file/result/<task_id>', methods=['GET'])
 def get_analysis_result(task_id):
-    """获取完整分析结果 - 整合三个接口的输出"""
+    """获取完整分析结果 - 从Redis获取数据"""
     try:
+        # 优先从Redis获取分析结果
+        parsing_result = redis_task_storage.get_parsing_result(task_id) or {}
+        content_analysis = redis_task_storage.get_content_analysis(task_id) or {}
+        ai_analysis = redis_task_storage.get_ai_analysis(task_id) or {}
+        
+        # 从SQLite获取任务基本信息
         task = get_task(task_id)
         if task:
-            # 确保所有字段都有默认值，避免undefined
-            parsing_result = task.result or {}
-            content_analysis = task.content_analysis or {}
-            ai_analysis = task.ai_analysis or {}
             
             # 构建文档解析结果对象
             parsing_object = {
@@ -1461,9 +1473,9 @@ def get_analysis_result(task_id):
                     "file_type": task.file_info.get("type", "Unknown"),
                     "uploaded_at": task.created_at.isoformat() if task.created_at else None
                 },
-                "document_parsing": task.result,
-                "content_analysis": task.content_analysis,
-                "ai_analysis": task.ai_analysis,
+                "document_parsing": parsing_result,
+                "content_analysis": content_analysis,
+                "ai_analysis": ai_analysis,
                 "interfaces": {
                     "document_parsing": parsing_object,
                     "content_analysis": content_object,
@@ -1838,6 +1850,11 @@ def process_document_generation(task: FileParsingTask):
         # 获取所有分析结果
         task.update_progress(30, "获取分析结果数据", "document_generating")
         
+        # 从Redis获取分析结果数据
+        parsing_result = redis_task_storage.get_parsing_result(task.id) or {}
+        content_analysis = redis_task_storage.get_content_analysis(task.id) or {}
+        ai_analysis = redis_task_storage.get_ai_analysis(task.id) or {}
+        
         # 构建完整的结果数据
         result_data = {
             "basic_info": {
@@ -1846,9 +1863,9 @@ def process_document_generation(task: FileParsingTask):
                 "file_type": task.file_info.get("type", "Unknown"),
                 "uploaded_at": task.created_at.isoformat() if task.created_at else None
             },
-            "document_parsing": task.result,
-            "content_analysis": task.content_analysis,
-            "ai_analysis": task.ai_analysis
+            "document_parsing": parsing_result,
+            "content_analysis": content_analysis,
+            "ai_analysis": ai_analysis
         }
         
         # 调试信息
