@@ -1,386 +1,647 @@
 # 🤖 智能需求分析与设计文档生成系统
 
-这是一个基于人工智能的企业级需求分析和设计文档生成系统，采用前后端分离架构，能够结合公司现有的产品需求文档库、数据库结构和设计文档模板来进行深度分析。
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://python.org)
+[![Vue](https://img.shields.io/badge/Vue-3.4%2B-green.svg)](https://vuejs.org)
+[![Flask](https://img.shields.io/badge/Flask-2.0%2B-red.svg)](https://flask.palletsprojects.com)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+这是一个基于人工智能的企业级需求分析和设计文档生成系统，采用前后端分离架构，结合大语言模型（LLM）、向量数据库和智能分析引擎，能够自动分析需求文档、生成设计文档、提供API接口建议，并支持实时对话交互。
 
 ## ✨ 核心功能
 
-### 1. 智能需求分析
-- 📄 支持多种文档格式（PDF、Word、图片等）
-- 🔍 结合历史需求文档库进行语义相似性分析
-- 🗄️ 自动分析现有数据库结构和字段
-- 🔑 提取业务关键词和技术关键词
-- ⚠️ 智能检查需求文档中的问题和缺陷
+### 🔍 智能文档分析
+- **多格式支持**: PDF、Word、图片、Markdown、文本等多种格式
+- **智能解析**: 基于AI的文档内容理解和结构化提取
+- **语义分析**: 结合向量数据库进行语义相似性分析
+- **OCR识别**: 支持图片和扫描文档的文字识别
+- **增量处理**: 支持大文档的分块处理和增量分析
 
-### 2. API接口设计分析
-- 🔌 自动分析需要开发的API接口数量
-- 📊 识别每个接口需要的数据字段
-- 🗃️ 检查数据库中字段的可用性
-- 📋 生成详细的接口设计文档
+### 🤖 AI驱动的需求分析
+- **智能提取**: 自动提取业务需求、功能模块、数据字段
+- **缺陷检测**: 智能识别需求文档中的问题和缺陷
+- **关键词分析**: 提取业务关键词和技术关键词
+- **相似性匹配**: 基于历史文档库进行相似需求匹配
+- **多轮对话**: 支持与AI助手的实时交互式分析
 
-### 3. 设计文档生成
-- 📝 基于企业模板生成后端详细设计文档
-- 🎨 结合前端截图生成前端详细设计文档
-- 📐 包含系统架构、数据库设计、API设计等完整内容
-- 💾 支持设计文档的保存和下载
+### 🔌 API接口设计分析
+- **接口识别**: 自动分析需要开发的API接口数量和类型
+- **数据映射**: 识别每个接口需要的数据字段和结构
+- **数据库分析**: 检查现有数据库字段的可用性和完整性
+- **CRUD操作**: 自动生成增删改查操作建议
+- **接口文档**: 生成详细的API设计文档和规范
 
-### 4. 前端截图分析
-- 📷 支持上传前端界面截图
-- 🔤 自动OCR识别截图中的文字内容
-- 🎯 结合截图内容生成前端设计文档
+### 📝 设计文档生成
+- **模板化生成**: 基于企业模板生成标准化设计文档
+- **多层次设计**: 包含系统架构、数据库设计、API设计等
+- **前端设计**: 结合截图分析生成前端设计文档
+- **技术方案**: 提供完整的技术实现方案和建议
+- **文档导出**: 支持Markdown、PDF等多种格式导出
 
-### 5. 智能知识库系统
-- 🗄️ **向量数据库**: 基于Weaviate的语义搜索知识库
-- 📚 **多格式支持**: 自动处理DOCX、XLSX、Java、XML等文件
-- 🔍 **智能检索**: 支持自然语言查询，快速定位相关文档
-- 💾 **缓存优化**: Redis缓存机制，提升查询性能
-- 🔄 **增量更新**: 支持知识库内容的增量更新和维护
+### 🗄️ 智能知识库系统
+- **向量数据库**: 基于Weaviate/FAISS的高性能语义搜索
+- **多源数据**: 支持DOCX、XLSX、Java、XML、PDF等多种文件
+- **智能检索**: 自然语言查询，快速定位相关文档和代码
+- **缓存优化**: Redis缓存机制，提升查询性能
+- **增量更新**: 支持知识库内容的实时更新和维护
 
-### 6. 统一配置管理
-- ⚙️ **YAML配置**: 统一的config.yaml配置文件
-- 🔧 **模块化配置**: 支持LLM、数据库、缓存等模块独立配置
-- 🔐 **安全管理**: API密钥和敏感信息的安全存储
-- 📊 **配置验证**: 自动验证配置项的有效性
+### ⚙️ 统一配置管理
+- **YAML配置**: 基于config.yaml的统一配置管理
+- **模块化配置**: LLM、数据库、缓存等模块独立配置
+- **环境隔离**: 支持开发、测试、生产环境配置
+- **安全管理**: API密钥和敏感信息的安全存储
+- **配置验证**: 自动验证配置项的有效性和完整性
 
 ## 🛠️ 技术架构
 
-### 前后端分离架构
+### 系统架构图
 ```
-┌─────────────────┐    WebSocket/HTTP    ┌─────────────────┐
-│   Vue 3 前端    │ ←─────────────────→ │  Python 后端    │
-│                 │                      │                 │
-│ • Element Plus  │                      │ • Flask API     │
-│ • WebSocket     │                      │ • SocketIO      │
-│ • 实时聊天界面   │                      │ • AI 分析引擎   │
-└─────────────────┘                      └─────────────────┘
-     端口: 3000                              端口: 8081
+┌─────────────────────────────────────────────────────────────────┐
+│                         前端层 (Vue 3)                          │
+├─────────────────────────────────────────────────────────────────┤
+│  • Element Plus UI      • 实时聊天界面    • 文件上传管理        │
+│  • WebSocket客户端      • 响应式设计      • 进度监控           │
+└─────────────────┬───────────────────────────────────────────────┘
+                  │ HTTP/WebSocket
+┌─────────────────┴───────────────────────────────────────────────┐
+│                         网关层                                   │
+├─────────────────────────────────────────────────────────────────┤
+│  • API Gateway (Flask)  • CORS处理       • 请求路由           │
+│  • WebSocket Handler    • 身份认证       • 负载均衡           │
+└─────────────────┬───────────────────────────────────────────────┘
+                  │
+┌─────────────────┴───────────────────────────────────────────────┐
+│                      业务服务层                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐          │
+│  │  文档解析服务  │ │  AI分析服务   │ │  知识库服务   │          │
+│  │               │ │               │ │               │          │
+│  │ • PDF解析     │ │ • LLM调用     │ │ • 向量检索    │          │
+│  │ • Word解析    │ │ • 需求分析    │ │ • 语义搜索    │          │
+│  │ • OCR识别     │ │ • 设计生成    │ │ • 知识管理    │          │
+│  └───────────────┘ └───────────────┘ └───────────────┘          │
+└─────────────────┬───────────────────────────────────────────────┘
+                  │
+┌─────────────────┴───────────────────────────────────────────────┐
+│                       数据层                                    │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌───────────────┐ ┌───────────────┐ ┌───────────────┐          │
+│  │   任务存储    │ │   向量数据库   │ │   缓存层      │          │
+│  │               │ │               │ │               │          │
+│  │ • SQLite/     │ │ • Weaviate/   │ │ • Redis       │          │
+│  │   Redis       │ │   FAISS       │ │ • 会话管理    │          │
+│  │ • 任务队列    │ │ • 语义向量    │ │ • 结果缓存    │          │
+│  └───────────────┘ └───────────────┘ └───────────────┘          │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### 技术栈
-- **前端**: Vue 3 + Element Plus + WebSocket + Vite
-- **后端**: Python Flask + SocketIO + AI引擎
-- **LangChain**: 构建智能体和连接组件
-- **DeepSeek/火山引擎**: 大语言模型，提供强大的文本理解和生成能力
-- **向量数据库**: Weaviate + sentence-transformers，语义搜索和知识检索
-- **缓存系统**: Redis，高性能缓存和会话管理
-- **配置管理**: YAML + Pydantic，统一配置验证和管理
-- **SQLAlchemy**: 关系型数据库连接，分析现有业务数据库
-- **PyPDF2/pdfplumber/docx/unstructured**: 多格式文档处理
-- **Tesseract/EasyOCR**: OCR工具，处理前端截图中的文本
+### 核心技术栈
+
+#### 前端技术栈
+- **Vue 3.4+**: 现代响应式前端框架
+- **Element Plus 2.4+**: 企业级UI组件库
+- **Vite 4.5+**: 高性能构建工具
+- **Pinia 2.1+**: 状态管理
+- **Vue Router 4.2+**: 路由管理
+- **WebSocket**: 实时双向通信
+- **Axios**: HTTP客户端
+- **Markdown-it**: Markdown渲染
+- **PDF.js**: PDF预览支持
+
+#### 后端技术栈
+- **Python 3.8+**: 核心编程语言
+- **Flask 2.0+**: 轻量级Web框架
+- **Flask-SocketIO**: WebSocket支持
+- **Flask-CORS**: 跨域资源共享
+- **SQLAlchemy**: 数据库ORM
+- **Pydantic**: 数据验证和序列化
+
+#### AI与数据处理
+- **火山引擎/DeepSeek**: 大语言模型服务
+- **LangChain**: AI应用开发框架
+- **Sentence-Transformers**: 文本向量化
+- **Weaviate/FAISS**: 向量数据库
+- **Redis**: 高性能缓存和会话存储
+- **PyPDF2/PDFPlumber**: PDF文档处理
+- **python-docx**: Word文档处理
+- **Tesseract/EasyOCR**: 光学字符识别
+
+#### 开发与部署
+- **Poetry/pip**: 依赖管理
+- **pytest**: 单元测试
+- **Black/isort**: 代码格式化
+- **Docker**: 容器化部署
+- **Nginx**: 反向代理（可选）
 
 ## 🚀 快速开始
 
-### 1. 环境准备
+### 1. 环境要求
+
+- **Python**: 3.8 或更高版本
+- **Node.js**: 16.0 或更高版本
+- **npm**: 7.0 或更高版本
+- **内存**: 建议4GB或以上
+- **存储**: 建议2GB可用空间
+
+### 2. 获取代码
 
 ```bash
 # 克隆项目
 git clone [项目地址]
 cd analyDesign
+```
 
-# 设置虚拟环境
+### 3. 后端环境配置
+
+#### 自动化安装（推荐）
+```powershell
+# Windows PowerShell
 powershell -ExecutionPolicy Bypass -File setup_env.ps1
+```
+
+#### 手动安装
+```bash
+# 创建虚拟环境
+python -m venv analyDesign_env
 
 # 激活虚拟环境
+# Windows
 call analyDesign_env\Scripts\activate.bat
+# Linux/macOS
+source analyDesign_env/bin/activate
 
 # 安装Python依赖
 pip install -r requirements.txt
 ```
 
-### 2. 配置环境
+### 4. 配置系统
 
-编辑 `config.yaml` 文件，配置以下参数：
+编辑 `config.yaml` 文件，配置必要参数：
 
 ```yaml
-# LLM配置
+# LLM配置 - 必须配置
 volcengine:
-  api_key: "your_volcengine_api_key_here"
-  base_url: "https://ark.cn-beijing.volces.com/api/v3"
-  model: "ep-20241205140139-5vqkz"
+  api_key: "你的火山引擎API密钥"
+  endpoint: "https://ark.cn-beijing.volces.com/api/v3"
+  model: "ep-20250605091804-wmw6w"  # 或其他可用模型
+  temperature: 0.7
+  max_tokens: 4000
 
-# 向量数据库配置
-weaviate:
-  host: "localhost"
-  port: 8080
-  api_key: "root-user-key"
+# 向量数据库配置 - 可选
+vector_database:
+  type: weaviate  # 或 faiss
+  weaviate:
+    host: localhost
+    port: 8080
+    api_key: "root-user-key"
+    default_collection:
+      name: "AnalyDesignDocuments"
 
-# Redis缓存配置
+# Redis缓存配置 - 可选
 redis:
-  host: "localhost"
+  host: localhost
   port: 6379
   db: 0
+  password: ""
 
-# 业务数据库配置（可选）
-database:
-  url: "mysql://username:password@localhost:3306/business_db"
+# 应用配置
+app:
+  debug: false
+  host: 0.0.0.0
+  port: 8000
+  name: AnalyDesign
 ```
 
-### 3. 启动系统
+### 5. 前端环境配置
 
-#### 后端启动
 ```bash
-# 启动后端服务（推荐）
+cd frontend
+
+# 安装依赖
+npm install
+
+# 或使用yarn
+yarn install
+```
+
+### 6. 启动系统
+
+#### 方式一：使用启动脚本（推荐）
+
+```bash
+# 启动后端服务
 双击 start_back.bat
-
-# 或使用Python直接启动
+# 或
 python run.py
-```
 
-#### 前端启动
-```bash
 # 启动前端服务
 双击 启动前端.bat
+# 或
+cd frontend && npm run dev
+```
 
-# 或手动启动
+#### 方式二：手动启动
+
+```bash
+# 终端1 - 启动后端
+python run.py --mode full
+
+# 终端2 - 启动前端
 cd frontend
-npm install
 npm run dev
 ```
 
-#### 服务检查
+#### 方式三：检查服务状态
+
 ```bash
+# 检查所有服务状态
+双击 检查服务状态.bat
+```
+
+### 7. 访问系统
+
+- **前端界面**: http://localhost:3000
+- **后端API**: http://localhost:8082
+- **WebSocket**: ws://localhost:8081/socket.io/
+- **健康检查**: http://localhost:8082/api/health
+
+## 📖 详细使用指南
+
+### 步骤1：系统初始化
+1. 确保所有服务正常启动
+2. 检查配置文件中的API密钥设置
+3. 验证向量数据库连接（如果使用）
+4. 确认Redis缓存服务（如果使用）
+
+### 步骤2：文档上传与处理
+1. **选择文档**: 支持PDF、Word、图片、文本等格式
+2. **上传文件**: 通过前端界面拖拽或选择文件上传
+3. **实时监控**: 查看文件解析和处理进度
+4. **错误处理**: 自动处理和反馈文件格式错误
+
+### 步骤3：智能分析配置
+1. **分析类型选择**:
+   - 基础内容分析
+   - 智能需求分析  
+   - 全面深度分析
+2. **参数配置**:
+   - 分析深度级别
+   - 输出格式偏好
+   - 特定关注点
+
+### 步骤4：实时对话交互
+1. **AI助手对话**: 与智能分析助手实时交流
+2. **问题澄清**: 针对需求不明确的地方进行深入询问
+3. **补充信息**: 提供额外的上下文和业务背景
+4. **迭代优化**: 基于反馈持续优化分析结果
+
+### 步骤5：结果查看与导出
+1. **分析报告**: 查看详细的需求分析报告
+2. **设计文档**: 获取生成的技术设计文档
+3. **API规范**: 查看推荐的API接口设计
+4. **文档导出**: 支持Markdown、PDF等格式导出
+
+### 步骤6：知识库管理（高级功能）
+1. **知识库查询**:
+   ```bash
+   python query_knowledge_base.py
+   ```
+2. **自然语言查询**: 输入业务相关问题获取历史文档
+3. **相似案例**: 查找类似的历史需求和解决方案
+4. **知识更新**: 将新的分析结果加入知识库
+
+## 📁 项目目录结构
+
+```
+analyDesign/
+├── 🚀 启动与配置
+│   ├── run.py                           # 主启动脚本
+│   ├── config.yaml                      # 统一配置文件
+│   ├── start_back.bat                   # 后端启动脚本
+│   ├── 启动前端.bat                      # 前端启动脚本
+│   ├── setup_env.ps1                    # 环境安装脚本
+│   ├── activate_env.bat                 # 环境激活脚本
+│   └── requirements.txt                 # Python依赖列表
+│
+├── 🐍 后端核心 (src/)
+│   ├── apis/                            # API接口层
+│   │   ├── api_server.py                # 主API服务器
+│   │   ├── analysis_api.py              # 分析相关API
+│   │   ├── file_api.py                  # 文件处理API
+│   │   ├── task_api.py                  # 任务管理API
+│   │   └── websocket_api.py             # WebSocket接口
+│   │
+│   ├── analysis_services/               # 分析服务层
+│   │   ├── __init__.py                  # 服务管理器入口
+│   │   ├── service_manager.py           # 服务管理器
+│   │   ├── document_parser.py           # 文档解析服务
+│   │   ├── content_analyzer.py          # 内容分析服务
+│   │   ├── ai_analyzer.py               # AI分析服务
+│   │   ├── vector_database.py           # 向量数据库服务
+│   │   ├── base_service.py              # 基础服务类
+│   │   └── test_services.py             # 服务测试
+│   │
+│   ├── utils/                           # 工具类库
+│   │   ├── logger_config.py             # 日志配置
+│   │   ├── volcengine_client.py         # 火山引擎客户端
+│   │   ├── task_storage.py              # 任务存储
+│   │   ├── redis_task_storage.py        # Redis任务存储
+│   │   └── llm_logger.py                # LLM调用日志
+│   │
+│   ├── websockets/                      # WebSocket服务
+│   │   └── websocket_server.py          # WebSocket服务器
+│   │
+│   └── resource/                        # 资源配置
+│       └── config.py                    # 配置管理类
+│
+├── 🎨 前端界面 (frontend/)
+│   ├── src/                             # 源代码目录
+│   │   ├── components/                  # Vue组件
+│   │   ├── views/                       # 页面视图
+│   │   ├── router/                      # 路由配置
+│   │   ├── store/                       # 状态管理
+│   │   ├── utils/                       # 工具函数
+│   │   ├── assets/                      # 静态资源
+│   │   └── main.js                      # 入口文件
+│   │
+│   ├── package.json                     # 前端依赖配置
+│   ├── vite.config.js                   # Vite构建配置
+│   └── index.html                       # HTML模板
+│
+├── 📊 数据存储
+│   ├── uploads/                         # 文件上传目录
+│   │   ├── temp/                        # 临时文件
+│   │   ├── cache/                       # 缓存文件
+│   │   └── analysis_results/            # 分析结果
+│   │
+│   ├── outputs/                         # 输出文件目录
+│   ├── logs/                            # 日志文件目录
+│   ├── templates/                       # 文档模板目录
+│   └── tasks.db                         # 任务数据库
+│
+├── 🧪 测试与工具
+│   ├── tests/                           # 测试用例
+│   ├── query_knowledge_base.py          # 知识库查询工具
+│   └── 检查服务状态.bat                  # 服务状态检查
+│
+├── 📚 文档说明
+│   ├── README.md                        # 项目说明（本文档）
+│   ├── 快速安装指南.md                   # 安装指南
+│   ├── 接口快速参考表.md                 # API参考
+│   ├── 接口梳理总结.md                   # 接口文档
+│   ├── 文件分析模块接口设计说明.md        # 模块设计说明
+│   ├── 知识库使用说明.md                 # 知识库说明
+│   ├── 环境配置说明.md                   # 环境配置
+│   └── INTELLIGENT_ANALYSIS_README.md   # 智能分析说明
+│
+└── 🔧 环境与配置
+    ├── .gitignore                       # Git忽略配置
+    ├── .git/                            # Git版本控制
+    └── analyDesign_env/                 # Python虚拟环境
+```
+
+## 🔧 高级配置
+
+### LLM模型配置
+
+支持多种大语言模型：
+
+```yaml
+# 火山引擎（推荐）
+volcengine:
+  api_key: "your_api_key"
+  model: "ep-20250605091804-wmw6w"
+  temperature: 0.7
+
+# OpenAI GPT
+openai:
+  api_key: "your_openai_key"
+  model: "gpt-3.5-turbo"
+  base_url: "https://api.openai.com/v1"
+```
+
+### 向量数据库配置
+
+#### Weaviate配置（推荐）
+```yaml
+vector_database:
+  type: weaviate
+  weaviate:
+    host: localhost
+    port: 8080
+    scheme: http
+    api_key: "root-user-key"
+    default_collection:
+      name: "AnalyDesignDocuments"
+      vectorizer: none
+      vector_dimension: 768
+```
+
+#### FAISS配置（轻量级）
+```yaml
+vector_database:
+  type: faiss
+  faiss:
+    index_file: "uploads/cache/vector_index.faiss"
+    metadata_file: "uploads/cache/vector_metadata.json"
+```
+
+### Redis缓存配置
+
+```yaml
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+  password: ""
+  connection_pool:
+    max_connections: 50
+  cache:
+    default_ttl: 3600
+    key_prefix: "analydesign:"
+```
+
+### 文件处理配置
+
+```yaml
+file_upload:
+  max_size: 52428800  # 50MB
+  allowed_extensions:
+    - .txt
+    - .md
+    - .pdf
+    - .docx
+    - .doc
+    - .pptx
+    - .ppt
+  temp_dir: uploads/temp
+
+analysis:
+  chunk_size: 1000
+  overlap_size: 200
+  max_content_length: 100000
+  enable_ai_analysis: true
+  enable_content_analysis: true
+```
+
+## 🔍 API接口文档
+
+### 核心接口概览
+
+| 接口路径 | 方法 | 功能 | 状态 |
+|---------|------|------|------|
+| `/api/health` | GET | 健康检查 | ✅ |
+| `/api/chat` | POST | AI对话交互 | ✅ |
+| `/api/file/upload` | POST | 文件上传 | ✅ |
+| `/api/file/parsing/<task_id>` | GET | 解析状态查询 | ✅ |
+| `/api/file/analyze/<task_id>` | POST | 内容分析 | ✅ |
+| `/api/file/ai-analyze/<task_id>` | POST | AI深度分析 | ✅ |
+| `/api/file/result/<task_id>` | GET | 分析结果获取 | ✅ |
+| `/api/v2/analysis/start` | POST | 新版分析启动 | ✅ |
+| `/api/v2/analysis/progress/<task_id>` | GET | 分析进度查询 | ✅ |
+
+### WebSocket事件
+
+| 事件名称 | 方向 | 描述 |
+|---------|------|------|
+| `connect` | Client → Server | 建立连接 |
+| `disconnect` | Client → Server | 断开连接 |
+| `message` | Client ↔ Server | 消息传递 |
+| `progress_update` | Server → Client | 进度更新 |
+| `analysis_complete` | Server → Client | 分析完成 |
+| `error` | Server → Client | 错误通知 |
+
+详细的API文档请参考：[接口快速参考表.md](接口快速参考表.md)
+
+## 🧪 测试与验证
+
+### 运行测试
+```bash
+# 运行所有测试
+python -m pytest tests/
+
+# 运行特定测试
+python -m pytest tests/test_analysis_services.py
+
+# 运行服务测试
+python src/analysis_services/test_services.py
+```
+
+### 健康检查
+```bash
+# 检查后端API健康状态
+curl http://localhost:8082/api/health
+
+# 检查WebSocket连接
+curl http://localhost:8081/api/health
+```
+
+### 功能验证
+```bash
+# 测试知识库查询
+python query_knowledge_base.py
+
 # 检查服务状态
 双击 检查服务状态.bat
 ```
 
-### 4. 访问系统
+## 🔧 故障排除
 
-- **前端界面**: `http://localhost:3000`
-- **后端API**: `http://localhost:8081`
-- **WebSocket**: `ws://localhost:8081/socket.io/`
+### 常见问题
 
-## 📖 使用指南
-
-### 步骤1：启动服务
-1. 启动后端服务（端口8081）
-2. 启动前端服务（端口3000）
-3. 在浏览器中访问前端界面
-
-### 步骤2：文档上传与分析
-1. 在聊天界面上传需求文档（PDF、Word等）
-2. 可选：上传前端界面截图
-3. 系统自动进行智能分析
-
-### 步骤3：实时对话
-1. 与AI助手进行实时对话
-2. 获取需求分析结果
-3. 生成设计文档和建议
-
-### 步骤4：查看结果
-1. 查看分析报告和设计建议
-2. 下载生成的设计文档
-3. 获取API接口设计详情
-
-### 步骤5：知识库查询（可选）
-1. 使用知识库查询工具：`python query_knowledge_base.py`
-2. 输入自然语言查询，如"数据库表结构"、"用户管理代码"等
-3. 获取相关的历史文档和代码片段
-4. 结合查询结果优化需求分析
-
-## 📁 项目结构
-
-```
-analyDesign/
-├── 🚀 启动脚本
-│   ├── start_back.bat               # 后端启动脚本
-│   ├── 启动前端.bat                 # 前端启动脚本
-│   ├── 检查服务状态.bat             # 服务状态检查
-│   ├── 重新安装环境.bat             # 环境重装脚本
-│   ├── run.py                       # 主启动脚本
-│   └── query_knowledge_base.py      # 知识库查询工具
-│
-├── 🐍 后端核心
-│   ├── src/
-│   │   ├── apis/                    # API接口层
-│   │   │   ├── analysis_api.py      # 分析API
-│   │   │   ├── file_api.py          # 文件处理API
-│   │   │   ├── task_api.py          # 任务管理API
-│   │   │   └── websocket_api.py     # WebSocket API
-│   │   │
-│   │   ├── analysis_services/       # 分析服务层
-│   │   │   ├── enhanced_analyzer.py # 智能分析引擎
-│   │   │   ├── database_analyzer.py # 数据库分析器
-│   │   │   └── document_processor.py # 文档处理器
-│   │   │
-│   │   ├── utils/                   # 工具模块
-│   │   │   ├── volcengine_client.py # 火山引擎AI客户端
-│   │   │   ├── openai_client.py     # OpenAI客户端
-│   │   │   ├── analysis_utils.py    # 分析工具
-│   │   │   ├── task_storage.py      # 任务存储
-│   │   │   ├── llm_logger.py        # LLM日志记录
-│   │   │   ├── weaviate_helper.py   # Weaviate向量数据库
-│   │   │   ├── redis_util.py        # Redis缓存工具
-│   │   │   ├── knowledge_init_weaviate.py # 知识库初始化
-│   │   │   ├── weaviate_usage_example.py  # Weaviate使用示例
-│   │   │   └── redis_usage_example.py     # Redis使用示例
-│   │   │
-│   │   ├── resource/                # 资源配置
-│   │   │   └── config.py            # 统一配置管理
-│   │   │
-│   │   ├── websockets/              # WebSocket服务
-│   │   │   └── socket_handlers.py   # Socket处理器
-│   │   │
-│   │   └── tasks.db                 # SQLite任务数据库
-│   │
-│   ├── config.yaml                  # 主配置文件
-│   ├── requirements.txt             # Python依赖包
-│   └── tasks.db                     # 任务数据库
-│
-├── 🎨 前端应用
-│   ├── frontend/
-│   │   ├── src/
-│   │   │   ├── components/
-│   │   │   │   └── ChatInterface.vue    # 主聊天界面
-│   │   │   ├── stores/              # Pinia状态管理
-│   │   │   ├── router/              # Vue路由
-│   │   │   ├── assets/              # 静态资源
-│   │   │   ├── utils/               # 工具函数
-│   │   │   ├── App.vue              # 根组件
-│   │   │   └── main.js              # 入口文件
-│   │   ├── package.json             # 前端依赖
-│   │   ├── vite.config.js           # Vite配置
-│   │   └── index.html               # HTML模板
-│   
-├── 📄 数据和模板
-│   ├── templates/                   # 设计文档模板
-│   │   └── knowledge_init_weaviate.md # 知识库初始化需求
-│   ├── uploads/                     # 文件上传目录
-│   ├── outputs/                     # 生成文档输出
-│   └── logs/                        # 系统日志
-│
-├── 🔧 环境和配置
-│   ├── analyDesign_env/             # Python虚拟环境
-│   ├── setup_env.ps1                # 环境设置脚本
-│   └── .gitignore                   # Git忽略文件
-│
-├── 🧪 测试和工具
-│   └── tests/                       # 测试文件
-│
-├── 🗄️ 向量数据库与缓存
-│   ├── 知识库使用说明.md            # 知识库使用文档
-│   └── query_knowledge_base.py      # 知识库查询工具
-│
-└── 📚 文档说明
-    ├── README.md                    # 项目主文档
-    ├── 当前接口结构说明.md          # 接口结构说明
-    ├── 文件分析模块接口设计说明.md  # 文件分析模块说明
-    ├── 环境配置说明.md              # 环境配置
-    └── 快速安装指南.md              # 安装指南
-```
-
-### 🎯 核心文件说明
-
-#### 后端服务
-- **`run.py`**: 主要后端服务启动入口，集成HTTP API和WebSocket
-- **`src/analysis_services/enhanced_analyzer.py`**: AI智能分析核心引擎
-- **`src/utils/volcengine_client.py`**: 火山引擎大模型接口
-- **`src/resource/config.py`**: 统一配置管理系统
-- **`config.yaml`**: 主配置文件，包含所有服务配置
-
-#### 向量数据库与缓存
-- **`src/utils/weaviate_helper.py`**: Weaviate向量数据库连接管理
-- **`src/utils/redis_util.py`**: Redis缓存工具和连接管理
-- **`src/utils/knowledge_init_weaviate.py`**: 知识库初始化脚本
-- **`query_knowledge_base.py`**: 知识库查询工具
-- **`知识库使用说明.md`**: 知识库使用文档
-
-#### API接口层
-- **`src/apis/analysis_api.py`**: 分析相关API接口
-- **`src/apis/file_api.py`**: 文件处理API接口
-- **`src/apis/task_api.py`**: 任务管理API接口
-- **`src/apis/websocket_api.py`**: WebSocket API接口
-
-#### 工具模块
-- **`src/utils/analysis_utils.py`**: 分析工具函数
-- **`src/utils/task_storage.py`**: 任务存储管理
-- **`src/utils/llm_logger.py`**: LLM调用日志记录
-- **`src/utils/openai_client.py`**: OpenAI客户端
-
-#### 前端应用
-- **`frontend/src/components/ChatInterface.vue`**: 主聊天交互界面
-- **`frontend/src/stores/`**: Pinia状态管理，包含WebSocket连接
-- **`frontend/package.json`**: 前端依赖和脚本配置
-
-#### 启动脚本
-- **`start_back.bat`**: 后端服务启动脚本
-- **`启动前端.bat`**: 前端服务启动脚本
-- **`检查服务状态.bat`**: 服务状态检查工具
-- **`重新安装环境.bat`**: 环境重装脚本
-
-#### 配置和环境
-- **`analyDesign_env/`**: Python虚拟环境目录
-- **`setup_env.ps1`**: 自动创建和配置虚拟环境
-- **`requirements.txt`**: Python依赖包列表
-
-## 🔧 高级配置
-
-### 数据库连接
-
-系统支持连接现有的业务数据库来分析表结构：
-
-```python
-# MySQL
-BUSINESS_DATABASE_URL = "mysql://username:password@localhost:3306/database_name"
-
-# PostgreSQL
-BUSINESS_DATABASE_URL = "postgresql://username:password@localhost:5432/database_name"
-```
-
-### 知识库配置
-
-系统支持向量数据库和缓存系统的配置：
-
-```yaml
-# Weaviate向量数据库
-weaviate:
-  host: "localhost"
-  port: 8080
-  api_key: "root-user-key"
-  collection_name: "KnowledgeDocument"
-
-# Redis缓存
-redis:
-  host: "localhost"
-  port: 6379
-  db: 0
-  connection_pool:
-    max_connections: 20
-```
-
-### 知识库初始化
-
-首次使用需要初始化知识库：
-
+#### 1. 环境安装问题
 ```bash
-# 初始化知识库（将D:\knowledge_base内容导入）
-python src/utils/knowledge_init_weaviate.py
+# 重新安装环境
+双击 重新安装环境.bat
 
-# 查询知识库
-python query_knowledge_base.py
+# 手动清理环境
+rmdir /s analyDesign_env
+powershell -ExecutionPolicy Bypass -File setup_env.ps1
 ```
 
-### 自定义模板
+#### 2. 依赖安装失败
+```bash
+# 更新pip
+python -m pip install --upgrade pip
 
-您可以在 `templates/` 目录下自定义设计文档模板：
+# 使用清华源安装
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
 
-- `backend_design_template.md`: 后端设计文档模板
-- `frontend_design_template.md`: 前端设计文档模板
+#### 3. 端口冲突
+编辑 `config.yaml` 修改端口配置：
+```yaml
+app:
+  port: 8000  # 修改为其他可用端口
+```
 
-## 🎯 应用场景
+#### 4. API密钥问题
+确保在 `config.yaml` 中正确配置API密钥：
+```yaml
+volcengine:
+  api_key: "your_valid_api_key_here"
+```
 
-1. **产品需求分析**: 快速分析产品需求文档，识别关键业务点
-2. **技术方案设计**: 基于需求自动生成技术实现方案
-3. **API接口设计**: 自动分析并设计所需的API接口
-4. **数据库设计**: 结合现有数据库结构进行设计优化
-5. **文档标准化**: 基于企业模板生成标准化设计文档
+#### 5. 前端启动失败
+```bash
+cd frontend
+# 清理node_modules
+rm -rf node_modules package-lock.json
+npm install
+npm run dev
+```
 
-## 🔒 安全性
+### 日志查看
+- **应用日志**: `logs/app.log`
+- **错误日志**: `logs/error.log`
+- **分析日志**: `logs/analysis.log`
 
-- 支持本地部署，数据不出企业内网
-- 敏感信息加密存储
-- 支持用户权限管理
-- 完整的操作日志记录
+## 🤝 贡献指南
 
+### 开发环境设置
+1. Fork项目到个人仓库
+2. 克隆个人仓库到本地
+3. 创建开发分支
+4. 安装开发依赖
 
+### 代码规范
+- **Python**: 遵循PEP 8规范
+- **JavaScript**: 使用ESLint配置
+- **Vue**: 遵循Vue 3最佳实践
+- **提交信息**: 使用Conventional Commits格式
 
-## 📞 技术支持
-任玉
+### 提交流程
+1. 编写代码和测试
+2. 运行测试确保通过
+3. 提交代码并推送到个人仓库
+4. 创建Pull Request
+
+## 📄 许可证
+
+本项目采用 [MIT License](LICENSE) 许可证。
+
+## 🆘 技术支持
+
+- **问题反馈**: [GitHub Issues](项目地址/issues)
+- **功能建议**: [GitHub Discussions](项目地址/discussions)
+- **邮箱支持**: [support@analydesign.com](mailto:support@analydesign.com)
+
+## 🔄 版本历史
+
+### v1.0.0 (当前版本)
+- ✅ 完整的前后端分离架构
+- ✅ 智能文档分析和AI对话功能
+- ✅ 向量数据库和知识库支持
+- ✅ 多种LLM模型集成
+- ✅ 实时WebSocket通信
+- ✅ 完善的配置管理系统
+
+### 计划功能
+- 📋 用户权限管理系统
+- 📊 可视化数据报表
+- 🔄 批处理任务支持
+- 🌐 多语言国际化支持
+- 📱 移动端响应式优化
+
+---
+
+**🌟 如果这个项目对你有帮助，请给我们一个Star！**
