@@ -783,6 +783,10 @@ const processingStatus = computed(() => ({
 const processingSteps = computed(() => wsStore.processingSteps || [])
 const currentProcessing = computed(() => wsStore.currentProcessing)
 const analysisResult = computed(() => wsStore.analysisResult)
+// 监听 analysisResult 变化并打印
+watch(analysisResult, (newValue) => {
+  console.log('📊 Analysis Result:', newValue)
+}, { deep: true })
 
 const connectionStatusType = computed(() => {
   switch (connectionStatus.value) {
