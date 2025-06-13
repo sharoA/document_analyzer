@@ -324,7 +324,7 @@
               
               <!-- 分析结果显示区域 -->
               <div class="results-container">
-                <el-scrollbar height="calc(100vh - 400px)" class="analysis-scrollbar">
+                <el-scrollbar height="100%" class="analysis-scrollbar">
                   <div class="result-content">
                   <!-- 文件基本信息 -->
                   <el-card class="info-card" v-if="analysisResult">
@@ -355,23 +355,227 @@
                     </el-descriptions>
                   </el-card>
                   
-                  <!-- 解析统计信息 -->
-                  <el-card class="info-card" v-if="analysisResult">
+                  <!-- 文件格式信息 -->
+                  <el-card class="info-card" v-if="analysisResult && analysisResult.fileFormat">
                     <template #header>
-                      <h5>解析统计</h5>
+                      <h5>📄 文件格式信息</h5>
                     </template>
                     <el-descriptions :column="2" border size="small">
-                      <el-descriptions-item label="内容长度">
-                        {{ getAnalysisCharacterCount() }} 字符
+                      <el-descriptions-item label="文件名">
+                        {{ analysisResult.fileFormat.fileName || '未知文件' }}
                       </el-descriptions-item>
-                      <el-descriptions-item label="文件类型">
-                        {{ getAnalysisFileType() }}
+                      <el-descriptions-item label="主要类型">
+                        {{ analysisResult.fileFormat.primaryType || '未知' }}
                       </el-descriptions-item>
+                      <el-descriptions-item label="子类型">
+                        {{ analysisResult.fileFormat.subType || '未知' }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="编码格式">
+                        {{ analysisResult.fileFormat.encoding || 'utf-8' }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="置信度">
+                        {{ ((analysisResult.fileFormat.confidence || 0) * 100).toFixed(1) }}%
+                      </el-descriptions-item>
+                      <el-descriptions-item label="文件大小">
+                        {{ formatFileSize(analysisResult.fileFormat.basicInfo?.fileSize || 0) }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="预估页数">
+                        {{ analysisResult.fileFormat.basicInfo?.estimatedPages || 0 }} 页
+                      </el-descriptions-item>
+                      <el-descriptions-item label="语言">
+                        {{ analysisResult.fileFormat.basicInfo?.language || '中文' }}
+                      </el-descriptions-item>
+                    </el-descriptions>
+                  </el-card>
+
+                  <!-- 技术详情 -->
+                  <el-card class="info-card" v-if="analysisResult && analysisResult.fileFormat?.technicalDetails">
+                    <template #header>
+                      <h5>📊 技术详情</h5>
+                    </template>
+                    <el-descriptions :column="2" border size="small">
+                      <el-descriptions-item label="总行数">
+                        {{ analysisResult.fileFormat.technicalDetails.lineCount || 0 }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="词数">
+                        {{ analysisResult.fileFormat.technicalDetails.wordCount || 0 }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="字符数">
+                        {{ analysisResult.fileFormat.technicalDetails.charCount || 0 }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="空行数">
+                        {{ analysisResult.fileFormat.technicalDetails.emptyLines || 0 }}
+                      </el-descriptions-item>
+                    </el-descriptions>
+                  </el-card>
+
+                  <!-- 文档结构摘要 -->
+                  <el-card class="info-card" v-if="analysisResult && analysisResult.documentStructure?.contentSummary">
+                    <template #header>
+                      <h5>📋 文档结构摘要</h5>
+                    </template>
+                    <div class="document-summary">
+                      <!-- 摘要 -->
+                      <div class="summary-section" v-if="analysisResult.documentStructure.contentSummary.abstract">
+                        <h6>文档摘要</h6>
+                        <p class="abstract-text">{{ analysisResult.documentStructure.contentSummary.abstract }}</p>
+                      </div>
+                      
+                      <!-- 功能统计 -->
+                      <el-descriptions :column="2" border size="small" style="margin-bottom: 16px;">
+                        <el-descriptions-item label="功能数量">
+                          {{ analysisResult.documentStructure.contentSummary.functionCount || 0 }}
+                        </el-descriptions-item>
+                        <el-descriptions-item label="API数量">
+                          {{ analysisResult.documentStructure.contentSummary.apiCount || 0 }}
+                        </el-descriptions-item>
+                        <el-descriptions-item label="数据库变更">
+                          {{ analysisResult.documentStructure.contentSummary.dbChangeCount || 0 }}
+                        </el-descriptions-item>
+                        <el-descriptions-item label="消息队列">
+                          {{ analysisResult.documentStructure.contentSummary.mqCount || 0 }}
+                        </el-descriptions-item>
+                        <el-descriptions-item label="定时器">
+                          {{ analysisResult.documentStructure.contentSummary.timerCount || 0 }}
+                        </el-descriptions-item>
+                      </el-descriptions>
+
+                      <!-- 功能列表 -->
+                      <div class="function-list" v-if="analysisResult.documentStructure.contentSummary.functionName && analysisResult.documentStructure.contentSummary.functionName.length > 0">
+                        <h6>功能列表</h6>
+                        <el-tag v-for="(func, index) in analysisResult.documentStructure.contentSummary.functionName" 
+                               :key="index" 
+                               type="primary" 
+                               size="small" 
+                               style="margin: 2px 4px 2px 0;">
+                          {{ func }}
+                        </el-tag>
+                      </div>
+
+                      <!-- API列表 -->
+                      <div class="api-list" v-if="analysisResult.documentStructure.contentSummary.apiName && analysisResult.documentStructure.contentSummary.apiName.length > 0">
+                        <h6>API列表</h6>
+                        <el-tag v-for="(api, index) in analysisResult.documentStructure.contentSummary.apiName" 
+                               :key="index" 
+                               type="success" 
+                               size="small" 
+                               style="margin: 2px 4px 2px 0;">
+                          {{ api }}
+                        </el-tag>
+                      </div>
+                    </div>
+                  </el-card>
+
+                  <!-- 关键词分析 -->
+                  <el-card class="info-card" v-if="analysisResult && analysisResult.documentStructure?.contentKeyWord">
+                    <template #header>
+                      <h5>🔍 关键词分析</h5>
+                    </template>
+                    <div class="keyword-analysis">
+                      <!-- 基础关键词 -->
+                      <div class="keywords-section" v-if="analysisResult.documentStructure.contentKeyWord.keywords">
+                        <h6>基础关键词</h6>
+                        <el-tag v-for="(keyword, index) in analysisResult.documentStructure.contentKeyWord.keywords" 
+                               :key="index" 
+                               size="small" 
+                               style="margin: 2px 4px 2px 0;">
+                          {{ keyword }}
+                        </el-tag>
+                      </div>
+
+                      <!-- 主要关键词详情 -->
+                      <div class="primary-keywords" v-if="analysisResult.documentStructure.contentKeyWord.primaryKeywords">
+                        <h6>主要关键词详情</h6>
+                        <el-table :data="analysisResult.documentStructure.contentKeyWord.primaryKeywords" 
+                                 size="small" 
+                                 style="width: 100%">
+                          <el-table-column prop="keyword" label="关键词" width="100"/>
+                          <el-table-column prop="frequency" label="频次" width="60"/>
+                          <el-table-column prop="importance" label="重要度" width="80">
+                            <template #default="scope">
+                              {{ (parseFloat(scope.row.importance) * 100).toFixed(0) }}%
+                            </template>
+                          </el-table-column>
+                          <el-table-column prop="positions" label="出现位置" min-width="120">
+                            <template #default="scope">
+                              <el-tag v-for="(pos, index) in scope.row.positions" 
+                                     :key="index" 
+                                     size="mini" 
+                                     type="info"
+                                     style="margin: 1px;">
+                                {{ pos }}
+                              </el-tag>
+                            </template>
+                          </el-table-column>
+                        </el-table>
+                      </div>
+
+                      <!-- 语义聚类 -->
+                      <div class="semantic-clusters" v-if="analysisResult.documentStructure.contentKeyWord.semanticClusters">
+                        <h6>语义聚类</h6>
+                        <div v-for="(cluster, index) in analysisResult.documentStructure.contentKeyWord.semanticClusters" 
+                             :key="index" 
+                             class="cluster-item">
+                          <div class="cluster-header">
+                            <span class="cluster-name">{{ cluster.clusterName }}</span>
+                            <el-tag size="mini" type="warning">
+                              相关度: {{ (parseFloat(cluster.coherenceScore) * 100).toFixed(0) }}%
+                            </el-tag>
+                          </div>
+                          <div class="cluster-keywords">
+                            <el-tag v-for="(keyword, kidx) in cluster.keywords" 
+                                   :key="kidx" 
+                                   size="mini" 
+                                   style="margin: 2px;">
+                              {{ keyword }}
+                            </el-tag>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </el-card>
+
+                  <!-- 元数据信息 -->
+                  <el-card class="info-card" v-if="analysisResult && analysisResult.documentStructure?.metadata">
+                    <template #header>
+                      <h5>👥 元数据信息</h5>
+                    </template>
+                    <el-descriptions :column="1" border size="small">
+                      <el-descriptions-item label="用户角色" v-if="analysisResult.documentStructure.metadata.userRole">
+                        <el-tag v-for="(role, index) in analysisResult.documentStructure.metadata.userRole" 
+                               :key="index" 
+                               type="primary" 
+                               size="small" 
+                               style="margin: 2px 4px 2px 0;">
+                          {{ role }}
+                        </el-tag>
+                      </el-descriptions-item>
+                      <el-descriptions-item label="目标受众" v-if="analysisResult.documentStructure.metadata.targetAudience">
+                        <el-tag v-for="(audience, index) in analysisResult.documentStructure.metadata.targetAudience" 
+                               :key="index" 
+                               type="success" 
+                               size="small" 
+                               style="margin: 2px 4px 2px 0;">
+                          {{ audience }}
+                        </el-tag>
+                      </el-descriptions-item>
+                    </el-descriptions>
+                  </el-card>
+
+                  <!-- 解析状态 -->
+                  <el-card class="info-card" v-if="analysisResult">
+                    <template #header>
+                      <h5>✅ 解析状态</h5>
+                    </template>
+                    <el-descriptions :column="2" border size="small">
                       <el-descriptions-item label="解析状态">
                         <el-tag type="success" size="small">解析完成</el-tag>
                       </el-descriptions-item>
                       <el-descriptions-item label="解析耗时">
                         {{ analysisResult.details?.parsing_duration?.toFixed(2) || '0.00' }} 秒
+                      </el-descriptions-item>
+                      <el-descriptions-item label="解析备注" span="2" v-if="analysisResult.notes">
+                        {{ analysisResult.notes }}
                       </el-descriptions-item>
                     </el-descriptions>
                   </el-card>
@@ -1397,7 +1601,10 @@ const copySummary = async () => {
 }
 
 const getAnalysisFileName = () => {
-  return analysisResult.value?.fileInfo?.name || '未知文件'
+  // 优先使用后端返回的fileFormat.fileName
+  return analysisResult.value?.fileFormat?.fileName || 
+         analysisResult.value?.fileInfo?.name || 
+         '未知文件'
 }
 
 const getAnalysisFileType = () => {
@@ -1771,7 +1978,7 @@ const getAnalysisCharacterCount = () => {
     }
 
     .tab-content {
-      padding: 24px;
+      padding: 0px;
       height: calc(100vh - 180px);
       overflow-y: auto;
 
@@ -2276,6 +2483,134 @@ const getAnalysisCharacterCount = () => {
       
       .keyword-tag {
         margin: 0;
+      }
+    }
+  }
+}
+
+// 文档结构摘要样式
+.document-summary {
+  .summary-section {
+    margin-bottom: 16px;
+    
+    h6 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e4e7ed;
+    }
+    
+    .abstract-text {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #606266;
+      margin: 0;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #52c41a;
+    }
+  }
+  
+  .function-list, .api-list {
+    margin-bottom: 16px;
+    
+    h6 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e4e7ed;
+    }
+  }
+}
+
+// 关键词分析样式
+.keyword-analysis {
+  .keywords-section {
+    margin-bottom: 16px;
+    
+    h6 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e4e7ed;
+    }
+  }
+  
+  .primary-keywords {
+    margin-bottom: 16px;
+    
+    h6 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e4e7ed;
+    }
+    
+    :deep(.el-table) {
+      border-radius: 6px;
+      overflow: hidden;
+      
+      .el-table__header {
+        background: #f8f9fa;
+        
+        th {
+          background: #f8f9fa;
+          color: #303133;
+          font-weight: 600;
+        }
+      }
+      
+      .el-table__body {
+        tr:hover {
+          background: #f0f9ff;
+        }
+      }
+    }
+  }
+  
+  .semantic-clusters {
+    h6 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e4e7ed;
+    }
+    
+    .cluster-item {
+      margin-bottom: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border-left: 4px solid #faad14;
+      
+      .cluster-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        
+        .cluster-name {
+          font-size: 14px;
+          font-weight: 600;
+          color: #303133;
+        }
+      }
+      
+      .cluster-keywords {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
       }
     }
   }

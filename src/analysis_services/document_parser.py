@@ -61,37 +61,16 @@ class DocumentParserService(BaseAnalysisService):
             
             # 阶段2: 生成摘要及内容
             document_structure = await self._stage2_structure_analysis(file_content)
-            
-            # # 阶段3: 内容元素提取
-            # content_elements = await self._stage3_content_extraction(file_content)
-            
-            # # 阶段4: 质量分析
-            # quality_analysis = await self._stage4_quality_analysis(file_content)
-            
-            # # 阶段5: 元数据提取
-            # metadata = await self._stage5_metadata_extraction(file_content)
-            
-            # # 阶段6: 摘要和关键词生成
-            # content_summary, content_keywords = await self._stage6_summary_keywords(file_content)
-            
+       
             # 构建符合规范的最终结果
             parsing_result = {
                 "fileFormat": file_format,
                 "documentStructure": document_structure,
-                "processingInfo": {
-                    "analysisTime": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-                    "processingSteps": [
-                        "格式识别完成",
-                        "结构解析完成", 
-                        "内容元素提取完成",
-                        "质量分析完成",
-                        "元数据提取完成",
-                        "摘要关键词生成完成"
-                    ],
-                    "confidence": 0.95,
-                    "notes": ["基于LLM智能解析", "6阶段完整分析流程"]
-                }
+                "notes": {"model": self._get_model_name()}
+                
             }
+            # 打印解析结果
+            self.logger.info(f"文档解析结果: {parsing_result}")
             
             duration = time.time() - start_time
             self._log_analysis_complete(task_id, "文档解析", duration, len(str(parsing_result)))
@@ -775,3 +754,18 @@ class DocumentParserService(BaseAnalysisService):
         }
         
         return content_summary, keywords 
+    
+    def _get_model_name(self) -> str:
+        """获取当前使用的模型名称"""
+        if not self.llm_client:
+            return "no_llm_client"
+        
+        # 尝试从不同的客户端类型获取模型名称
+        if hasattr(self.llm_client, 'config') and hasattr(self.llm_client.config, 'model_id'):
+            return self.llm_client.config.model_id
+        elif hasattr(self.llm_client, 'model'):
+            return self.llm_client.model
+        elif hasattr(self.llm_client, 'model_name'):
+            return self.llm_client.model_name
+        else:
+            return "unknown_model"

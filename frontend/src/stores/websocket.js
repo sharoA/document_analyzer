@@ -2092,6 +2092,10 @@ ${task.timestamps ? `
           parsing_duration: documentParsing.processing_time || 0
         },
         content: documentContent,
+        // 直接传递后端返回的fileFormat和documentStructure数据
+        fileFormat: docParsingInfo.fileFormat || {},
+        documentStructure: docParsingInfo.documentStructure || {},
+        notes: docParsingInfo.notes || resultData.notes || '',
         contentAnalysis: {
           document_type: contentAnalysisData.document_type || metadataInfo.documentType || 'unknown',
           language: fileFormatInfo.basicInfo?.language || contentAnalysisData.language || 'zh',
