@@ -306,7 +306,7 @@
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                   <div>
                     <div class="result-title">
-                      <h4>{{ analysisResult.title || '📄 文档解析结果' }}</h4>
+                      <h4>{{  getAnalysisFileName() || '📄 文档解析结果' }}</h4>
                     </div>
                     <div class="result-meta">
                       <el-tag size="small" :type="getResultTypeTag(analysisResult.type)">
@@ -329,7 +329,7 @@
                   <!-- 文件基本信息 -->
                   <el-card class="info-card" v-if="analysisResult">
                     <template #header>
-                      <h5>当前文件信息</h5>
+                      <h5>当前文件基本信息</h5>
                     </template>
                     <el-descriptions :column="2" border size="small">
                       <el-descriptions-item label="文件名称">
@@ -337,77 +337,20 @@
                       </el-descriptions-item>
                       <el-descriptions-item label="文件类型">
                         {{ getAnalysisFileType() }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="文件大小">
-                        {{ getAnalysisFileSize() }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="字符数">
-                        {{ getAnalysisCharacterCount() }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="解析时间">
-                        {{ formatTime(analysisResult.timestamp) }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="文档状态">
-                        <el-tag size="small" :type="getResultTypeTag(analysisResult.type)">
-                          {{ getResultTypeText(analysisResult.type) }}
-                        </el-tag>
-                      </el-descriptions-item>
-                    </el-descriptions>
-                  </el-card>
-                  
-                  <!-- 文件格式信息 -->
-                  <el-card class="info-card" v-if="analysisResult && analysisResult.fileFormat">
-                    <template #header>
-                      <h5>📄 文件格式信息</h5>
-                    </template>
-                    <el-descriptions :column="2" border size="small">
-                      <el-descriptions-item label="文件名">
-                        {{ analysisResult.fileFormat.fileName || '未知文件' }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="主要类型">
-                        {{ analysisResult.fileFormat.primaryType || '未知' }}
+                        
                       </el-descriptions-item>
                       <el-descriptions-item label="子类型">
                         {{ analysisResult.fileFormat.subType || '未知' }}
                       </el-descriptions-item>
-                      <el-descriptions-item label="编码格式">
-                        {{ analysisResult.fileFormat.encoding || 'utf-8' }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="置信度">
-                        {{ ((analysisResult.fileFormat.confidence || 0) * 100).toFixed(1) }}%
-                      </el-descriptions-item>
                       <el-descriptions-item label="文件大小">
-                        {{ formatFileSize(analysisResult.fileFormat.basicInfo?.fileSize || 0) }}
+                        {{ uploadedFile ? formatFileSize(uploadedFile.size) : formatFileSize(analysisResult.fileFormat.basicInfo?.fileSize || 0) }}
                       </el-descriptions-item>
-                      <el-descriptions-item label="预估页数">
-                        {{ analysisResult.fileFormat.basicInfo?.estimatedPages || 0 }} 页
-                      </el-descriptions-item>
-                      <el-descriptions-item label="语言">
-                        {{ analysisResult.fileFormat.basicInfo?.language || '中文' }}
+                      <el-descriptions-item label="字符数">
+                        {{ getAnalysisCharacterCount() }}
                       </el-descriptions-item>
                     </el-descriptions>
                   </el-card>
 
-                  <!-- 技术详情 -->
-                  <el-card class="info-card" v-if="analysisResult && analysisResult.fileFormat?.technicalDetails">
-                    <template #header>
-                      <h5>📊 技术详情</h5>
-                    </template>
-                    <el-descriptions :column="2" border size="small">
-                      <el-descriptions-item label="总行数">
-                        {{ analysisResult.fileFormat.technicalDetails.lineCount || 0 }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="词数">
-                        {{ analysisResult.fileFormat.technicalDetails.wordCount || 0 }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="字符数">
-                        {{ analysisResult.fileFormat.technicalDetails.charCount || 0 }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="空行数">
-                        {{ analysisResult.fileFormat.technicalDetails.emptyLines || 0 }}
-                      </el-descriptions-item>
-                    </el-descriptions>
-                  </el-card>
 
                   <!-- 文档结构摘要 -->
                   <el-card class="info-card" v-if="analysisResult && analysisResult.documentStructure?.contentSummary">
@@ -586,40 +529,6 @@
                       <h5>内容分析结果</h5>
                     </template>
                     <div class="content-analysis-result">
-                      <!-- 基础信息 -->
-                      <el-descriptions :column="2" border size="small" style="margin-bottom: 16px;">
-                        <el-descriptions-item label="文档类型">
-                          {{ analysisResult.contentAnalysis.document_type || '未知类型' }}
-                        </el-descriptions-item>
-                        <el-descriptions-item label="文档语言">
-                          {{ analysisResult.contentAnalysis.language || 'zh-CN' }}
-                        </el-descriptions-item>
-                        <el-descriptions-item label="字符数">
-                          {{ analysisResult.contentAnalysis.statistics?.character_count || 0 }}
-                        </el-descriptions-item>
-                        <el-descriptions-item label="词数">
-                          {{ analysisResult.contentAnalysis.statistics?.word_count || 0 }}
-                        </el-descriptions-item>
-                      </el-descriptions>
-                      
-                      <!-- 文档结构 -->
-                      <div v-if="analysisResult.contentAnalysis.structure_analysis" class="analysis-section">
-                        <h6>文档结构</h6>
-                        <el-descriptions :column="2" border size="small">
-                          <el-descriptions-item label="总行数">
-                            {{ analysisResult.contentAnalysis.structure_analysis.total_lines || '' }}
-                          </el-descriptions-item>
-                          <el-descriptions-item label="空行数">
-                            {{ analysisResult.contentAnalysis.structure_analysis.empty_lines || '' }}
-                          </el-descriptions-item>
-                          <el-descriptions-item label="标题数">
-                            {{ analysisResult.contentAnalysis.structure_analysis.headings?.length || 0 }}
-                          </el-descriptions-item>
-                          <el-descriptions-item label="列表项">
-                            {{ analysisResult.contentAnalysis.structure_analysis.lists?.length || 0 }}
-                          </el-descriptions-item>
-                        </el-descriptions>
-                      </div>
                       
                       <!-- 需求分析（如果是需求文档） -->
                       <div v-if="analysisResult.contentAnalysis.requirements_analysis" class="analysis-section">
