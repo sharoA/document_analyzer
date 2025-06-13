@@ -451,69 +451,18 @@ def process_file_parsing(task: FileParsingTask):
         file_name = file_info.get("name", "")
         file_type = file_info.get("type", "")
         
-        # 优先从文件路径读取，如果失败则从base64内容读取
-        file_content = None
-        if task.file_path and os.path.exists(task.file_path):
-            task.update_progress(20, "从文件系统读取文件", "parsing")
-            try:
-                with open(task.file_path, 'rb') as f:
-                    file_content = f.read()
-                logger.info(f"从文件路径读取: {task.file_path}")
-            except Exception as e:
-                logger.warning(f"从文件路径读取失败: {e}, 尝试从base64读取")
-        
-        if file_content is None:
-            task.update_progress(20, "从base64内容读取文件", "parsing")
-            if task.file_content:
-                file_content = task.file_content
-            else:
-                raise ValueError("无法获取文件内容，文件可能已被删除")
-        
-        # 直接使用原始字节数据，让EnhancedAnalyzer处理编码检测和转换
-        # 这样可以更好地处理中文字符和各种文档格式
-        
-        # 使用EnhancedAnalyzer分析文件内容，特别处理Word文档转Markdown
-        try:
-            if 'analyzer' in globals() and analyzer is not None:
-                current_analyzer = analyzer
-            else:
-                # 如果analyzer不可用，创建一个新的实例
-                current_analyzer = EnhancedAnalyzer()
-            
-            # 检查是否为Word文档，如果是则明确使用Markdown转换
-            if file_name.lower().endswith(('.doc', '.docx')) or 'word' in file_type.lower():
-                logger.info(f"检测到Word文档，使用Markdown转换: {file_name}")
-                task.update_progress(30, "转换Word文档为Markdown格式", "parsing")
-                
-                # 直接调用Word文档解析方法，确保获得Markdown格式
-                transform_result = current_analyzer.parse_word_document(file_content, file_name)
-                
-                # 确保返回的是Markdown格式的文本内容
-                extracted_text = transform_result.get("text_content", "Word文档解析失败")
-                
-                # 验证是否包含Markdown格式特征
-                if extracted_text and any(marker in extracted_text for marker in ['#', '|', '**', '*', '-']):
-                    logger.info(f"Word文档已成功转换为Markdown格式，长度: {len(extracted_text)} 字符")
-                else:
-                    logger.warning("Word文档转换结果可能不是标准Markdown格式")
-                    
-            else:
-                # 非Word文档，使用通用转换方法
-                logger.info(f"使用通用文件分析方法: {file_name}")
-                transform_result = current_analyzer.transform_file(file_content, file_name)
-                extracted_text = transform_result.get("text_content", "文件解析失败")
-                
-        except Exception as e:
-            logger.error(f"EnhancedAnalyzer使用失败: {e}，使用基础解析")
-            # 降级处理
-            if file_name.lower().endswith(('.doc', '.docx')) or 'word' in file_type.lower():
-                extracted_text = f"Word文档解析失败: {str(e)}，建议检查文件格式或安装python-docx库"
-            else:
-                extracted_text = f"文件解析失败: {str(e)}"
+
+        # 直接调用新方法
+        extracted_text = extract_text_from_file(task.file_path)
+        logger.info("提取的文本内容已准备完毕")
+        extracted_preview = extracted_text.replace('{', '{{').replace('}', '}}') if extracted_text else "无内容"
+        logger.info(f"转换后内容预览: {extracted_preview}")
+
         # 安全的日志记录，避免格式化错误
         logger.info("提取的文本内容已准备完毕")
-        extracted_preview = extracted_text[:500].replace('{', '{{').replace('}', '}}') if extracted_text else "无内容"
+        extracted_preview = extracted_text.replace('{', '{{').replace('}', '}}') if extracted_text else "无内容"
         logger.info(f"转换后内容预览: {extracted_preview}")
+
         
         # 验证输入 - 使用提取的文本内容进行验证
         validation = validate_input(task.id, extracted_text, file_type)
@@ -588,146 +537,13 @@ def process_content_analysis(task: FileParsingTask, parsing_result: dict):
         analysis_logger.info(f"✅ 任务状态已更新为: {task.status}")
         
         # 正确提取文本内容
-        content = ""
-        if isinstance(task.result, dict):
-            # 新的结构：result.data.text_content
-            if 'data' in task.result and isinstance(task.result['data'], dict):
-                data_section = task.result['data']
-                
-                # 尝试多种方式获取文本内容
-                content = (data_section.get('text_content', '') or 
-                          data_section.get('content', '') or
-                          data_section.get('raw_text', ''))
-                
-                # 如果没有直接的文本内容，尝试从结构化信息重构
-                if not content and 'structured_info' in data_section:
-                    structured = data_section['structured_info']
-                    text_parts = []
-                    
-                    # 从列表项重构文本
-                    if 'lists' in structured:
-                        for item in structured['lists']:
-                            text_parts.append(item.get('text', ''))
-                    
-                    # 从表格重构文本
-                    if 'tables' in structured:
-                        for table in structured['tables']:
-                            if isinstance(table, dict) and 'content' in table:
-                                text_parts.append(str(table['content']))
-                    
-                    # 从代码块重构文本
-                    if 'code_blocks' in structured:
-                        for code in structured['code_blocks']:
-                            if isinstance(code, dict) and 'content' in code:
-                                text_parts.append(code['content'])
-                    
-                    content = '\n'.join(text_parts)
-                
-                # 如果还是没有内容，尝试从LLM分析的原始响应中提取
-                if not content and 'llm_analysis' in data_section:
-                    llm_data = data_section['llm_analysis']
-                    if 'raw_response' in llm_data:
-                        # 这里可能包含原始文档内容的分析
-                        raw_response = llm_data['raw_response']
-                        # 简单提取，实际可能需要更复杂的解析
-                        if len(raw_response) > 100:  # 确保有足够的内容
-                            content = raw_response
-            
-            # 旧的结构：result.text_content
-            else:
-                content = task.result.get('text_content', '') or task.result.get('content', '')
-        
-        # 如果仍然没有内容，尝试从原始文件重新读取
-        if not content:
-            # 尝试从文件路径重新读取原始文档内容
-            if task.file_path and os.path.exists(task.file_path):
-                try:
-                    with open(task.file_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    analysis_logger.info(f"📄 从文件路径重新读取内容，长度: {len(content)}")
-                except Exception as e:
-                    analysis_logger.warning(f"从文件路径读取失败: {e}")
-            
-            # 如果还是没有内容，从结构化信息重构一个基本的文档内容
-            if not content and isinstance(task.result, dict) and 'data' in task.result:
-                data_section = task.result['data']
-                basic_info = data_section.get('basic_info', {})
-                structured_info = data_section.get('structured_info', {})
-                
-                # 从结构化信息重构文档内容
-                content_parts = []
-                
-                # 添加基本信息
-                content_parts.append("项目需求文档")
-                content_parts.append("")
-                
-                # 从列表项重构内容
-                if 'lists' in structured_info:
-                    for item in structured_info['lists']:
-                        content_parts.append(item.get('text', ''))
-                
-                # 如果有LLM分析结果，提取关键信息
-                if 'llm_analysis' in data_section and 'raw_response' in data_section['llm_analysis']:
-                    raw_response = data_section['llm_analysis']['raw_response']
-                    # 尝试从JSON响应中提取summary
-                    try:
-                        import re
-                        # 查找summary字段
-                        summary_match = re.search(r'"summary":\s*"([^"]+)"', raw_response)
-                        if summary_match:
-                            content_parts.append("")
-                            content_parts.append("项目概述:")
-                            content_parts.append(summary_match.group(1))
-                        
-                        # 查找key_points
-                        key_points_match = re.search(r'"key_points":\s*\[(.*?)\]', raw_response, re.DOTALL)
-                        if key_points_match:
-                            content_parts.append("")
-                            content_parts.append("关键要点:")
-                            points_text = key_points_match.group(1)
-                            points = re.findall(r'"([^"]+)"', points_text)
-                            for point in points:
-                                content_parts.append(f"- {point}")
-                    except Exception as e:
-                        analysis_logger.warning(f"解析LLM响应失败: {e}")
-                
-                content = '\n'.join(content_parts)
-                
-                # 如果重构的内容太短，添加一些基本信息
-                if len(content) < 50:
-                    content = f"""
-项目需求文档
-
-1. 项目概述
-本项目旨在开发一个智能文档分析系统，能够自动解析和分析各种类型的文档。
-
-2. 功能需求
-- 支持多种文档格式（PDF、Word、TXT等）
-- 自动提取文档关键信息
-- 生成分析报告
-- 提供API接口
-
-3. 技术要求
-- 使用Python开发
-- 支持大语言模型集成
-- 提供Web界面
-
-文档统计信息：
-- 字符数：{basic_info.get('character_count', 0)}
-- 词数：{basic_info.get('word_count', 0)}
-- 行数：{basic_info.get('line_count', 0)}
-- 段落数：{basic_info.get('paragraph_count', 0)}
-"""
-        
-        if not content:
-            raise ValueError("文档内容为空，无法进行分析")
-        
+        content = extract_text_from_file(task.file_path)
+        task.update_progress(30, "获取到上传文件", "content_analyzing")
         analysis_logger.info(f"📄 提取到文档内容，长度: {len(content)} 字符")
         
         # 使用分析服务管理器进行内容分析
         if analysis_service_manager:
-            task.update_progress(30, "使用火山引擎进行内容分析", "content_analyzing")
-            
+            task.update_progress(35, "内容分析管理器开始分析", "content_analyzing")
             try:
                 content_result = analysis_service_manager.analyze_content_sync(
                     task_id=task.id,
@@ -1967,6 +1783,53 @@ def create_app():
         logger.error(f"任务存储初始化失败: {e}")
     
     return app
+
+def extract_text_from_file(file_path: str) -> str:
+    """
+    从文件路径读取文件内容并转换为Markdown或文本内容
+    :param file_path: 文件路径
+    :return: extracted_text
+    """
+    import os
+    from loguru import logger
+
+    file_content = None
+    if file_path and os.path.exists(file_path):
+        try:
+            with open(file_path, 'rb') as f:
+                file_content = f.read()
+            logger.info(f"从文件路径读取: {file_path}")
+        except Exception as e:
+            logger.warning(f"从文件路径读取失败: {e}")
+    else:
+        raise ValueError("无法获取文件内容，文件可能已被删除")
+
+    # 处理文件内容
+    try:
+        # EnhancedAnalyzer 必须在作用域内
+        current_analyzer = analyzer if 'analyzer' in globals() and analyzer is not None else EnhancedAnalyzer()
+        file_name = os.path.basename(file_path)
+        file_type = file_name.split('.')[-1] if '.' in file_name else ''
+
+        if file_name.lower().endswith(('.doc', '.docx')) or 'word' in file_type.lower():
+            logger.info(f"检测到Word文档，使用Markdown转换: {file_name}")
+            transform_result = current_analyzer.parse_word_document(file_content, file_name)
+            extracted_text = transform_result.get("text_content", "Word文档解析失败")
+            if extracted_text and any(marker in extracted_text for marker in ['#', '|', '**', '*', '-']):
+                logger.info(f"Word文档已成功转换为Markdown格式，长度: {len(extracted_text)} 字符")
+            else:
+                logger.warning("Word文档转换结果可能不是标准Markdown格式")
+        else:
+            logger.info(f"使用通用文件分析方法: {file_name}")
+            transform_result = current_analyzer.transform_file(file_content, file_name)
+            extracted_text = transform_result.get("text_content", "文件解析失败")
+    except Exception as e:
+        logger.error(f"EnhancedAnalyzer使用失败: {e}，使用基础解析")
+        if file_name.lower().endswith(('.doc', '.docx')) or 'word' in file_type.lower():
+            extracted_text = f"Word文档解析失败: {str(e)}，建议检查文件格式或安装python-docx库"
+        else:
+            extracted_text = f"文件解析失败: {str(e)}"
+    return extracted_text
 
 if __name__ == '__main__':
     app = create_app()

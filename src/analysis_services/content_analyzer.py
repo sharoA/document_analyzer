@@ -18,7 +18,7 @@ class ContentAnalyzerService(BaseAnalysisService):
         
         Args:
             task_id: 任务ID
-            input_data: 包含文档解析结果的数据
+            input_data: 需求文档，转成的markdown模式
             
         Returns:
             内容分析结果字典
@@ -26,14 +26,13 @@ class ContentAnalyzerService(BaseAnalysisService):
         start_time = time.time()
         
         try:
-            # 提取解析结果
-            parsing_result = input_data.get("parsing_result", {})
+            # 提取文件结果
             document_content = input_data.get("document_content", "")
             
             self._log_analysis_start(task_id, "内容分析", len(document_content))
             
-            # 基础内容分析
-            basic_analysis = await self._basic_content_analysis(parsing_result, document_content)
+            # # 基础内容分析
+            # basic_analysis = await self._basic_content_analysis(parsing_result, document_content)
             
             # CRUD操作识别
             crud_analysis = await self._crud_operation_analysis(document_content, parsing_result)
