@@ -502,26 +502,19 @@
                           {{ audience }}
                         </el-tag>
                       </el-descriptions-item>
+                      <el-descriptions-item label="使用模型" v-if="analysisResult.notes">
+                        <el-tag v-for="(audience, index) in analysisResult.notes" 
+                               :key="index" 
+                               type="primary" 
+                               size="small" 
+                               style="margin: 2px 4px 2px 0;">
+                               {{ analysisResult.notes }}
+                        </el-tag>
+                      </el-descriptions-item>
                     </el-descriptions>
                   </el-card>
 
-                  <!-- 解析状态 -->
-                  <el-card class="info-card" v-if="analysisResult">
-                    <template #header>
-                      <h5>✅ 解析状态</h5>
-                    </template>
-                    <el-descriptions :column="2" border size="small">
-                      <el-descriptions-item label="解析状态">
-                        <el-tag type="success" size="small">解析完成</el-tag>
-                      </el-descriptions-item>
-                      <el-descriptions-item label="解析耗时">
-                        {{ analysisResult.details?.parsing_duration?.toFixed(2) || '0.00' }} 秒
-                      </el-descriptions-item>
-                      <el-descriptions-item label="解析备注" span="2" v-if="analysisResult.notes">
-                        {{ analysisResult.notes }}
-                      </el-descriptions-item>
-                    </el-descriptions>
-                  </el-card>
+                
                   
                   <!-- 内容分析结果 -->
                   <el-card class="info-card" v-if="analysisResult.contentAnalysis">
@@ -592,7 +585,7 @@
                   <el-card class="info-card" v-if="analysisResult.markdownContent">
                     <template #header>
                       <div class="markdown-header">
-                        <h5>📋 {{ getAnalysisFileName() }} - 分析报告</h5>
+                        <h5>📋 {{ getAnalysisFileName() }} - 设计报告</h5>
                         <el-button-group size="small">
                           <el-button @click="copyMarkdownContent">
                             <el-icon><DocumentCopy /></el-icon>
