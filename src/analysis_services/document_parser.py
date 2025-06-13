@@ -2,11 +2,34 @@
 文档解析服务
 基于document_analyze.md规范，使用大模型进行6阶段智能文档解析
 """
-
+import logging
 import json
 import time
 from typing import Dict, Any, List
 from .base_service import BaseAnalysisService
+
+# 创建logger实例
+logger = logging.getLogger(__name__)
+
+def clean_llm_response(response: str) -> str:
+    """清理LLM响应中的markdown代码块标记"""
+    if not response:
+        return response
+    
+    # 去掉开头和结尾的markdown代码块标记
+    response = response.strip()
+    
+    # 去掉 ```json 开头
+    if response.startswith('```json'):
+        response = response[7:].strip()
+    elif response.startswith('```'):
+        response = response[3:].strip()
+    
+    # 去掉 ``` 结尾
+    if response.endswith('```'):
+        response = response[:-3].strip()
+    
+    return response
 
 class DocumentParserService(BaseAnalysisService):
     """文档解析服务类 - 实现6阶段解析流程"""
@@ -36,30 +59,25 @@ class DocumentParserService(BaseAnalysisService):
             # 阶段1: 格式识别
             file_format = await self._stage1_format_recognition(file_name, file_size, file_type, file_content)
             
-            # 阶段2: 结构解析
+            # 阶段2: 生成摘要及内容
             document_structure = await self._stage2_structure_analysis(file_content)
             
-            # 阶段3: 内容元素提取
-            content_elements = await self._stage3_content_extraction(file_content)
+            # # 阶段3: 内容元素提取
+            # content_elements = await self._stage3_content_extraction(file_content)
             
-            # 阶段4: 质量分析
-            quality_analysis = await self._stage4_quality_analysis(file_content)
+            # # 阶段4: 质量分析
+            # quality_analysis = await self._stage4_quality_analysis(file_content)
             
-            # 阶段5: 元数据提取
-            metadata = await self._stage5_metadata_extraction(file_content)
+            # # 阶段5: 元数据提取
+            # metadata = await self._stage5_metadata_extraction(file_content)
             
-            # 阶段6: 摘要和关键词生成
-            content_summary, content_keywords = await self._stage6_summary_keywords(file_content)
+            # # 阶段6: 摘要和关键词生成
+            # content_summary, content_keywords = await self._stage6_summary_keywords(file_content)
             
             # 构建符合规范的最终结果
             parsing_result = {
                 "fileFormat": file_format,
                 "documentStructure": document_structure,
-                "contentElements": content_elements,
-                "qualityAnalysis": quality_analysis,
-                "metadata": metadata,
-                "contentSummary": content_summary,
-                "contentKeyWord": content_keywords,
                 "processingInfo": {
                     "analysisTime": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
                     "processingSteps": [
@@ -96,7 +114,9 @@ class DocumentParserService(BaseAnalysisService):
         
         # 提取文件扩展名
         file_extension = file_name.split('.')[-1] if '.' in file_name else 'unknown'
-        
+         # 提取文件名
+        file_first_name = file_name.split('.')[0] if '.' in file_name else file_name
+
         # 基础信息统计
         lines = content.split('\n')
         words = content.split()
@@ -119,11 +139,12 @@ class DocumentParserService(BaseAnalysisService):
             "subType": file_extension,
             "encoding": "utf-8",
             "confidence": confidence,
+             "fileName": file_first_name,
             "basicInfo": {
                 "fileSize": file_size,
                 "estimatedPages": max(1, len(lines) // 50),  # 估算页数
                 "language": language,
-                "charset": "utf-8"
+                "charset": "utf-8" 
             },
             "technicalDetails": {
                 "lineCount": len(lines),
@@ -138,44 +159,79 @@ class DocumentParserService(BaseAnalysisService):
         
         system_prompt = """你是专业的文档结构分析专家。请分析文档的逻辑结构和物理结构。"""
         
+        # 安全地处理文档内容，避免格式化冲突
+        safe_content = content[:12000].replace('{', '{{').replace('}', '}}')
         user_prompt = f"""请分析以下文档的结构并返回JSON格式：
 
 文档内容：
-{content[:2000]}
+{safe_content}
 
 请按以下格式返回：
 {{
-  "hierarchy": {{
-    "hasTitle": "是否有主标题",
-    "maxDepth": "标题层级深度",
-    "sections": [
-      {{
-        "level": "层级(1-6)",
-        "title": "标题内容",
-        "startLine": "起始行号",
-        "endLine": "结束行号",
-        "subsections": "子章节数量"
-      }}
+  "contentSummary": {{
+    "abstract": "摘要",
+    "functionCount": "功能数量",
+    "functionName": ["功能名称列表"],
+    "apiCount": "API数量", 
+    "apiName": ["授信审批流程优化","授信审批流程优化"],
+    "dbChangeCount": "数据库变更数量",
+    "dbChangeName": ["数据库变更名称列表"],
+    "mqCount": "MQ数量",
+    "mqName": ["MQ名称列表"],
+    "timerCount": "定时任务数量",
+    "timerName": ["定时任务名称列表"]
+  }},
+
+  "contentKeyWord": {{
+    "keywords": ["关键词列表"],
+    "primaryKeywords": [
+        {{
+            "keyword": "关键词",  
+            "frequency": "出现频次",  
+            "importance": "重要性分数（0-1)", 
+            "positions": ["出现位置列表"],  
+            "context": ["上下文片段"]  
+        }}
+    ],
+    "phrases": [
+              {{
+                  "phrase": "短语", 
+                  "frequency": "频次",   
+                  "significance": "重要性"
+              }}
+          ],
+    "semanticClusters": [
+        {{
+            "clusterName": "语义簇名称",  
+            "keywords": ["相关关键词"],   
+            "coherenceScore": "连贯性分数"
+        }}
     ]
   }},
-  "navigation": {{
-    "hasTOC": "是否包含目录",
-    "tocLocation": "目录位置",
-    "pageNumbers": "是否有页码",
-    "crossReferences": "交叉引用数量"
-  }},
-  "organization": {{
-    "structureType": "结构类型(linear/hierarchical/mixed)",
-    "coherence": "结构连贯性评分(1-5)",
-    "completeness": "结构完整性评分(1-5)"
+  "metadata": {{
+    "userRole": ["用户角色，如果文档中没有默认所有人可操作"], 
+    "targetAudience": ["目标受众"]
   }}
 }}"""
         
         try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=1500)
+            # 安全的日志记录，避免格式化错误
+            content_preview = content[:5000].replace('{', '{{').replace('}', '}}')
+            logger.info(f"开始调用LLM进行结构分析，内容长度: {len(content)}, 预览: {content_preview}")
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=16384)
             if response:
-                return json.loads(response)
+                logger.info("LLM结构分析成功,开始解析JSON响应")
+                # 安全的响应日志记录
+                response_preview = response[:5000].replace('{', '{{').replace('}', '}}')
+                logger.info(f"LLM响应预览: {response_preview}")
+                cleaned_response = clean_llm_response(response)
+                result = json.loads(cleaned_response)
+                logger.info(f"JSON解析成功,结果包含 {len(result)} 个顶级键")
+                return result
         except Exception as e:
+            # 安全地记录错误，避免格式化问题
+            error_msg = str(e).replace('{', '{{').replace('}', '}}')
+            logger.error(f"结构分析失败，错误: {error_msg}")
             # 降级到基础结构分析
             return self._basic_structure_analysis(content)
         
@@ -186,10 +242,12 @@ class DocumentParserService(BaseAnalysisService):
         
         system_prompt = """你是专业的文档内容提取专家。请全面提取文档中的各类内容元素。"""
         
+        # 安全地处理文档内容，避免格式化冲突
+        safe_content = content[:2500].replace('{', '{{').replace('}', '}}')
         user_prompt = f"""请提取以下文档的内容元素并返回JSON格式：
 
 文档内容：
-{content[:2500]}
+{safe_content}
 
 请按以下格式返回：
 {{
@@ -257,10 +315,14 @@ class DocumentParserService(BaseAnalysisService):
 }}"""
         
         try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=2000)
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=16384)
             if response:
-                return json.loads(response)
+                cleaned_response = clean_llm_response(response)
+                return json.loads(cleaned_response)
         except Exception as e:
+            # 安全地记录错误，避免格式化问题
+            error_msg = str(e).replace('{', '{{').replace('}', '}}')
+            logger.error(f"内容提取失败，错误: {error_msg}")
             # 降级到基础内容提取
             return self._basic_content_extraction(content)
         
@@ -271,10 +333,12 @@ class DocumentParserService(BaseAnalysisService):
         
         system_prompt = """你是专业的文档质量分析专家。请从可读性、完整性、格式一致性等维度评估文档质量。"""
         
+        # 安全地处理文档内容，避免格式化冲突
+        safe_content = content[:2000].replace('{', '{{').replace('}', '}}')
         user_prompt = f"""请分析以下文档的质量并返回JSON格式：
 
 文档内容：
-{content[:2000]}
+{safe_content}
 
 请按以下格式返回：
 {{
@@ -317,10 +381,14 @@ class DocumentParserService(BaseAnalysisService):
 }}"""
         
         try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=1500)
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=16384)
             if response:
-                return json.loads(response)
-        except Exception:
+                cleaned_response = clean_llm_response(response)
+                return json.loads(cleaned_response)
+        except Exception as e:
+            # 安全地记录错误，避免格式化问题
+            error_msg = str(e).replace('{', '{{').replace('}', '}}')
+            logger.error(f"质量分析失败，错误: {error_msg}")
             # 降级到基础质量分析
             return self._basic_quality_analysis(content)
         
@@ -331,10 +399,12 @@ class DocumentParserService(BaseAnalysisService):
         
         system_prompt = """你是专业的文档元数据提取专家。请从文档内容中提取各类元数据信息。"""
         
+        # 安全地处理文档内容，避免格式化冲突
+        safe_content = content[:2000].replace('{', '{{').replace('}', '}}')
         user_prompt = f"""请提取以下文档的元数据并返回JSON格式：
 
 文档内容：
-{content[:2000]}
+{safe_content}
 
 请按以下格式返回：
 {{
@@ -373,10 +443,14 @@ class DocumentParserService(BaseAnalysisService):
 }}"""
         
         try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=1500)
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=16384)
             if response:
-                return json.loads(response)
-        except Exception:
+                cleaned_response = clean_llm_response(response)
+                return json.loads(cleaned_response)
+        except Exception as e:
+            # 安全地记录错误，避免格式化问题
+            error_msg = str(e).replace('{', '{{').replace('}', '}}')
+            logger.error(f"元数据提取失败，错误: {error_msg}")
             # 降级到基础元数据提取
             return self._basic_metadata_extraction(content)
         
@@ -387,10 +461,12 @@ class DocumentParserService(BaseAnalysisService):
         
         system_prompt = """你是专业的文档摘要和关键词生成专家。请基于文档内容生成高质量的摘要和关键词。"""
         
+        # 安全地处理文档内容，避免格式化冲突
+        safe_content = content[:3000].replace('{', '{{').replace('}', '}}')
         user_prompt = f"""请为以下文档生成摘要和关键词并返回JSON格式：
 
 文档内容：
-{content[:3000]}
+{safe_content}
 
 请按以下格式返回：
 {{
@@ -427,11 +503,15 @@ class DocumentParserService(BaseAnalysisService):
 }}"""
         
         try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=2000)
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=16384)
             if response:
-                result = json.loads(response)
+                cleaned_response = clean_llm_response(response)
+                result = json.loads(cleaned_response)
                 return result.get("contentSummary", {}), result.get("keywords", {})
-        except Exception:
+        except Exception as e:
+            # 安全地记录错误，避免格式化问题
+            error_msg = str(e).replace('{', '{{').replace('}', '}}')
+            logger.error(f"摘要关键词生成失败，错误: {error_msg}")
             # 降级to基础摘要关键词生成
             return self._basic_summary_keywords(content)
         

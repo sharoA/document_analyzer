@@ -15,10 +15,24 @@ from concurrent.futures import ThreadPoolExecutor
 def check_environment():
     """检查环境配置"""
     # 检查虚拟环境
-    if not Path("analyDesign_env/Scripts/activate.bat").exists():
+    venv_python = Path("analyDesign_env/Scripts/python.exe")
+    if not venv_python.exists():
         print("❌ 虚拟环境不存在")
         print("请先运行 setup_env.ps1 创建虚拟环境")
-        return False
+        return False, None
+    
+    # 检查当前是否已在虚拟环境中
+    current_python = Path(sys.executable).resolve()
+    venv_python_resolved = venv_python.resolve()
+    
+    if current_python != venv_python_resolved:
+        print("⚠️ 当前未使用虚拟环境")
+        print(f"当前Python: {current_python}")
+        print(f"虚拟环境Python: {venv_python_resolved}")
+        print("🔄 将自动使用虚拟环境Python执行")
+        return True, str(venv_python_resolved)
+    else:
+        print("✅ 已在虚拟环境中")
     
     # 检查必要的目录
     directories = ["uploads", "templates", "outputs", "logs"]
@@ -37,7 +51,7 @@ def check_environment():
         print("请检查配置文件")
     
     print("✅ 环境检查完成")
-    return True
+    return True, None
 
 def check_dependencies():
     """检查关键依赖"""
@@ -60,27 +74,70 @@ def start_api_server():
     print("💬 聊天接口: http://localhost:8082/api/chat")
     print("📁 文件上传: http://localhost:8082/api/file/upload")
     print("❤️  健康检查: http://localhost:8082/api/health")
+    print("=" * 60)
     
     try:
-        # 直接运行API服务器模块
-        subprocess.run([sys.executable, '-m', 'src.apis.api_server'])
+        # 检查API服务器脚本
+        api_script = Path("src/apis/api_server.py")
+        if not api_script.exists():
+            print(f"❌ API服务器脚本不存在: {api_script}")
+            return
+        
+        # 优先使用虚拟环境中的Python
+        venv_python = Path("analyDesign_env/Scripts/python.exe")
+        if venv_python.exists():
+            python_executable = str(venv_python)
+            print(f"✅ 使用虚拟环境Python: {python_executable}")
+        else:
+            python_executable = sys.executable
+            print(f"⚠️ 使用系统Python: {python_executable}")
+        
+        # 设置环境变量
+        env = os.environ.copy()
+        env['PYTHONPATH'] = str(Path.cwd())
+        
+        print("🔥 正在启动服务器...")
+        subprocess.run([python_executable, str(api_script)], env=env, cwd=str(Path.cwd()))
     except KeyboardInterrupt:
         print("\n👋 API服务器已停止")
     except Exception as e:
         print(f"❌ API服务器启动失败: {e}")
+        import traceback
+        traceback.print_exc()
 
 def start_websocket_server():
     """启动WebSocket服务器"""
     print("🔌 启动WebSocket服务器...")
     print("🔌 WebSocket地址: ws://localhost:8081/socket.io/")
     print("📡 服务地址: http://localhost:8081")
+    print("=" * 60)
     
     try:
-        subprocess.run([sys.executable, '-m', 'src.websockets.websocket_server'])
+        ws_script = Path("src/websockets/websocket_server.py")
+        if not ws_script.exists():
+            print(f"❌ WebSocket服务器脚本不存在: {ws_script}")
+            return
+        
+        # 优先使用虚拟环境中的Python
+        venv_python = Path("analyDesign_env/Scripts/python.exe")
+        if venv_python.exists():
+            python_executable = str(venv_python)
+            print(f"✅ 使用虚拟环境Python: {python_executable}")
+        else:
+            python_executable = sys.executable
+            print(f"⚠️ 使用系统Python: {python_executable}")
+        
+        env = os.environ.copy()
+        env['PYTHONPATH'] = str(Path.cwd())
+        
+        print("🔥 正在启动WebSocket服务器...")
+        subprocess.run([python_executable, str(ws_script)], env=env, cwd=str(Path.cwd()))
     except KeyboardInterrupt:
         print("\n👋 WebSocket服务器已停止")
     except Exception as e:
         print(f"❌ WebSocket服务器启动失败: {e}")
+        import traceback
+        traceback.print_exc()
 
 def start_full_service():
     """启动完整服务（API + WebSocket）"""
@@ -90,12 +147,27 @@ def start_full_service():
     print("🔌 WebSocket服务器: ws://localhost:8081/socket.io/")
     print("=" * 60)
     
+    # 检查脚本是否存在
+    api_script = Path("src/apis/api_server.py")
+    ws_script = Path("src/websockets/websocket_server.py")
+    
+    if not api_script.exists():
+        print(f"❌ API服务器脚本不存在: {api_script}")
+        return
+    
+    if not ws_script.exists():
+        print(f"❌ WebSocket服务器脚本不存在: {ws_script}")
+        return
+    
     # 使用线程池同时启动两个服务器
     with ThreadPoolExecutor(max_workers=2) as executor:
         try:
+            env = os.environ.copy()
+            env['PYTHONPATH'] = str(Path.cwd())
+            
             # 启动API服务器
             def start_api():
-                subprocess.run([sys.executable, '-m', 'src.apis.api_server'])
+                subprocess.run([sys.executable, str(api_script)], env=env, cwd=str(Path.cwd()))
             
             api_future = executor.submit(start_api)
             
@@ -103,9 +175,10 @@ def start_full_service():
             time.sleep(2)
             
             # 启动WebSocket服务器
-            ws_future = executor.submit(lambda: subprocess.run([
-                sys.executable, '-m', 'src.websockets.websocket_server'
-            ]))
+            def start_ws():
+                subprocess.run([sys.executable, str(ws_script)], env=env, cwd=str(Path.cwd()))
+            
+            ws_future = executor.submit(start_ws)
             
             print("✅ 两个服务器都已启动")
             print("按 Ctrl+C 停止所有服务")
@@ -118,6 +191,8 @@ def start_full_service():
             print("\n👋 所有服务器已停止")
         except Exception as e:
             print(f"❌ 服务启动失败: {e}")
+            import traceback
+            traceback.print_exc()
 
 def main():
     """主函数"""
@@ -137,8 +212,20 @@ def main():
     print("=" * 50)
     
     # 检查环境
-    if not check_environment():
+    env_ok, venv_python = check_environment()
+    if not env_ok:
         sys.exit(1)
+    
+    # 如果需要切换到虚拟环境，重新启动脚本
+    if venv_python:
+        print("🔄 使用虚拟环境重新启动...")
+        env = os.environ.copy()
+        env['PYTHONPATH'] = str(Path.cwd())
+        
+        # 构建新的命令行参数
+        new_args = [venv_python, __file__, "--mode", args.mode]
+        subprocess.run(new_args, env=env, cwd=str(Path.cwd()))
+        return
     
     # 检查依赖
     if not check_dependencies():

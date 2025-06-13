@@ -27,12 +27,6 @@ file_upload:
   - .ppt
   max_size: 52428800
   temp_dir: uploads/temp
-llm:
-  max_tokens: 4000
-  model: doubao-pro-4k
-  provider: volcengine
-  temperature: 0.7
-  timeout: 30
 logging:
   backup_count: 5
   file: logs/app.log

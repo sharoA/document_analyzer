@@ -18,15 +18,21 @@ logger = logging.getLogger(__name__)
 class Config:
     """配置管理类"""
     
-    def __init__(self, config_file: str = "config.yaml"):
+    def __init__(self, config_file: str = None):
         """
         初始化配置
         
         Args:
-            config_file: 配置文件路径
+            config_file: 配置文件路径，如果为None则自动查找项目根目录的config.yaml
         """
         # 首先加载环境变量
         load_dotenv()
+        
+        # 如果没有指定配置文件，自动查找项目根目录的config.yaml
+        if config_file is None:
+            # 获取项目根目录（从src/resource往上两级）
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            config_file = os.path.join(project_root, "config.yaml")
         
         self.config_file = config_file
         self.config_data = {}
@@ -81,13 +87,7 @@ class Config:
                 "enable_ai_analysis": True,
                 "enable_content_analysis": True
             },
-            "llm": {
-                "provider": "volcengine",
-                "model": "doubao-pro-4k",
-                "temperature": 0.7,
-                "max_tokens": 4000,
-                "timeout": 30
-            },
+
             "volcengine": {
                 "api_key": "7fcb3541-9363-4bfa-90aa-19e9f691bc25",
                 "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
@@ -245,8 +245,8 @@ class Config:
         return self.get('analysis', {})
     
     def get_llm_config(self) -> Dict[str, Any]:
-        """获取LLM配置"""
-        return self.get('llm', {})
+        """获取LLM配置 - 现在返回火山引擎配置"""
+        return self.get_volcengine_config()
     
     def get_volcengine_config(self) -> Dict[str, Any]:
         """获取火山引擎配置"""

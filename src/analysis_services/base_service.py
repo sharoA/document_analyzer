@@ -79,10 +79,12 @@ class BaseAnalysisService(ABC):
     
     def _log_error(self, task_id: str, analysis_type: str, error: Exception):
         """记录错误日志"""
-        self.logger.error(f"{analysis_type}分析失败 - 任务ID: {task_id}, 错误: {str(error)}")
+        # 安全地处理错误信息，避免格式化问题
+        error_msg = str(error).replace('{', '{{').replace('}', '}}')
+        self.logger.error(f"{analysis_type}分析失败 - 任务ID: {task_id}, 错误: {error_msg}")
     
     async def _call_llm(self, prompt: str, system_prompt: str = None, 
-                       max_tokens: int = 2000) -> Optional[str]:
+                       max_tokens: int = 4000) -> Optional[str]:
         """
         调用LLM进行分析
         
@@ -107,7 +109,9 @@ class BaseAnalysisService(ABC):
             )
             return response
         except Exception as e:
-            self.logger.error(f"LLM调用失败: {str(e)}")
+            # 安全地处理错误信息，避免格式化问题
+            error_msg = str(e).replace('{', '{{').replace('}', '}}')
+            self.logger.error(f"LLM调用失败: {error_msg}")
             return None
     
     async def _vector_search(self, query: str, top_k: int = 5) -> list:
@@ -129,5 +133,7 @@ class BaseAnalysisService(ABC):
             results = await self.vector_db.search(query, top_k=top_k)
             return results
         except Exception as e:
-            self.logger.error(f"向量搜索失败: {str(e)}")
+            # 安全地处理错误信息，避免格式化问题
+            error_msg = str(e).replace('{', '{{').replace('}', '}}')
+            self.logger.error(f"向量搜索失败: {error_msg}")
             return [] 

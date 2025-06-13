@@ -53,7 +53,7 @@ try:
         initialize_analysis_service_manager
     )
     try:
-        from ..enhanced_analyzer import EnhancedAnalyzer
+        from ..utils.enhanced_analyzer import EnhancedAnalyzer
         ENHANCED_ANALYZER_AVAILABLE = True
     except ImportError:
         ENHANCED_ANALYZER_AVAILABLE = False
@@ -79,7 +79,7 @@ except ImportError:
         initialize_analysis_service_manager
     )
     try:
-        from src.enhanced_analyzer import EnhancedAnalyzer
+        from src.utils.enhanced_analyzer import EnhancedAnalyzer
         ENHANCED_ANALYZER_AVAILABLE = True
     except ImportError:
         ENHANCED_ANALYZER_AVAILABLE = False
@@ -199,10 +199,10 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 # 文件处理任务类
 class FileParsingTask:
-    def __init__(self, task_id: str, file_info: dict, file_content: bytes = None, file_path: str = None):
+    def __init__(self, task_id: str, file_info: dict, file_path: str = None):
         self.id = task_id
         self.file_info = file_info
-        self.file_content = file_content
+        self.file_content = None  # 不再存储文件内容，只存储路径
         self.file_path = file_path
         self.status = "pending"
         self.progress = 0
@@ -469,11 +469,54 @@ def process_file_parsing(task: FileParsingTask):
             else:
                 raise ValueError("无法获取文件内容，文件可能已被删除")
         
-        # 转换为文本内容
-        content = file_content.decode('utf-8', errors='ignore') if isinstance(file_content, bytes) else str(file_content)
+        # 直接使用原始字节数据，让EnhancedAnalyzer处理编码检测和转换
+        # 这样可以更好地处理中文字符和各种文档格式
         
-        # 验证输入 - 使用实际的文件内容进行验证
-        validation = validate_input(task.id, content, file_type)
+        # 使用EnhancedAnalyzer分析文件内容，特别处理Word文档转Markdown
+        try:
+            if 'analyzer' in globals() and analyzer is not None:
+                current_analyzer = analyzer
+            else:
+                # 如果analyzer不可用，创建一个新的实例
+                current_analyzer = EnhancedAnalyzer()
+            
+            # 检查是否为Word文档，如果是则明确使用Markdown转换
+            if file_name.lower().endswith(('.doc', '.docx')) or 'word' in file_type.lower():
+                logger.info(f"检测到Word文档，使用Markdown转换: {file_name}")
+                task.update_progress(30, "转换Word文档为Markdown格式", "parsing")
+                
+                # 直接调用Word文档解析方法，确保获得Markdown格式
+                transform_result = current_analyzer.parse_word_document(file_content, file_name)
+                
+                # 确保返回的是Markdown格式的文本内容
+                extracted_text = transform_result.get("text_content", "Word文档解析失败")
+                
+                # 验证是否包含Markdown格式特征
+                if extracted_text and any(marker in extracted_text for marker in ['#', '|', '**', '*', '-']):
+                    logger.info(f"Word文档已成功转换为Markdown格式，长度: {len(extracted_text)} 字符")
+                else:
+                    logger.warning("Word文档转换结果可能不是标准Markdown格式")
+                    
+            else:
+                # 非Word文档，使用通用转换方法
+                logger.info(f"使用通用文件分析方法: {file_name}")
+                transform_result = current_analyzer.transform_file(file_content, file_name)
+                extracted_text = transform_result.get("text_content", "文件解析失败")
+                
+        except Exception as e:
+            logger.error(f"EnhancedAnalyzer使用失败: {e}，使用基础解析")
+            # 降级处理
+            if file_name.lower().endswith(('.doc', '.docx')) or 'word' in file_type.lower():
+                extracted_text = f"Word文档解析失败: {str(e)}，建议检查文件格式或安装python-docx库"
+            else:
+                extracted_text = f"文件解析失败: {str(e)}"
+        # 安全的日志记录，避免格式化错误
+        logger.info("提取的文本内容已准备完毕")
+        extracted_preview = extracted_text[:500].replace('{', '{{').replace('}', '}}') if extracted_text else "无内容"
+        logger.info(f"转换后内容预览: {extracted_preview}")
+        
+        # 验证输入 - 使用提取的文本内容进行验证
+        validation = validate_input(task.id, extracted_text, file_type)
         if not all(validation.values()):
             raise ValueError(f"输入验证失败: {validation}")
         
@@ -483,7 +526,7 @@ def process_file_parsing(task: FileParsingTask):
         if analysis_service_manager:
             parsing_result = analysis_service_manager.parse_document_sync(
                 task_id=task.id,
-                file_content=content,
+                file_content=extracted_text,
                 file_type=file_type.split('/')[-1] if '/' in file_type else file_type,
                 file_name=file_name
             )
@@ -1539,10 +1582,14 @@ def start_analysis_v2():
                     "error": "文件信息不完整，缺少name或content字段"
                 }), 400
             
+            # 安全记录文件信息，避免base64内容过长
+            logger.info(f"file_info包含content字段，长度: {len(file_info['content'])}")
             # 解码base64文件内容
             try:
                 import base64
                 file_content = base64.b64decode(file_info['content'])
+
+                logger.info(f"base64解码成功，file_content类型: {type(file_content)}, 大小: {len(file_content)} bytes")
             except Exception as e:
                 return jsonify({
                     "success": False,
@@ -1600,11 +1647,11 @@ def start_analysis_v2():
         with open(file_path, 'wb') as f:
             f.write(file_content)
         
+       
         # 创建解析任务
         task = FileParsingTask(
             task_id=task_id,
             file_info=file_info,
-            file_content=file_content,
             file_path=file_path
         )
         

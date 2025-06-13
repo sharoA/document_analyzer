@@ -150,9 +150,9 @@ ai_result = await ai_analyzer.analyze_with_ai("task_001", content_result, crud_o
 export VECTOR_DB_TYPE=mock
 export VECTOR_DB_DIR=./vector_db
 
-# 大模型配置
-export LLM_MAX_TOKENS=3000
-export LLM_TEMPERATURE=0.7
+# 火山引擎配置
+export VOLCENGINE_MAX_TOKENS=3000
+export VOLCENGINE_TEMPERATURE=0.7
 
 # 性能配置
 export MAX_CONCURRENT_TASKS=5
@@ -173,10 +173,10 @@ from analysis_services import get_analysis_config, update_analysis_config
 
 # 获取配置
 config = get_analysis_config()
-llm_config = get_analysis_config("llm")
+volcengine_config = get_analysis_config("volcengine")
 
 # 更新配置
-update_analysis_config("llm", {"max_tokens": 4000})
+update_analysis_config("volcengine", {"max_tokens": 4000})
 ```
 
 ## 工具函数

@@ -48,12 +48,12 @@ class AnalysisServiceTester:
         # 测试获取配置
         config = get_analysis_config()
         assert isinstance(config, dict), "配置应该是字典类型"
-        assert "llm" in config, "配置应该包含LLM配置"
+        assert "volcengine" in config, "配置应该包含火山引擎配置"
         assert "vector_db" in config, "配置应该包含向量数据库配置"
         
         # 测试获取特定配置
-        llm_config = get_analysis_config("llm")
-        assert "max_tokens" in llm_config, "LLM配置应该包含max_tokens"
+        volcengine_config = get_analysis_config("volcengine")
+        assert "max_tokens" in volcengine_config, "火山引擎配置应该包含max_tokens"
         
         logger.info("✓ 配置功能测试通过")
     

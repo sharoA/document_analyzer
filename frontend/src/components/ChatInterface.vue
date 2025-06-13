@@ -324,7 +324,7 @@
               
               <!-- 分析结果显示区域 -->
               <div class="results-container">
-                <el-scrollbar height="calc(100vh - 320px)" class="analysis-scrollbar">
+                <el-scrollbar height="calc(100vh - 400px)" class="analysis-scrollbar">
                   <div class="result-content">
                   <!-- 文件基本信息 -->
                   <el-card class="info-card" v-if="analysisResult">
@@ -2192,7 +2192,7 @@ const getAnalysisCharacterCount = () => {
 // 结果容器样式
 .results-container {
   position: relative;
-  height: 100%;
+  height: calc(100vh - 400px);
   display: flex;
   flex-direction: column;
 }
@@ -2555,7 +2555,7 @@ const getAnalysisCharacterCount = () => {
 // 自适应滚动条样式优化
 .analysis-scrollbar {
   flex: 1;
-  height: calc(100vh - 320px);
+  height: calc(100vh - 400px);
   
   :deep(.el-scrollbar__wrap) {
     overflow-x: hidden;
@@ -2624,7 +2624,7 @@ const getAnalysisCharacterCount = () => {
 // 响应式适配
 @media (max-width: 1200px) {
   .analysis-scrollbar {
-    height: calc(100vh - 340px) !important;
+    height: calc(100vh - 420px) !important;
   }
   
   .ai-content-scrollbar {
@@ -2642,7 +2642,7 @@ const getAnalysisCharacterCount = () => {
 
 @media (max-width: 768px) {
   .analysis-scrollbar {
-    height: calc(100vh - 360px) !important;
+    height: calc(100vh - 440px) !important;
   }
   
   .ai-content-scrollbar {

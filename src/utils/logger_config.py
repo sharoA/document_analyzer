@@ -9,80 +9,187 @@ import os
 import sys
 import logging
 import logging.handlers
+import time
+import shutil
+import threading
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional
 
 class DailyRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
-    """按日期轮转的文件处理器，支持按月份创建子目录"""
+    """
+    自定义的按日期轮转文件处理器，支持按月分目录
+    线程安全的日志轮转机制，适用于Windows环境
+    """
+    
+    # 类级别的锁，用于保护轮转操作
+    _rollover_lock = threading.Lock()
     
     def __init__(self, base_dir, filename_prefix, when='midnight', interval=1, backupCount=30, encoding='utf-8'):
         self.base_dir = Path(base_dir)
         self.filename_prefix = filename_prefix
         
-        # 确保基础目录存在
-        self.base_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 创建当前月份目录和日志文件路径
+        # 创建当前月份目录
         current_month = datetime.now().strftime('%Y-%m')
         self.current_month_dir = self.base_dir / current_month
-        self.current_month_dir.mkdir(exist_ok=True)
+        self.current_month_dir.mkdir(parents=True, exist_ok=True)
         
-        # 生成完整的日志文件路径
+        # 构建完整的日志文件路径
         log_filename = self.current_month_dir / f"{filename_prefix}.log"
         
+        # 调用父类构造函数
         super().__init__(
-            str(log_filename),
+            filename=str(log_filename),
             when=when,
             interval=interval,
             backupCount=backupCount,
             encoding=encoding
         )
-        
-        # 设置日志文件后缀格式
-        self.suffix = '%Y-%m-%d'
     
     def doRollover(self):
         """执行日志轮转，如果需要则创建新的月份目录"""
-        # 检查是否需要创建新的月份目录
-        current_month = datetime.now().strftime('%Y-%m')
-        new_month_dir = self.base_dir / current_month
-        
-        if new_month_dir != self.current_month_dir:
-            # 需要创建新的月份目录
-            new_month_dir.mkdir(exist_ok=True)
-            self.current_month_dir = new_month_dir
-            
-            # 更新文件路径
-            new_log_filename = self.current_month_dir / f"{self.filename_prefix}.log"
-            
-            # 关闭当前文件
-            if self.stream:
+        # 使用类级别锁保护轮转操作，避免多线程冲突
+        with self._rollover_lock:
+            try:
+                # 检查是否需要创建新的月份目录
+                current_month = datetime.now().strftime('%Y-%m')
+                new_month_dir = self.base_dir / current_month
+                
+                if new_month_dir != self.current_month_dir:
+                    # 需要创建新的月份目录
+                    new_month_dir.mkdir(exist_ok=True)
+                    self.current_month_dir = new_month_dir
+                    
+                    # 更新文件路径
+                    new_log_filename = self.current_month_dir / f"{self.filename_prefix}.log"
+                    
+                    # 安全地关闭当前文件流
+                    self._safe_close_stream()
+                    
+                    # 更新基础文件名
+                    self.baseFilename = str(new_log_filename)
+                
+                # 执行标准轮转（带重试机制）
+                self._safe_rollover()
+                
+            except Exception as e:
+                # 如果轮转失败，记录错误但不中断程序
+                print(f"日志轮转失败: {e}", file=sys.stderr)
+                # 尝试重新打开文件流
+                self._ensure_stream_open()
+    
+    def _safe_close_stream(self):
+        """安全地关闭文件流"""
+        if self.stream:
+            try:
+                self.stream.flush()
                 self.stream.close()
                 self.stream = None
-            
-            # 更新基础文件名
-            self.baseFilename = str(new_log_filename)
+            except Exception as e:
+                print(f"关闭日志文件流失败: {e}", file=sys.stderr)
+    
+    def _safe_rollover(self):
+        """安全的日志轮转，带重试机制"""
+        max_retries = 3
+        retry_delay = 0.1
         
-        # 执行标准轮转
-        super().doRollover()
+        for attempt in range(max_retries):
+            try:
+                # 先关闭文件流
+                self._safe_close_stream()
+                
+                # 等待一小段时间确保文件句柄释放
+                time.sleep(retry_delay)
+                
+                # 执行标准轮转
+                super().doRollover()
+                return
+                
+            except (PermissionError, OSError) as e:
+                if attempt < max_retries - 1:
+                    # 增加重试延迟
+                    retry_delay *= 2
+                    print(f"日志轮转重试 {attempt + 1}/{max_retries}: {e}", file=sys.stderr)
+                    time.sleep(retry_delay)
+                else:
+                    # 最后一次尝试失败，使用备用策略
+                    print(f"日志轮转最终失败，使用备用策略: {e}", file=sys.stderr)
+                    self._fallback_rollover()
+            except Exception as e:
+                print(f"日志轮转异常: {e}", file=sys.stderr)
+                self._fallback_rollover()
+                break
+    
+    def _fallback_rollover(self):
+        """备用轮转策略：创建新文件而不是重命名旧文件"""
+        try:
+            # 生成带时间戳的新文件名
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_filename = self.current_month_dir / f"{self.filename_prefix}_{timestamp}.log"
+            
+            # 如果当前文件存在且较大，尝试复制到备份文件
+            current_file = Path(self.baseFilename)
+            if current_file.exists() and current_file.stat().st_size > 1024 * 1024:  # 大于1MB
+                try:
+                    shutil.copy2(current_file, backup_filename)
+                    # 清空当前文件而不是删除
+                    with open(current_file, 'w', encoding=self.encoding) as f:
+                        f.write('')
+                except Exception as e:
+                    print(f"备用轮转策略失败: {e}", file=sys.stderr)
+            
+            # 确保文件流重新打开
+            self._ensure_stream_open()
+            
+        except Exception as e:
+            print(f"备用轮转策略异常: {e}", file=sys.stderr)
+            self._ensure_stream_open()
+    
+    def _ensure_stream_open(self):
+        """确保文件流是打开的"""
+        if self.stream is None:
+            try:
+                self.stream = self._open()
+            except Exception as e:
+                print(f"重新打开日志文件失败: {e}", file=sys.stderr)
+    
+    def emit(self, record):
+        """
+        重写emit方法，添加异常处理，避免日志写入失败导致程序崩溃
+        """
+        try:
+            super().emit(record)
+        except Exception as e:
+            # 日志写入失败时，尝试输出到stderr，但不中断程序
+            try:
+                print(f"日志写入失败: {e}", file=sys.stderr)
+                print(f"失败的日志记录: {self.format(record)}", file=sys.stderr)
+            except:
+                # 如果连stderr都失败了，就静默忽略
+                pass
 
 class LoggerManager:
-    """日志管理器"""
+    """日志管理器 - 线程安全的日志系统管理"""
     
     _initialized = False
     _loggers = {}
+    _init_lock = threading.Lock()
     
     @classmethod
     def initialize(cls, config: Dict[str, Any] = None):
         """
-        初始化日志系统
+        初始化日志系统 - 线程安全
         
         Args:
             config: 日志配置字典，如果为None则使用默认配置
         """
+        # 双重检查锁定模式，确保线程安全的单例初始化
         if cls._initialized:
             return
+            
+        with cls._init_lock:
+            if cls._initialized:
+                return
         
         # 获取配置
         if config is None:
@@ -120,60 +227,72 @@ class LoggerManager:
         root_logger.addHandler(console_handler)
         
         # 2. 文件处理器 - 主应用日志（按日期轮转，按月分目录）
-        file_handler = DailyRotatingFileHandler(
-            base_dir=log_dir,
-            filename_prefix='app',
-            when='midnight',
-            interval=1,
-            backupCount=config.get('backup_count', 30)
-        )
-        file_handler.setLevel(log_level)
-        file_handler.setFormatter(formatter)
-        root_logger.addHandler(file_handler)
+        try:
+            file_handler = DailyRotatingFileHandler(
+                base_dir=log_dir,
+                filename_prefix='app',
+                when='midnight',
+                interval=1,
+                backupCount=config.get('backup_count', 30)
+            )
+            file_handler.setLevel(log_level)
+            file_handler.setFormatter(formatter)
+            root_logger.addHandler(file_handler)
+        except Exception as e:
+            print(f"创建主应用日志处理器失败: {e}", file=sys.stderr)
         
         # 3. API服务器专用日志（按日期轮转，按月分目录）
-        api_handler = DailyRotatingFileHandler(
-            base_dir=log_dir,
-            filename_prefix='api_server',
-            when='midnight',
-            interval=1,
-            backupCount=config.get('backup_count', 30)
-        )
-        api_handler.setLevel(log_level)
-        api_handler.setFormatter(formatter)
-        
-        # 为API相关的logger添加专用处理器
-        api_logger = logging.getLogger('api_server')
-        api_logger.addHandler(api_handler)
-        api_logger.setLevel(log_level)
+        try:
+            api_handler = DailyRotatingFileHandler(
+                base_dir=log_dir,
+                filename_prefix='api_server',
+                when='midnight',
+                interval=1,
+                backupCount=config.get('backup_count', 30)
+            )
+            api_handler.setLevel(log_level)
+            api_handler.setFormatter(formatter)
+            
+            # 为API相关的logger添加专用处理器
+            api_logger = logging.getLogger('api_server')
+            api_logger.addHandler(api_handler)
+            api_logger.setLevel(log_level)
+        except Exception as e:
+            print(f"创建API服务器日志处理器失败: {e}", file=sys.stderr)
         
         # 4. 分析服务专用日志（按日期轮转，按月分目录）
-        analysis_handler = DailyRotatingFileHandler(
-            base_dir=log_dir,
-            filename_prefix='analysis_service',
-            when='midnight',
-            interval=1,
-            backupCount=config.get('backup_count', 30)
-        )
-        analysis_handler.setLevel(log_level)
-        analysis_handler.setFormatter(formatter)
-        
-        # 为分析服务相关的logger添加专用处理器
-        analysis_logger = logging.getLogger('analysis_service')
-        analysis_logger.addHandler(analysis_handler)
-        analysis_logger.setLevel(log_level)
+        try:
+            analysis_handler = DailyRotatingFileHandler(
+                base_dir=log_dir,
+                filename_prefix='analysis_service',
+                when='midnight',
+                interval=1,
+                backupCount=config.get('backup_count', 30)
+            )
+            analysis_handler.setLevel(log_level)
+            analysis_handler.setFormatter(formatter)
+            
+            # 为分析服务相关的logger添加专用处理器
+            analysis_logger = logging.getLogger('analysis_service')
+            analysis_logger.addHandler(analysis_handler)
+            analysis_logger.setLevel(log_level)
+        except Exception as e:
+            print(f"创建分析服务日志处理器失败: {e}", file=sys.stderr)
         
         # 5. 错误专用日志（按日期轮转，按月分目录）
-        error_handler = DailyRotatingFileHandler(
-            base_dir=log_dir,
-            filename_prefix='error',
-            when='midnight',
-            interval=1,
-            backupCount=config.get('backup_count', 30)
-        )
-        error_handler.setLevel(logging.ERROR)
-        error_handler.setFormatter(formatter)
-        root_logger.addHandler(error_handler)
+        try:
+            error_handler = DailyRotatingFileHandler(
+                base_dir=log_dir,
+                filename_prefix='error',
+                when='midnight',
+                interval=1,
+                backupCount=config.get('backup_count', 30)
+            )
+            error_handler.setLevel(logging.ERROR)
+            error_handler.setFormatter(formatter)
+            root_logger.addHandler(error_handler)
+        except Exception as e:
+            print(f"创建错误日志处理器失败: {e}", file=sys.stderr)
         
         cls._initialized = True
         
