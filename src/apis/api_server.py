@@ -1790,9 +1790,6 @@ def extract_text_from_file(file_path: str) -> str:
     :param file_path: 文件路径
     :return: extracted_text
     """
-    import os
-    from loguru import logger
-
     file_content = None
     if file_path and os.path.exists(file_path):
         try:

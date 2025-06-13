@@ -15,10 +15,10 @@ from concurrent.futures import ThreadPoolExecutor
 def check_environment():
     """检查环境配置"""
     # 检查虚拟环境
-    venv_python = Path("analyDesign_env/Scripts/python.exe")
+    venv_python = Path("venv/Scripts/python.exe")
     if not venv_python.exists():
         print("❌ 虚拟环境不存在")
-        print("请先运行 setup_env.ps1 创建虚拟环境")
+        print("请先运行 python -m venv venv 创建虚拟环境")
         return False, None
     
     # 检查当前是否已在虚拟环境中
@@ -84,7 +84,7 @@ def start_api_server():
             return
         
         # 优先使用虚拟环境中的Python
-        venv_python = Path("analyDesign_env/Scripts/python.exe")
+        venv_python = Path("venv/Scripts/python.exe")
         if venv_python.exists():
             python_executable = str(venv_python)
             print(f"✅ 使用虚拟环境Python: {python_executable}")
@@ -119,7 +119,7 @@ def start_websocket_server():
             return
         
         # 优先使用虚拟环境中的Python
-        venv_python = Path("analyDesign_env/Scripts/python.exe")
+        venv_python = Path("venv/Scripts/python.exe")
         if venv_python.exists():
             python_executable = str(venv_python)
             print(f"✅ 使用虚拟环境Python: {python_executable}")
