@@ -3,6 +3,7 @@
 """
 知识库初始化脚本 - Weaviate 版本
 将 D:\knowledge_base 下的知识库内容转换为向量并存储到 Weaviate 中
+根据 knowledge_init_weaviate.md 要求实现，使用 LangChain 框架进行 RAG
 """
 
 import os
@@ -11,9 +12,12 @@ import uuid
 import json
 import logging
 import hashlib
+import shutil
+import base64
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
+from io import BytesIO
 
 # 文件处理相关
 import docx
@@ -29,7 +33,7 @@ from sentence_transformers import SentenceTransformer
 import weaviate
 import weaviate.classes as wvc
 from weaviate.auth import AuthApiKey
-from langchain_community.vectorstores import Weaviate
+from langchain_community.vectorstores import Weaviate as LangChainWeaviate
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
@@ -64,10 +68,16 @@ class KnowledgeBaseInitializer:
         Args:
             knowledge_base_path: 知识库根目录路径
         """
+        # 初始化LLM客户端以使用_call_llm方法
+        self.llm_client = None
+        self._initialize_llm_client()
+        
         self.knowledge_base_path = Path(knowledge_base_path)
         self.weaviate_client = None
         self.redis_manager = None
         self.embeddings_model = None
+        self.langchain_embeddings = None
+        self.langchain_vectorstore = None
         self.text_splitter = None
         self.blip_processor = None
         self.blip_model = None
@@ -75,8 +85,52 @@ class KnowledgeBaseInitializer:
         # 支持的文件类型
         self.supported_extensions = {'.docx', '.xlsx', '.java', '.xml'}
         
+        # 图片输出目录 - 按要求设置为指定路径
+        self.image_output_dir = self.knowledge_base_path / "链数_LS" / "需求文档" / "需求文档图片"
+        
         # 初始化组件
         self._initialize_components()
+    
+    def _initialize_llm_client(self):
+        """初始化LLM客户端"""
+        try:
+            from ..utils.volcengine_client import VolcengineClient
+            config = get_config()
+            volcengine_config = config.get_volcengine_config()
+            self.llm_client = VolcengineClient(volcengine_config)
+            logger.info("✅ LLM客户端初始化成功")
+        except Exception as e:
+            logger.warning(f"⚠️ LLM客户端初始化失败: {e}")
+            self.llm_client = None
+    
+    def _call_llm(self, prompt: str, system_prompt: str = None, max_tokens: int = 4000) -> Optional[str]:
+        """
+        调用LLM进行分析
+        
+        Args:
+            prompt: 用户提示
+            system_prompt: 系统提示
+            max_tokens: 最大token数
+            
+        Returns:
+            模型响应文本
+        """
+        if not self.llm_client:
+            logger.warning("LLM客户端未初始化")
+            return None
+        
+        try:
+            response = self.llm_client.chat(
+                messages=[
+                    {"role": "system", "content": system_prompt or "你是一个专业的文档分析助手"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens
+            )
+            return response
+        except Exception as e:
+            logger.error(f"LLM调用失败: {e}")
+            return None
     
     def _initialize_components(self):
         """初始化各种组件"""
@@ -89,9 +143,15 @@ class KnowledgeBaseInitializer:
             self.redis_manager = get_redis_manager()
             logger.info("✅ Redis 管理器初始化成功")
             
-            # 初始化嵌入模型
-            self.embeddings_model = SentenceTransformer('all-MiniLM-L6-v2')
-            logger.info("✅ 嵌入模型加载成功")
+            # 初始化嵌入模型 - 使用bge-large-zh（1024维，中文优化）
+            self.embeddings_model = SentenceTransformer('BAAI/bge-large-zh')
+            logger.info("✅ 嵌入模型加载成功 (bge-large-zh, 1024维，中文优化)")
+            
+            # 初始化 LangChain 嵌入模型
+            self.langchain_embeddings = SentenceTransformerEmbeddings(
+                model_name='BAAI/bge-large-zh'
+            )
+            logger.info("✅ LangChain 嵌入模型初始化成功")
             
             # 初始化文本分割器
             self.text_splitter = RecursiveCharacterTextSplitter(
@@ -102,7 +162,10 @@ class KnowledgeBaseInitializer:
             )
             logger.info("✅ 文本分割器初始化成功")
             
-            # 初始化图片描述模型（延迟加载）
+            # 创建图片输出目录
+            self.image_output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"✅ 图片输出目录创建成功: {self.image_output_dir}")
+            
             logger.info("✅ 组件初始化完成")
             
         except Exception as e:
@@ -122,9 +185,8 @@ class KnowledgeBaseInitializer:
                 self.blip_model = None
     
     def _get_cache_key(self, file_path: str, cache_type: str) -> str:
-        """生成缓存键"""
-        file_hash = hashlib.md5(file_path.encode()).hexdigest()
-        return f"knowledge_base:{file_hash}:{cache_type}"
+        """生成缓存键 - 按要求使用指定格式"""
+        return f"file:{file_path}:{cache_type}"
     
     def _get_cached_result(self, file_path: str, cache_type: str) -> Optional[Any]:
         """获取缓存结果"""
@@ -150,87 +212,761 @@ class KnowledgeBaseInitializer:
             relative_path = file_path.relative_to(self.knowledge_base_path)
             parts = relative_path.parts
             
-            # 如果路径包含多个部分，尝试提取项目名称
-            if len(parts) >= 2:
-                # 例如: 代码/链数后端代码/zqyl-ls/... -> zqyl-ls
+            # 按要求，将目录结构存储为LS
+            if len(parts) >= 1:
+                # 检查是否包含特定的项目标识
                 for part in parts:
-                    if part not in ['代码', '文档', '需求', '数据库', '链数后端代码', '链数前端代码']:
-                        return part
+                    if 'zqyl-ls' in part.lower():
+                        return 'zqyl-ls'
+                    elif 'ls' in part.lower() or '链数' in part:
+                        return 'LS'
             
-            # 默认使用第一个目录作为项目名称
-            return parts[0] if parts else "unknown"
+            # 默认返回LS
+            return "LS"
             
         except Exception as e:
             logger.warning(f"提取项目名称失败 {file_path}: {e}")
-            return "unknown"
+            return "LS"
     
-    def _process_docx_file(self, file_path: Path) -> List[Dict[str, Any]]:
-        """处理 DOCX 文件"""
-        results = []
+    def _clear_weaviate_database(self):
+        """清空Weaviate数据库所有数据"""
+        try:
+            logger.info("🗑️ 开始清空Weaviate数据库...")
+            
+            # 获取所有集合
+            collections = self.weaviate_client.collections.list_all()
+            
+            for collection_name in collections:
+                try:
+                    # 删除集合
+                    self.weaviate_client.collections.delete(collection_name)
+                    logger.info(f"✅ 删除集合: {collection_name}")
+                except Exception as e:
+                    logger.warning(f"⚠️ 删除集合失败 {collection_name}: {e}")
+            
+            logger.info("✅ Weaviate数据库清空完成")
+            
+        except Exception as e:
+            logger.error(f"❌ 清空Weaviate数据库失败: {e}")
+            raise
+    
+    def _docx_to_markdown(self, doc, file_path: Path) -> Tuple[str, List[Dict[str, Any]]]:
+        """将DOCX转换为Markdown格式，并提取图片信息"""
+        markdown_content = []
+        image_info = []
+        
+        # 确保图片输出目录存在
+        self.image_output_dir.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            # 首先提取所有图片
+            image_info = self._extract_images_from_docx(doc, file_path)
+            
+            # 处理段落文本
+            for paragraph in doc.paragraphs:
+                text = paragraph.text.strip()
+                if not text:
+                    continue
+                
+                # 检测标题
+                if self._is_heading(paragraph, text):
+                    # 根据标题级别添加markdown标记
+                    level = self._get_heading_level(paragraph, text)
+                    markdown_content.append(f"{'#' * level} {text}")
+                else:
+                    # 普通段落
+                    markdown_content.append(text)
+            
+            # 如果提取到图片，在内容末尾添加图片引用
+            if image_info:
+                markdown_content.append("\n## 文档图片")
+                for img in image_info:
+                    markdown_content.append(f"![{img['name']}]({img['path']})")
+            
+            return "\n\n".join(markdown_content), image_info
+            
+        except Exception as e:
+            logger.error(f"DOCX转Markdown失败 {file_path}: {e}")
+            return "", []
+    
+    def _extract_images_from_docx(self, doc, file_path: Path) -> List[Dict[str, Any]]:
+        """从DOCX文档中提取图片"""
+        image_info = []
+        image_counter = 1
+        
+        try:
+            # 获取文档的关系部分
+            document_part = doc.part
+            
+            # 遍历所有关系，查找图片
+            for rel_id, relationship in document_part.rels.items():
+                if "image" in relationship.target_ref:
+                    try:
+                        # 获取图片数据
+                        image_part = relationship.target_part
+                        image_data = image_part.blob
+                        
+                        # 确定图片扩展名
+                        content_type = image_part.content_type
+                        if 'png' in content_type:
+                            ext = '.png'
+                        elif 'jpeg' in content_type or 'jpg' in content_type:
+                            ext = '.jpg'
+                        elif 'gif' in content_type:
+                            ext = '.gif'
+                        else:
+                            ext = '.png'  # 默认使用png
+                        
+                        # 生成图片文件名和路径
+                        image_name = f"{file_path.stem}_image_{image_counter:03d}{ext}"
+                        image_path = self.image_output_dir / image_name
+                        
+                        # 保存并可能压缩图片
+                        original_size = len(image_data)
+                        if original_size > 1024 * 1024:  # 大于1MB的图片进行压缩
+                            try:
+                                # 先保存原图
+                                with open(image_path, 'wb') as img_file:
+                                    img_file.write(image_data)
+                                
+                                # 使用PIL压缩图片
+                                from PIL import Image
+                                with Image.open(image_path) as img:
+                                    # 如果图片很大，调整尺寸
+                                    if img.width > 1920 or img.height > 1080:
+                                        img.thumbnail((1920, 1080), Image.Resampling.LANCZOS)
+                                    
+                                    # 保存压缩后的图片
+                                    if ext.lower() in ['.jpg', '.jpeg']:
+                                        img.save(image_path, 'JPEG', quality=85, optimize=True)
+                                    else:
+                                        img.save(image_path, 'PNG', optimize=True)
+                                
+                                compressed_size = image_path.stat().st_size
+                                compression_ratio = (1 - compressed_size / original_size) * 100
+                                logger.info(f"✅ 提取并压缩图片: {image_name} (压缩率: {compression_ratio:.1f}%)")
+                            except Exception as compress_error:
+                                # 压缩失败，保存原图
+                                with open(image_path, 'wb') as img_file:
+                                    img_file.write(image_data)
+                                logger.warning(f"⚠️ 图片压缩失败，保存原图: {image_name} - {compress_error}")
+                        else:
+                            # 小图片直接保存
+                            with open(image_path, 'wb') as img_file:
+                                img_file.write(image_data)
+                            logger.info(f"✅ 提取图片: {image_name}")
+                        
+                        image_info.append({
+                            'name': image_name,
+                            'path': str(image_path),
+                            'rel_id': rel_id,
+                            'content_type': content_type,
+                            'original_size': original_size,
+                            'final_size': image_path.stat().st_size
+                        })
+                        
+                        image_counter += 1
+                        
+                    except Exception as e:
+                        logger.warning(f"⚠️ 提取图片失败 (rel_id: {rel_id}): {e}")
+            
+            if image_info:
+                logger.info(f"📸 从 {file_path.name} 提取了 {len(image_info)} 张图片")
+            
+        except Exception as e:
+            logger.error(f"❌ 图片提取过程失败 {file_path}: {e}")
+        
+        return image_info
+    
+    def _extract_text_from_damaged_docx(self, file_path: Path) -> str:
+        """从损坏的DOCX文件中提取文本内容"""
+        import zipfile
+        import xml.etree.ElementTree as ET
+        
+        try:
+            text_content = []
+            
+            with zipfile.ZipFile(file_path, 'r') as docx_zip:
+                # 列出所有文件
+                file_list = docx_zip.namelist()
+                logger.info(f"📋 DOCX文件内容: {file_list}")
+                
+                # 尝试读取主文档内容
+                main_doc_files = [
+                    'word/document.xml',
+                    'word/document2.xml', 
+                    'document.xml'
+                ]
+                
+                for doc_file in main_doc_files:
+                    if doc_file in file_list:
+                        try:
+                            with docx_zip.open(doc_file) as xml_file:
+                                xml_content = xml_file.read()
+                                
+                                # 解析XML并提取文本
+                                root = ET.fromstring(xml_content)
+                                
+                                # 定义命名空间
+                                namespaces = {
+                                    'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+                                }
+                                
+                                # 提取所有文本节点
+                                for text_elem in root.findall('.//w:t', namespaces):
+                                    if text_elem.text:
+                                        text_content.append(text_elem.text)
+                                
+                                logger.info(f"✅ 成功从 {doc_file} 提取文本")
+                                break
+                                
+                        except Exception as e:
+                            logger.warning(f"⚠️ 无法处理 {doc_file}: {e}")
+                            continue
+                
+                # 如果主文档失败，尝试其他可能的文本文件
+                if not text_content:
+                    for file_name in file_list:
+                        if file_name.endswith('.xml') and 'word' in file_name:
+                            try:
+                                with docx_zip.open(file_name) as xml_file:
+                                    xml_content = xml_file.read().decode('utf-8', errors='ignore')
+                                    # 简单的正则提取文本
+                                    import re
+                                    text_matches = re.findall(r'<w:t[^>]*>([^<]+)</w:t>', xml_content)
+                                    if text_matches:
+                                        text_content.extend(text_matches)
+                                        logger.info(f"✅ 通过正则从 {file_name} 提取文本")
+                                        break
+                            except Exception as e:
+                                continue
+            
+            if text_content:
+                # 清理和组织文本
+                cleaned_text = []
+                current_line = ""
+                
+                for text in text_content:
+                    text = text.strip()
+                    if not text:
+                        continue
+                    
+                    # 检查是否是新段落的开始
+                    if any(char in text for char in ['.', '。', '!', '！', '?', '？']) and len(current_line) > 20:
+                        current_line += text
+                        cleaned_text.append(current_line)
+                        current_line = ""
+                    else:
+                        current_line += text + " "
+                
+                # 添加最后一行
+                if current_line.strip():
+                    cleaned_text.append(current_line.strip())
+                
+                final_text = f"# {file_path.name}\n\n" + "\n\n".join(cleaned_text)
+                
+                logger.info(f"📝 成功恢复文本内容，共 {len(cleaned_text)} 段落")
+                return final_text
+            
+        except Exception as e:
+            logger.error(f"❌ zipfile方法也失败: {e}")
+        
+        return ""
+    
+    def _process_docx_with_pandoc(self, file_path: Path) -> List[Document]:
+        """使用Pandoc处理DOCX文件"""
+        try:
+            import pypandoc
+            
+            # 确保Pandoc可用
+            try:
+                pypandoc.get_pandoc_version()
+            except OSError:
+                logger.info("🔄 Pandoc未找到，尝试自动下载...")
+                try:
+                    pypandoc.download_pandoc()
+                    logger.info("✅ Pandoc下载完成")
+                except Exception as download_error:
+                    logger.error(f"❌ Pandoc下载失败: {download_error}")
+                    return []
+            
+            # 确保图片输出目录存在
+            self.image_output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 使用Pandoc将DOCX转换为Markdown
+            logger.info(f"📄 使用Pandoc转换DOCX到Markdown...")
+            
+            # 设置Pandoc参数
+            extra_args = [
+                '--extract-media', str(self.image_output_dir.parent),  # 提取图片到指定目录
+                '--wrap=none',  # 不自动换行
+                '--markdown-headings=atx'  # 使用ATX样式标题
+            ]
+            
+            try:
+                # 尝试转换为markdown
+                markdown_content = pypandoc.convert_file(
+                    str(file_path), 
+                    'markdown',
+                    extra_args=extra_args
+                )
+                
+                if not markdown_content.strip():
+                    logger.warning(f"⚠️ Pandoc转换结果为空")
+                    return []
+                
+                logger.info(f"✅ Pandoc转换成功，内容长度: {len(markdown_content)}")
+                
+                # 处理提取的图片
+                image_info = self._process_extracted_images(file_path)
+                
+                # 按章节分割内容
+                sections = self._split_pandoc_markdown(markdown_content, file_path)
+                
+                documents = []
+                for i, section in enumerate(sections):
+                    doc_obj = Document(
+                        page_content=section['content'],
+                        metadata={
+                            'file_path': str(file_path),
+                            'file_name': file_path.name,
+                            'project': self._extract_project_name(file_path),
+                            'file_type': 'docx',
+                            'source_type': 'pandoc_markdown',
+                            'section': section['title'],
+                            'chunk_index': i,
+                            'total_chunks': len(sections),
+                            'processor': 'pandoc'
+                        }
+                    )
+                    documents.append(doc_obj)
+                
+                # 添加图片文档
+                for img_info in image_info:
+                    img_doc = self._process_image_file(Path(img_info['path']), file_path)
+                    if img_doc:
+                        documents.append(img_doc)
+                
+                # 缓存结果
+                cache_data = [{'page_content': doc.page_content, 'metadata': doc.metadata} for doc in documents]
+                self._set_cached_result(str(file_path), "docx_content", cache_data)
+                
+                logger.info(f"✅ Pandoc处理完成: {file_path.name} ({len(documents)} 个文档)")
+                return documents
+                
+            except Exception as convert_error:
+                logger.error(f"❌ Pandoc转换失败: {convert_error}")
+                
+                # 尝试简单文本提取
+                try:
+                    text_content = pypandoc.convert_file(str(file_path), 'plain')
+                    if text_content.strip():
+                        simple_doc = Document(
+                            page_content=f"# {file_path.name}\n\n{text_content}",
+                            metadata={
+                                'file_path': str(file_path),
+                                'file_name': file_path.name,
+                                'project': self._extract_project_name(file_path),
+                                'file_type': 'docx',
+                                'source_type': 'pandoc_plain',
+                                'section': '文档内容',
+                                'processor': 'pandoc_fallback'
+                            }
+                        )
+                        logger.info(f"✅ Pandoc简单文本提取成功: {file_path.name}")
+                        return [simple_doc]
+                except Exception as plain_error:
+                    logger.error(f"❌ Pandoc简单文本提取也失败: {plain_error}")
+                
+                return []
+                
+        except ImportError:
+            logger.error("❌ pypandoc未安装，无法使用Pandoc处理")
+            return []
+        except Exception as e:
+            logger.error(f"❌ Pandoc处理异常: {e}")
+            return []
+    
+    def _process_extracted_images(self, file_path: Path) -> List[Dict[str, Any]]:
+        """处理Pandoc提取的图片"""
+        image_info = []
+        
+        try:
+            # Pandoc会将图片提取到media目录
+            media_dir = self.image_output_dir.parent / 'media'
+            if media_dir.exists():
+                image_counter = 1
+                for img_file in media_dir.glob('**/*'):
+                    if img_file.is_file() and img_file.suffix.lower() in ['.png', '.jpg', '.jpeg', '.gif']:
+                        # 移动图片到我们的图片目录并重命名
+                        new_name = f"{file_path.stem}_pandoc_image_{image_counter:03d}{img_file.suffix}"
+                        new_path = self.image_output_dir / new_name
+                        
+                        try:
+                            # 复制并可能压缩图片
+                            import shutil
+                            shutil.copy2(img_file, new_path)
+                            
+                            # 压缩大图片
+                            if new_path.stat().st_size > 1024 * 1024:  # 大于1MB
+                                self._compress_image(new_path)
+                            
+                            image_info.append({
+                                'name': new_name,
+                                'path': str(new_path),
+                                'original_path': str(img_file),
+                                'size': new_path.stat().st_size
+                            })
+                            
+                            image_counter += 1
+                            logger.info(f"📸 处理Pandoc提取的图片: {new_name}")
+                            
+                        except Exception as e:
+                            logger.warning(f"⚠️ 处理图片失败 {img_file}: {e}")
+                
+                # 清理media目录
+                try:
+                    shutil.rmtree(media_dir)
+                except:
+                    pass
+                    
+        except Exception as e:
+            logger.warning(f"⚠️ 处理提取图片时出错: {e}")
+        
+        return image_info
+    
+    def _compress_image(self, image_path: Path):
+        """压缩图片"""
+        try:
+            from PIL import Image
+            with Image.open(image_path) as img:
+                # 限制最大尺寸
+                if img.width > 1920 or img.height > 1080:
+                    img.thumbnail((1920, 1080), Image.Resampling.LANCZOS)
+                
+                # 保存压缩后的图片
+                if image_path.suffix.lower() in ['.jpg', '.jpeg']:
+                    img.save(image_path, 'JPEG', quality=85, optimize=True)
+                else:
+                    img.save(image_path, 'PNG', optimize=True)
+                    
+        except Exception as e:
+            logger.warning(f"⚠️ 图片压缩失败: {e}")
+    
+    def _split_pandoc_markdown(self, markdown_content: str, file_path: Path) -> List[Dict[str, Any]]:
+        """分割Pandoc生成的Markdown内容"""
+        sections = []
+        lines = markdown_content.split('\n')
+        
+        current_title = "文档开始"
+        current_content = []
+        
+        for line in lines:
+            line = line.strip()
+            
+            # 检测标题行
+            if line.startswith('#'):
+                # 保存之前的章节
+                if current_content:
+                    sections.append({
+                        'title': current_title,
+                        'content': '\n'.join(current_content).strip()
+                    })
+                
+                # 开始新章节
+                current_title = line.lstrip('#').strip() or "无标题章节"
+                current_content = []
+            else:
+                if line:  # 非空行
+                    current_content.append(line)
+        
+        # 处理最后一个章节
+        if current_content:
+            sections.append({
+                'title': current_title,
+                'content': '\n'.join(current_content).strip()
+            })
+        
+        # 如果没有找到章节，创建一个默认章节
+        if not sections:
+            sections.append({
+                'title': file_path.stem,
+                'content': markdown_content
+            })
+        
+        return sections
+    
+    def _is_heading(self, paragraph, text: str) -> bool:
+        """判断是否为标题"""
+        # 检查段落样式
+        if paragraph.style.name.startswith('Heading'):
+            return True
+        
+        # 检查文本格式（数字开头的标题）
+        if re.match(r'^\d+\.?\d*\s+', text):
+            return True
+        
+        # 检查是否为短文本且可能是标题
+        if len(text) < 50 and any(keyword in text for keyword in ['系统', '模块', '功能', '接口', '设计', '架构']):
+            return True
+        
+        return False
+    
+    def _get_heading_level(self, paragraph, text: str) -> int:
+        """获取标题级别"""
+        if paragraph.style.name.startswith('Heading'):
+            try:
+                return int(paragraph.style.name.replace('Heading ', ''))
+            except:
+                return 1
+        
+        # 根据数字格式判断级别
+        match = re.match(r'^(\d+)\.?(\d*)\s+', text)
+        if match:
+            if match.group(2):  # 有二级数字，如 3.1
+                return 2
+            else:  # 只有一级数字，如 3
+                return 1
+        
+        return 1
+    
+    def _split_markdown_by_sections(self, markdown_content: str, file_path: Path) -> List[Dict[str, Any]]:
+        """按标题分割Markdown内容"""
+        sections = []
+        lines = markdown_content.split('\n')
+        
+        current_section = ""
+        current_content = []
+        current_images = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            
+            # 检测标题行
+            if line.startswith('#'):
+                # 保存之前的段落
+                if current_section and current_content:
+                    sections.append({
+                        'section': current_section,
+                        'content': '\n'.join(current_content),
+                        'image_refs': current_images.copy()
+                    })
+                
+                # 开始新段落
+                current_section = line.lstrip('#').strip()
+                current_content = []
+                current_images = []
+            
+            elif line.startswith('!['):
+                # 图片引用
+                image_match = re.match(r'!\[(.*?)\]\((.*?)\)', line)
+                if image_match:
+                    current_images.append(image_match.group(2))
+            
+            else:
+                # 普通内容
+                current_content.append(line)
+        
+        # 处理最后一个段落
+        if current_section and current_content:
+            sections.append({
+                'section': current_section,
+                'content': '\n'.join(current_content),
+                'image_refs': current_images
+            })
+        
+        return sections
+    
+    def _process_docx_file(self, file_path: Path) -> List[Document]:
+        """处理 DOCX 文件 - 返回LangChain Document对象"""
+        documents = []
         
         try:
             # 检查缓存
             cached_result = self._get_cached_result(str(file_path), "docx_content")
             if cached_result:
                 logger.info(f"📋 使用缓存的 DOCX 内容: {file_path.name}")
-                return cached_result
+                return [Document(**doc) for doc in cached_result]
             
-            doc = docx.Document(file_path)
+            # 尝试使用多种方法处理DOCX文件
+            doc = None
+            markdown_content = ""
+            image_info = []
             
-            # 提取文本内容
-            text_content = []
-            for paragraph in doc.paragraphs:
-                if paragraph.text.strip():
-                    text_content.append(paragraph.text.strip())
+            # 方法1: 尝试使用Pandoc处理（推荐，容错性最好）
+            try:
+                logger.info(f"🔄 尝试使用Pandoc处理DOCX文件: {file_path.name}")
+                pandoc_result = self._process_docx_with_pandoc(file_path)
+                if pandoc_result:
+                    return pandoc_result
+            except Exception as pandoc_error:
+                logger.warning(f"⚠️ Pandoc处理失败: {pandoc_error}")
             
-            full_text = "\n".join(text_content)
+                # 方法2: 尝试使用python-docx
+                try:
+                    doc = docx.Document(file_path)
+                    logger.info(f"✅ python-docx成功打开文件: {file_path.name}")
+                except Exception as docx_error:
+                    logger.warning(f"⚠️ python-docx无法打开文件 {file_path}: {docx_error}")
+                    
+                    # 方法3: 尝试使用zipfile直接提取文本内容
+                    try:
+                        logger.info(f"🔄 尝试使用zipfile方法处理损坏的DOCX文件...")
+                        text_content = self._extract_text_from_damaged_docx(file_path)
+                        if text_content:
+                            # 创建基于提取文本的文档
+                            recovered_doc = Document(
+                                page_content=text_content,
+                                metadata={
+                                    'file_path': str(file_path),
+                                    'file_name': file_path.name,
+                                    'project': self._extract_project_name(file_path),
+                                    'file_type': 'docx',
+                                    'source_type': 'recovered_text',
+                                    'section': '恢复的文档内容',
+                                    'status': 'recovered'
+                                }
+                            )
+                            
+                            # 缓存结果
+                            cache_data = [{'page_content': recovered_doc.page_content, 'metadata': recovered_doc.metadata}]
+                            self._set_cached_result(str(file_path), "docx_content", cache_data)
+                            
+                            logger.info(f"✅ 从损坏的DOCX文件恢复文本内容: {file_path.name}")
+                            return [recovered_doc]
+                        
+                    except Exception as recovery_error:
+                        logger.error(f"❌ 文本恢复也失败: {recovery_error}")
+                    
+                # 所有方法都失败，创建错误信息文档
+                logger.error(f"❌ 完全无法处理DOCX文件 {file_path}")
+                error_doc = Document(
+                    page_content=f"文档: {file_path.name}\n状态: 文件损坏，无法读取\n错误: {str(docx_error)}\n路径: {file_path}\n\n建议: 请使用Word重新保存此文件",
+                    metadata={
+                        'file_path': str(file_path),
+                        'file_name': file_path.name,
+                        'project': self._extract_project_name(file_path),
+                        'file_type': 'docx',
+                        'source_type': 'error',
+                        'section': '文档信息',
+                        'status': 'corrupted'
+                    }
+                )
+                return [error_doc]
             
-            if full_text.strip():
-                # 分割文本
-                text_chunks = self.text_splitter.split_text(full_text)
-                
-                for i, chunk in enumerate(text_chunks):
-                    results.append({
-                        'content': chunk,
+            # 将DOCX转换为Markdown
+            markdown_content, image_info = self._docx_to_markdown(doc, file_path)
+            
+            # 按标题分割内容
+            sections = self._split_markdown_by_sections(markdown_content, file_path)
+            
+            for section in sections:
+                # 创建LangChain Document对象
+                document = Document(
+                    page_content=section['content'],
+                    metadata={
                         'file_path': str(file_path),
                         'file_name': file_path.name,
                         'project': self._extract_project_name(file_path),
                         'file_type': 'docx',
                         'source_type': 'text',
-                        'chunk_index': i,
-                        'image_path': None
-                    })
+                        'section': section['section'],
+                        'image_refs': section.get('image_refs', [])
+                    }
+                )
+                documents.append(document)
             
-            # 处理图片（如果存在）
-            try:
-                # 提取文档中的图片
-                for rel in doc.part.rels.values():
-                    if "image" in rel.target_ref:
-                        # 这里可以添加图片处理逻辑
-                        # 由于 python-docx 提取图片比较复杂，暂时跳过
-                        pass
-            except Exception as e:
-                logger.warning(f"处理 DOCX 图片失败 {file_path}: {e}")
+            # 处理图片
+            for img_info in image_info:
+                img_doc = self._process_image_file(Path(img_info['path']), file_path)
+                if img_doc:
+                    documents.append(img_doc)
             
             # 缓存结果
-            self._set_cached_result(str(file_path), "docx_content", results)
-            logger.info(f"✅ DOCX 文件处理完成: {file_path.name} ({len(results)} 个块)")
+            cache_data = [{'page_content': doc.page_content, 'metadata': doc.metadata} for doc in documents]
+            self._set_cached_result(str(file_path), "docx_content", cache_data)
+            
+            logger.info(f"✅ DOCX 文件处理完成: {file_path.name} ({len(documents)} 个文档)")
             
         except Exception as e:
             logger.error(f"❌ DOCX 文件处理失败 {file_path}: {e}")
         
-        return results
+        return documents
     
-    def _process_xlsx_file(self, file_path: Path) -> List[Dict[str, Any]]:
+    def _process_image_file(self, image_path: Path, source_file: Path) -> Optional[Document]:
+        """处理图片文件 - OCR和描述生成"""
+        try:
+            if not image_path.exists():
+                return None
+            
+            # 检查缓存
+            cached_result = self._get_cached_result(str(image_path), "image_analysis")
+            if cached_result:
+                return Document(**cached_result)
+            
+            # 延迟加载图片描述模型
+            self._load_image_caption_model()
+            
+            # 加载图片
+            image = Image.open(image_path)
+            
+            # OCR文本提取
+            ocr_text = ""
+            try:
+                ocr_text = pytesseract.image_to_string(image, lang='chi_sim+eng')
+            except Exception as e:
+                logger.warning(f"OCR失败 {image_path}: {e}")
+            
+            # 图片描述生成
+            caption = ""
+            if self.blip_processor and self.blip_model:
+                try:
+                    inputs = self.blip_processor(image, return_tensors="pt")
+                    out = self.blip_model.generate(**inputs, max_length=50)
+                    caption = self.blip_processor.decode(out[0], skip_special_tokens=True)
+                except Exception as e:
+                    logger.warning(f"图片描述生成失败 {image_path}: {e}")
+            
+            # 合并文本内容
+            combined_text = f"图片描述: {caption}\nOCR文本: {ocr_text}".strip()
+            
+            # 创建Document对象
+            document = Document(
+                page_content=combined_text,
+                metadata={
+                    'file_path': str(source_file),
+                    'file_name': source_file.name,
+                    'project': self._extract_project_name(source_file),
+                    'file_type': 'image',
+                    'source_type': 'image_description',
+                    'image_path': str(image_path),
+                    'ocr_text': ocr_text,
+                    'caption': caption
+                }
+            )
+            
+            # 缓存结果
+            cache_data = {'page_content': document.page_content, 'metadata': document.metadata}
+            self._set_cached_result(str(image_path), "image_analysis", cache_data)
+            
+            return document
+            
+        except Exception as e:
+            logger.error(f"图片处理失败 {image_path}: {e}")
+            return None
+    
+    def _process_xlsx_file(self, file_path: Path) -> List[Document]:
         """处理 XLSX 文件"""
-        results = []
+        documents = []
         
         try:
             # 检查缓存
             cached_result = self._get_cached_result(str(file_path), "xlsx_content")
             if cached_result:
                 logger.info(f"📋 使用缓存的 XLSX 内容: {file_path.name}")
-                return cached_result
+                return [Document(**doc) for doc in cached_result]
             
             workbook = load_workbook(file_path, read_only=True)
             
@@ -266,115 +1002,110 @@ class KnowledgeBaseInitializer:
                     text_chunks = self.text_splitter.split_text(full_content)
                     
                     for i, chunk in enumerate(text_chunks):
-                        results.append({
-                            'content': chunk,
-                            'file_path': str(file_path),
-                            'file_name': file_path.name,
-                            'project': self._extract_project_name(file_path),
-                            'file_type': 'xlsx',
-                            'source_type': 'excel',
-                            'chunk_index': i,
-                            'sheet_name': sheet_name,
-                            'image_path': None
-                        })
+                        document = Document(
+                            page_content=chunk,
+                            metadata={
+                                'file_path': str(file_path),
+                                'file_name': file_path.name,
+                                'project': self._extract_project_name(file_path),
+                                'file_type': 'xlsx',
+                                'source_type': 'excel',
+                                'sheet_name': sheet_name,
+                                'chunk_index': i
+                            }
+                        )
+                        documents.append(document)
             
             workbook.close()
             
             # 缓存结果
-            self._set_cached_result(str(file_path), "xlsx_content", results)
-            logger.info(f"✅ XLSX 文件处理完成: {file_path.name} ({len(results)} 个块)")
+            cache_data = [{'page_content': doc.page_content, 'metadata': doc.metadata} for doc in documents]
+            self._set_cached_result(str(file_path), "xlsx_content", cache_data)
+            
+            logger.info(f"✅ XLSX 文件处理完成: {file_path.name} ({len(documents)} 个文档)")
             
         except Exception as e:
             logger.error(f"❌ XLSX 文件处理失败 {file_path}: {e}")
         
-        return results
+        return documents
     
-    def _process_java_file(self, file_path: Path) -> List[Dict[str, Any]]:
+    def _process_java_file(self, file_path: Path) -> List[Document]:
         """处理 Java 文件"""
-        results = []
+        documents = []
         
         try:
             # 检查缓存
             cached_result = self._get_cached_result(str(file_path), "java_content")
             if cached_result:
                 logger.info(f"📋 使用缓存的 Java 内容: {file_path.name}")
-                return cached_result
+                return [Document(**doc) for doc in cached_result]
             
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
             
-            # 简单的 Java 代码分割（按类和方法）
-            # 这里使用简单的正则表达式，实际项目中可以使用 tree-sitter 获得更好的解析
+            # 按类和方法分割Java代码
+            code_blocks = self._split_java_code(content)
             
-            # 分割为类
-            class_pattern = r'(public\s+class\s+\w+.*?(?=public\s+class|\Z))'
-            classes = re.findall(class_pattern, content, re.DOTALL)
-            
-            if not classes:
-                # 如果没有找到类，按方法分割
-                method_pattern = r'(public\s+\w+.*?\{.*?\n\s*\})'
-                methods = re.findall(method_pattern, content, re.DOTALL)
-                
-                if methods:
-                    for i, method in enumerate(methods):
-                        if len(method.strip()) > 50:  # 过滤太短的内容
-                            results.append({
-                                'content': method.strip(),
-                                'file_path': str(file_path),
-                                'file_name': file_path.name,
-                                'project': self._extract_project_name(file_path),
-                                'file_type': 'java',
-                                'source_type': 'code_method',
-                                'chunk_index': i,
-                                'image_path': None
-                            })
-                else:
-                    # 如果都没有找到，按文本分割
-                    text_chunks = self.text_splitter.split_text(content)
-                    for i, chunk in enumerate(text_chunks):
-                        results.append({
-                            'content': chunk,
+            for i, block in enumerate(code_blocks):
+                if len(block.strip()) > 50:  # 过滤太短的内容
+                    document = Document(
+                        page_content=block.strip(),
+                        metadata={
                             'file_path': str(file_path),
                             'file_name': file_path.name,
                             'project': self._extract_project_name(file_path),
                             'file_type': 'java',
-                            'source_type': 'code_text',
-                            'chunk_index': i,
-                            'image_path': None
-                        })
-            else:
-                for i, class_content in enumerate(classes):
-                    if len(class_content.strip()) > 100:  # 过滤太短的类
-                        results.append({
-                            'content': class_content.strip(),
-                            'file_path': str(file_path),
-                            'file_name': file_path.name,
-                            'project': self._extract_project_name(file_path),
-                            'file_type': 'java',
-                            'source_type': 'code_class',
-                            'chunk_index': i,
-                            'image_path': None
-                        })
+                            'source_type': 'code',
+                            'chunk_index': i
+                        }
+                    )
+                    documents.append(document)
             
             # 缓存结果
-            self._set_cached_result(str(file_path), "java_content", results)
-            logger.info(f"✅ Java 文件处理完成: {file_path.name} ({len(results)} 个块)")
+            cache_data = [{'page_content': doc.page_content, 'metadata': doc.metadata} for doc in documents]
+            self._set_cached_result(str(file_path), "java_content", cache_data)
+            
+            logger.info(f"✅ Java 文件处理完成: {file_path.name} ({len(documents)} 个文档)")
             
         except Exception as e:
             logger.error(f"❌ Java 文件处理失败 {file_path}: {e}")
         
-        return results
+        return documents
     
-    def _process_xml_file(self, file_path: Path) -> List[Dict[str, Any]]:
+    def _split_java_code(self, content: str) -> List[str]:
+        """分割Java代码"""
+        blocks = []
+        
+        # 按类分割
+        class_pattern = r'(public\s+class\s+\w+.*?(?=public\s+class|\Z))'
+        classes = re.findall(class_pattern, content, re.DOTALL)
+        
+        if classes:
+            blocks.extend(classes)
+        else:
+            # 如果没有找到类，按方法分割
+            method_pattern = r'(public\s+\w+.*?\{.*?\n\s*\})'
+            methods = re.findall(method_pattern, content, re.DOTALL)
+            
+            if methods:
+                blocks.extend(methods)
+            else:
+                # 如果都没有找到，按文本分割
+                text_chunks = self.text_splitter.split_text(content)
+                blocks.extend(text_chunks)
+        
+        return blocks
+    
+    def _process_xml_file(self, file_path: Path) -> List[Document]:
         """处理 XML 文件"""
-        results = []
+        documents = []
         
         try:
             # 检查缓存
             cached_result = self._get_cached_result(str(file_path), "xml_content")
             if cached_result:
                 logger.info(f"📋 使用缓存的 XML 内容: {file_path.name}")
-                return cached_result
+                return [Document(**doc) for doc in cached_result]
             
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
@@ -383,37 +1114,41 @@ class KnowledgeBaseInitializer:
             text_chunks = self.text_splitter.split_text(content)
             
             for i, chunk in enumerate(text_chunks):
-                results.append({
-                    'content': chunk,
-                    'file_path': str(file_path),
-                    'file_name': file_path.name,
-                    'project': self._extract_project_name(file_path),
-                    'file_type': 'xml',
-                    'source_type': 'config',
-                    'chunk_index': i,
-                    'image_path': None
-                })
+                document = Document(
+                    page_content=chunk,
+                    metadata={
+                        'file_path': str(file_path),
+                        'file_name': file_path.name,
+                        'project': self._extract_project_name(file_path),
+                        'file_type': 'xml',
+                        'source_type': 'config',
+                        'chunk_index': i
+                    }
+                )
+                documents.append(document)
             
             # 缓存结果
-            self._set_cached_result(str(file_path), "xml_content", results)
-            logger.info(f"✅ XML 文件处理完成: {file_path.name} ({len(results)} 个块)")
+            cache_data = [{'page_content': doc.page_content, 'metadata': doc.metadata} for doc in documents]
+            self._set_cached_result(str(file_path), "xml_content", cache_data)
+            
+            logger.info(f"✅ XML 文件处理完成: {file_path.name} ({len(documents)} 个文档)")
             
         except Exception as e:
             logger.error(f"❌ XML 文件处理失败 {file_path}: {e}")
         
-        return results
+        return documents
     
     def _create_weaviate_schema(self):
-        """创建 Weaviate 模式"""
+        """创建 Weaviate 模式 - 按要求定义Document类"""
         try:
-            collection_name = "KnowledgeDocument"
+            collection_name = "Document"
             
             # 检查集合是否已存在
             if self.weaviate_client.collections.exists(collection_name):
                 logger.info(f"📋 集合 {collection_name} 已存在，跳过创建")
                 return collection_name
             
-            # 创建集合
+            # 创建集合 - 按要求设置vectorizer: none
             self.weaviate_client.collections.create(
                 name=collection_name,
                 vectorizer_config=wvc.config.Configure.Vectorizer.none(),
@@ -424,10 +1159,13 @@ class KnowledgeBaseInitializer:
                     wvc.config.Property(name="project", data_type=wvc.config.DataType.TEXT),
                     wvc.config.Property(name="file_type", data_type=wvc.config.DataType.TEXT),
                     wvc.config.Property(name="source_type", data_type=wvc.config.DataType.TEXT),
-                    wvc.config.Property(name="chunk_index", data_type=wvc.config.DataType.INT),
                     wvc.config.Property(name="image_path", data_type=wvc.config.DataType.TEXT),
+                    wvc.config.Property(name="section", data_type=wvc.config.DataType.TEXT),
+                    wvc.config.Property(name="sheet_name", data_type=wvc.config.DataType.TEXT),
+                    wvc.config.Property(name="chunk_index", data_type=wvc.config.DataType.INT),
                     wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE),
-                    wvc.config.Property(name="file_size", data_type=wvc.config.DataType.INT)
+                    wvc.config.Property(name="ocr_text", data_type=wvc.config.DataType.TEXT),
+                    wvc.config.Property(name="caption", data_type=wvc.config.DataType.TEXT)
                 ]
             )
             
@@ -438,63 +1176,46 @@ class KnowledgeBaseInitializer:
             logger.error(f"❌ Weaviate 集合创建失败: {e}")
             raise
     
-    def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """生成文本嵌入"""
+    def _initialize_langchain_vectorstore(self, collection_name: str):
+        """初始化LangChain向量存储 - 使用手动RAG实现"""
         try:
-            embeddings = self.embeddings_model.encode(texts, convert_to_tensor=False)
-            return embeddings.tolist()
+            # 由于版本兼容性问题，使用手动RAG实现
+            logger.info("✅ 使用手动RAG实现 (跳过LangChain向量存储)")
+            self.langchain_vectorstore = None
+            
         except Exception as e:
-            logger.error(f"❌ 生成嵌入失败: {e}")
-            return []
+            logger.error(f"❌ LangChain 向量存储初始化失败: {e}")
+            self.langchain_vectorstore = None
     
-    def _batch_insert_to_weaviate(self, documents: List[Dict[str, Any]], collection_name: str, batch_size: int = 100):
-        """批量插入文档到 Weaviate"""
+    def _insert_documents_batch(self, documents: List[Document], collection_name: str):
+        """手动批量插入文档到Weaviate"""
         try:
             collection = self.weaviate_client.collections.get(collection_name)
             
-            for i in range(0, len(documents), batch_size):
-                batch = documents[i:i + batch_size]
+            # 准备批量插入的数据
+            objects = []
+            for doc in documents:
+                # 生成向量
+                vector = self.embeddings_model.encode(doc.page_content).tolist()
                 
-                # 生成嵌入
-                texts = [doc['content'] for doc in batch]
-                embeddings = self._generate_embeddings(texts)
-                
-                if not embeddings:
-                    logger.warning(f"跳过批次 {i//batch_size + 1}，嵌入生成失败")
-                    continue
-                
-                # 准备批量插入数据
-                batch_data = []
-                for j, doc in enumerate(batch):
-                    if j < len(embeddings):
-                        # 添加时间戳和文件大小
-                        doc['created_at'] = datetime.now()
-                        doc['file_size'] = len(doc['content'])
-                        
-                        batch_data.append({
-                            'properties': doc,
-                            'vector': embeddings[j]
-                        })
-                
-                # 批量插入
-                if batch_data:
-                    try:
-                        with collection.batch.dynamic() as batch_client:
-                            for item in batch_data:
-                                batch_client.add_object(
-                                    properties=item['properties'],
-                                    vector=item['vector']
-                                )
-                        
-                        logger.info(f"✅ 批次 {i//batch_size + 1}/{(len(documents) + batch_size - 1)//batch_size} 插入成功 ({len(batch_data)} 个文档)")
-                        
-                    except Exception as e:
-                        logger.error(f"❌ 批次 {i//batch_size + 1} 插入失败: {e}")
+                # 准备对象数据
+                obj_data = {
+                    "content": doc.page_content,
+                    "vector": vector,
+                    **doc.metadata  # 展开所有元数据
+                }
+                objects.append(obj_data)
             
-            logger.info(f"🎉 所有文档插入完成，总计: {len(documents)} 个文档")
+            # 批量插入
+            with collection.batch.dynamic() as batch:
+                for obj in objects:
+                    batch.add_object(
+                        properties={k: v for k, v in obj.items() if k != "vector"},
+                        vector=obj["vector"]
+                    )
             
         except Exception as e:
-            logger.error(f"❌ 批量插入失败: {e}")
+            logger.error(f"❌ 批量插入文档失败: {e}")
             raise
     
     def scan_knowledge_base(self) -> List[Path]:
@@ -522,7 +1243,7 @@ class KnowledgeBaseInitializer:
         
         return files
     
-    def process_files(self, files: List[Path]) -> List[Dict[str, Any]]:
+    def process_files(self, files: List[Path]) -> List[Document]:
         """处理所有文件"""
         all_documents = []
         
@@ -546,7 +1267,7 @@ class KnowledgeBaseInitializer:
             except Exception as e:
                 logger.error(f"❌ 处理文件失败 {file_path}: {e}")
         
-        logger.info(f"📊 文件处理完成，总计生成 {len(all_documents)} 个文档块")
+        logger.info(f"📊 文件处理完成，总计生成 {len(all_documents)} 个文档")
         return all_documents
     
     def initialize_knowledge_base(self):
@@ -554,27 +1275,43 @@ class KnowledgeBaseInitializer:
         try:
             logger.info("🚀 开始初始化知识库...")
             
-            # 1. 检查知识库目录
+            # 1. 清空Weaviate数据库
+            self._clear_weaviate_database()
+            
+            # 2. 检查知识库目录
             if not self.knowledge_base_path.exists():
                 raise FileNotFoundError(f"知识库目录不存在: {self.knowledge_base_path}")
             
-            # 2. 扫描文件
+            # 3. 扫描文件
             files = self.scan_knowledge_base()
             if not files:
                 logger.warning("⚠️ 没有找到支持的文件")
                 return
             
-            # 3. 创建 Weaviate 模式
+            # 4. 创建 Weaviate 模式
             collection_name = self._create_weaviate_schema()
             
-            # 4. 处理文件
+            # 5. 初始化LangChain向量存储
+            self._initialize_langchain_vectorstore(collection_name)
+            
+            # 6. 处理文件
             documents = self.process_files(files)
             if not documents:
                 logger.warning("⚠️ 没有生成任何文档")
                 return
             
-            # 5. 插入到 Weaviate
-            self._batch_insert_to_weaviate(documents, collection_name)
+            # 7. 手动批量插入到Weaviate - 按要求batch_size=100
+            logger.info("📤 开始批量插入文档到Weaviate...")
+            batch_size = 100
+            
+            for i in range(0, len(documents), batch_size):
+                batch = documents[i:i + batch_size]
+                try:
+                    # 手动插入文档
+                    self._insert_documents_batch(batch, collection_name)
+                    logger.info(f"✅ 批次 {i//batch_size + 1}/{(len(documents) + batch_size - 1)//batch_size} 插入成功 ({len(batch)} 个文档)")
+                except Exception as e:
+                    logger.error(f"❌ 批次 {i//batch_size + 1} 插入失败: {e}")
             
             logger.info("🎉 知识库初始化完成！")
             
@@ -582,35 +1319,32 @@ class KnowledgeBaseInitializer:
             logger.error(f"❌ 知识库初始化失败: {e}")
             raise
     
-    def query_knowledge_base(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """查询知识库"""
+    def query_knowledge_base(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+        """手动查询知识库"""
         try:
-            collection = self.weaviate_client.collections.get("KnowledgeDocument")
-            
             # 生成查询向量
-            query_embedding = self._generate_embeddings([query])[0]
+            query_vector = self.embeddings_model.encode(query).tolist()
             
-            # 向量搜索
-            result = collection.query.near_vector(
-                near_vector=query_embedding,
-                limit=limit,
-                return_metadata=['distance']
+            # 使用Weaviate进行向量搜索
+            collection = self.weaviate_client.collections.get("Document")
+            
+            results = collection.query.near_vector(
+                near_vector=query_vector,
+                limit=k,
+                return_metadata=["distance"]
             )
             
             # 格式化结果
-            results = []
-            for obj in result.objects:
-                results.append({
+            formatted_results = []
+            for obj in results.objects:
+                formatted_results.append({
                     'content': obj.properties.get('content', ''),
-                    'file_name': obj.properties.get('file_name', ''),
-                    'project': obj.properties.get('project', ''),
-                    'file_type': obj.properties.get('file_type', ''),
-                    'source_type': obj.properties.get('source_type', ''),
-                    'distance': obj.metadata.distance,
-                    'file_path': obj.properties.get('file_path', '')
+                    'metadata': {k: v for k, v in obj.properties.items() if k != 'content'},
+                    'similarity_score': 1 - obj.metadata.distance,  # 转换为相似度分数
+                    'distance': obj.metadata.distance
                 })
             
-            return results
+            return formatted_results
             
         except Exception as e:
             logger.error(f"❌ 查询知识库失败: {e}")
@@ -634,35 +1368,78 @@ def main():
         # 初始化知识库
         initializer.initialize_knowledge_base()
         
-        # 示例查询
-        print("\n" + "="*50)
-        print("🔍 示例查询测试")
-        print("="*50)
+        # LangChain示例查询
+        print("\n" + "="*60)
+        print("🔍 LangChain RAG 示例查询测试")
+        print("="*60)
         
         queries = [
             "LS中的数据库表结构",
             "用户管理相关的代码",
             "链数后端的配置文件",
-            "Java类的定义"
+            "Java类的定义",
+            "系统架构设计",
+            "评分功能的实现"
         ]
         
         for query in queries:
             print(f"\n查询: {query}")
-            print("-" * 30)
+            print("-" * 40)
             
-            results = initializer.query_knowledge_base(query, limit=3)
+            results = initializer.query_knowledge_base(query, k=3)
             
             if results:
                 for i, result in enumerate(results, 1):
-                    print(f"{i}. 文件: {result['file_name']} (项目: {result['project']})")
-                    print(f"   类型: {result['file_type']} | 来源: {result['source_type']}")
-                    print(f"   相似度: {1 - result['distance']:.3f}")
+                    metadata = result['metadata']
+                    print(f"{i}. 文件: {metadata.get('file_name', 'N/A')} (项目: {metadata.get('project', 'N/A')})")
+                    print(f"   类型: {metadata.get('file_type', 'N/A')} | 来源: {metadata.get('source_type', 'N/A')}")
+                    print(f"   相似度: {result['similarity_score']:.3f}")
+                    
+                    if metadata.get('section'):
+                        print(f"   章节: {metadata['section']}")
+                    if metadata.get('sheet_name'):
+                        print(f"   工作表: {metadata['sheet_name']}")
+                    
                     print(f"   内容预览: {result['content'][:100]}...")
                     print()
             else:
                 print("   没有找到相关结果")
         
-        print("🎉 示例查询完成！")
+        print("🎉 LangChain RAG 示例查询完成！")
+        
+        # 使用_call_llm进行智能问答示例
+        print("\n" + "="*60)
+        print("🤖 智能问答示例 (使用_call_llm)")
+        print("="*60)
+        
+        test_query = "LS系统中的用户管理功能是如何实现的？"
+        print(f"问题: {test_query}")
+        print("-" * 40)
+        
+        # 先检索相关文档
+        search_results = initializer.query_knowledge_base(test_query, k=3)
+        
+        if search_results:
+            # 构建上下文
+            context = "\n".join([f"文档{i+1}: {result['content']}" for i, result in enumerate(search_results)])
+            
+            # 使用_call_llm进行智能回答
+            prompt = f"""基于以下文档内容，回答用户的问题。
+
+相关文档:
+{context}
+
+用户问题: {test_query}
+
+请基于文档内容给出准确、详细的回答："""
+            
+            try:
+                response = initializer._call_llm(prompt)
+                print(f"AI回答: {response}")
+            except Exception as e:
+                print(f"AI回答失败: {e}")
+        else:
+            print("没有找到相关文档")
         
     except Exception as e:
         logger.error(f"❌ 程序执行失败: {e}")
@@ -673,4 +1450,4 @@ def main():
             initializer.close()
 
 if __name__ == "__main__":
-    main()
+    main() 

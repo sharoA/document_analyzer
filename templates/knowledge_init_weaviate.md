@@ -13,8 +13,13 @@
    - 从目录结构中提取项目名称（例如，`D:\knowledge_base\代码\链数后端代码\zqyl-ls` 中的 `zqyl-ls`）。
 
 2. **处理内容**：
-   - 将大段文本内容（来自任何文件类型）分割成不超过 500 字符的块，确保语义完整性。
-   - 使用 `sentence-transformers`（`all-MiniLM-L6-v2`）为所有文本（包括 OCR 文本和图片描述）生成向量嵌入。
+   - 将word需求文档先转成markdown并且将图片剔除出来形成路径，word需求文档大段文本内容 按标题及标题下文本来分割
+   例如：{
+    "section": "3.1 额度申请",
+    "content": "系统新增评分功能，分值低于80将被拒绝。",
+    "image_refs": ["images/score_flow_1.png"]
+  },确保语义完整性。
+   - 使用 `sentence-transformers`（`bge-large-zh`）为所有文本（图片内容提取出到D:\knowledge_base\链数_LS\需求文党\需求文档图片，图片命名规则对应文件名+图片位置标识）生成向量嵌入。
    - 将处理结果（例如 OCR 文本、图片描述）缓存到 Redis，避免重复处理。
 
 3. **Weaviate 集成**：
@@ -44,9 +49,13 @@
    - 假设 Tesseract 和 Poppler 已安装，用于 OCR 和 PDF 处理。
 
 8. **约束**：
-   - 不要将图片直接存储在 Weaviate 中，存储 `image_path` 指向本地文件（例如 `D:\knowledge_base\project1\images\doc_page1.jpg`）。
+   - 不要将图片直接存储在 Weaviate 中，存储 `image_path` 指向本地文件（例如 `D:\knowledge_base\链数_LS\需求文党\需求文档图片\doc_page1.jpg`）。
    - 使用 UUID 生成 Weaviate 对象 ID。
-
+# 技术要求
+1、使用langchan框架进行rag；
+2、当前使用的weavite向量数据做的向量存储，初始化客户端和模型 使用client = get_weaviate_client()这个方法
+3、本次采用 `sentence-transformers`（`bge-large-zh`）向量化
+4、模型调用	使用当前项目调用方法_call_llm()
 
 请生成完整的 Python 脚本，包含在代码块中，带有清晰的注释和健壮的错误处理。脚本应可在安装了指定依赖的 Python 环境中直接运行。脚本末尾包含一个 LangChain 示例查询以展示检索功能。
 

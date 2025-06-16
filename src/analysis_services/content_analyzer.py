@@ -8,9 +8,18 @@ import time
 import re
 from typing import Dict, Any, List
 from .base_service import BaseAnalysisService
+from sentence_transformers import SentenceTransformer
+from ..utils.weaviate_helper import get_weaviate_client
 
 class ContentAnalyzerService(BaseAnalysisService):
     """内容分析服务类"""
+    
+    def __init__(self, llm_client=None, vector_db=None):
+        super().__init__(llm_client, vector_db)
+        # 初始化向量模型 - 使用bge-large-zh（1024维，中文优化）
+        self.embedding_model = SentenceTransformer('BAAI/bge-large-zh')
+        # 初始化Weaviate客户端
+        self.weaviate_client = get_weaviate_client()
     
     async def analyze(self, task_id: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -31,32 +40,25 @@ class ContentAnalyzerService(BaseAnalysisService):
             
             self._log_analysis_start(task_id, "内容分析", len(document_content))
             
-            # # 基础内容分析
-            # basic_analysis = await self._basic_content_analysis(parsing_result, document_content)
+            # Step 1: 文档预处理
+            structured_chunks = await self._preprocess_document(document_content)
             
-            # CRUD操作识别
-            crud_analysis = await self._crud_operation_analysis(document_content, parsing_result)
+            # Step 2: 与历史知识库内容对比
+            history_comparison = await self._compare_with_history(structured_chunks)
             
-            # 向量数据库相似性分析
-            similarity_analysis = await self._vector_similarity_analysis(document_content)
-            
-            # 业务需求分析
-            business_analysis = await self._business_requirement_analysis(document_content, parsing_result)
-            
-            # 技术复杂度评估
-            complexity_analysis = await self._complexity_assessment(crud_analysis, business_analysis)
+            # Step 3: 大模型变更判断与结构化输出
+            change_analysis = await self._analyze_changes(structured_chunks, history_comparison)
             
             # 合并分析结果
             content_result = {
-                "basic_analysis": basic_analysis,
-                "crud_analysis": crud_analysis,
-                "similarity_analysis": similarity_analysis,
-                "business_analysis": business_analysis,
-                "complexity_analysis": complexity_analysis,
+                "structured_chunks": structured_chunks,
+                "history_comparison": history_comparison,
+                "change_analysis": change_analysis,
                 "metadata": {
                     "analysis_method": "LLM+向量数据库分析",
                     "analysis_time": time.time() - start_time,
-                    "content_length": len(document_content)
+                    "content_length": len(document_content),
+                    "chunks_count": len(structured_chunks)
                 }
             }
             
@@ -76,284 +78,393 @@ class ContentAnalyzerService(BaseAnalysisService):
                 error=f"内容分析失败: {str(e)}"
             )
     
-    async def _basic_content_analysis(self, parsing_result: Dict[str, Any], content: str) -> Dict[str, Any]:
-        """基础内容分析"""
-        basic_info = parsing_result.get("basic_info", {})
-        llm_analysis = parsing_result.get("llm_analysis", {})
+    async def _preprocess_document(self, document_content: str) -> List[Dict[str, Any]]:
+        """
+        Step 1: 文档预处理
+        将markdown文档拆解为结构化内容块
+        
+        Args:
+            document_content: markdown格式的文档内容
+            
+        Returns:
+            结构化内容块列表
+        """
+        structured_chunks = []
+        
+        # 按行分割文档
+        lines = document_content.split('\n')
+        current_section = ""
+        current_content = []
+        current_level = 0
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # 检测标题级别
+            if line.startswith('#'):
+                # 保存之前的内容块
+                if current_section and current_content:
+                    content_text = '\n'.join(current_content).strip()
+                    if content_text:
+                        # 生成向量嵌入
+                        embedding = self.embedding_model.encode(f"{current_section}\n{content_text}").tolist()
+                        
+                        chunk = {
+                            "section": current_section,
+                            "content": content_text,
+                            "level": current_level,
+                            "embedding": embedding,
+                            "image_refs": self._extract_image_refs(content_text)
+                        }
+                        structured_chunks.append(chunk)
+                
+                # 开始新的段落
+                current_level = len(line) - len(line.lstrip('#'))
+                current_section = line.lstrip('# ').strip()
+                current_content = []
+            else:
+                # 普通内容行
+                current_content.append(line)
+        
+        # 处理最后一个段落
+        if current_section and current_content:
+            content_text = '\n'.join(current_content).strip()
+            if content_text:
+                embedding = self.embedding_model.encode(f"{current_section}\n{content_text}").tolist()
+                
+                chunk = {
+                    "section": current_section,
+                    "content": content_text,
+                    "level": current_level,
+                    "embedding": embedding,
+                    "image_refs": self._extract_image_refs(content_text)
+                }
+                structured_chunks.append(chunk)
+        
+        return structured_chunks
+    
+    def _extract_image_refs(self, content: str) -> List[str]:
+        """提取内容中的图片引用"""
+        image_refs = []
+        # 匹配markdown图片语法: ![alt](path)
+        image_pattern = re.compile(r'!\[.*?\]\((.*?)\)')
+        matches = image_pattern.findall(content)
+        image_refs.extend(matches)
+        
+        # 匹配其他可能的图片引用格式
+        ref_pattern = re.compile(r'\[图片[：:]\s*(.*?)\]')
+        matches = ref_pattern.findall(content)
+        image_refs.extend(matches)
+        
+        return image_refs
+    
+    async def _compare_with_history(self, structured_chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Step 2: 与历史知识库内容对比
+        
+        Args:
+            structured_chunks: 结构化内容块
+            
+        Returns:
+            历史对比结果
+        """
+        comparison_results = []
+        deleted_items = []
+        
+        # Step 2-A: 历史内容匹配与相似度判断
+        for chunk in structured_chunks:
+            similar_history = await self._find_similar_history(chunk)
+            
+            if similar_history:
+                max_similarity = max(item['similarity'] for item in similar_history)
+                if max_similarity >= 0.4:  # 相似度阈值
+                    comparison_results.append({
+                        "current_chunk": chunk,
+                        "matched_history": similar_history,
+                        "change_type": "修改" if max_similarity < 0.9 else "相同",
+                        "max_similarity": max_similarity
+                    })
+                else:
+                    comparison_results.append({
+                        "current_chunk": chunk,
+                        "matched_history": [],
+                        "change_type": "新增",
+                        "max_similarity": max_similarity
+                    })
+            else:
+                comparison_results.append({
+                    "current_chunk": chunk,
+                    "matched_history": [],
+                    "change_type": "新增",
+                    "max_similarity": 0.0
+                })
+        
+        # Step 2-B: 识别删除项
+        deleted_items = await self._identify_deleted_items(structured_chunks)
         
         return {
-            "content_type": llm_analysis.get("document_type", "未知"),
-            "language": basic_info.get("language", "未知"),
-            "word_count": basic_info.get("word_count", 0),
-            "character_count": basic_info.get("character_count", 0),
-            "summary": llm_analysis.get("summary", ""),
-            "key_points": llm_analysis.get("key_points", []),
-            "structure_analysis": llm_analysis.get("structure", {}),
-            "entities": llm_analysis.get("entities", {})
+            "comparisons": comparison_results,
+            "deleted_items": deleted_items,
+            "summary": {
+                "total_chunks": len(structured_chunks),
+                "new_items": len([r for r in comparison_results if r["change_type"] == "新增"]),
+                "modified_items": len([r for r in comparison_results if r["change_type"] == "修改"]),
+                "deleted_items": len(deleted_items)
+            }
         }
     
-    async def _crud_operation_analysis(self, content: str, parsing_result: Dict[str, Any]) -> Dict[str, Any]:
-        """CRUD操作分析"""
-        # 使用大模型进行CRUD操作识别
-        system_prompt = """你是一个专业的业务分析师，专门识别文档中的CRUD操作需求。
-
-请分析文档内容，识别所有可能的数据操作需求：
-1. Create（创建）：新增、添加、创建、注册等操作
-2. Read（查询）：查看、搜索、获取、列表、详情等操作  
-3. Update（更新）：修改、编辑、更新、变更等操作
-4. Delete（删除）：删除、移除、取消等操作
-
-对每个识别的操作，请提供：
-- 操作类型（C/R/U/D）
-- 操作对象（数据实体）
-- 操作描述
-- 业务场景
-- 复杂度评估（简单/中等/复杂）
-
-返回JSON格式：
-{
-    "crud_operations": [
-        {
-            "type": "Create/Read/Update/Delete",
-            "entity": "数据实体名称",
-            "description": "操作描述",
-            "scenario": "业务场景",
-            "complexity": "简单/中等/复杂",
-            "keywords": ["关键词1", "关键词2"]
-        }
-    ],
-    "summary": {
-        "total_operations": 数量,
-        "create_count": 数量,
-        "read_count": 数量,
-        "update_count": 数量,
-        "delete_count": 数量
-    }
-}"""
+    async def _find_similar_history(self, chunk: Dict[str, Any], top_k: int = 5) -> List[Dict[str, Any]]:
+        """在历史知识库中查找相似内容"""
+        try:
+            collection = self.weaviate_client.collections.get("AnalyDesignDocuments")
+            
+            # 使用向量搜索 - 需要处理向量格式差异
+            query_vector = chunk['embedding']  # 384维向量
+            
+            # 检查历史数据的向量格式
+            # 先尝试获取一个示例来了解向量格式
+            sample_response = collection.query.fetch_objects(limit=1, include_vector=True)
+            
+            if sample_response.objects and sample_response.objects[0].vector:
+                sample_vector = sample_response.objects[0].vector
+                
+                # 检查向量格式
+                if isinstance(sample_vector, dict) and 'default' in sample_vector:
+                    # 如果历史数据使用 {'default': [vector]} 格式
+                    actual_vector = sample_vector['default']
+                    sample_dim = len(actual_vector)
+                    self.logger.info(f"历史数据向量维度: {sample_dim}, 当前分析向量维度: {len(query_vector)}")
+                    
+                    if sample_dim == 768 and len(query_vector) == 384:
+                        # 维度不匹配，跳过向量搜索，使用关键词搜索替代
+                        self.logger.warning("向量维度不匹配，跳过向量搜索")
+                        return await self._fallback_keyword_search(chunk, top_k)
+                
+                # 如果维度匹配，继续向量搜索
+                response = collection.query.near_vector(
+                    near_vector=query_vector,
+                    limit=top_k,
+                    return_metadata=['distance']
+                )
+            else:
+                # 没有历史数据或没有向量，返回空结果
+                return []
+            
+            similar_items = []
+            for obj in response.objects:
+                similarity = 1 - obj.metadata.distance  # 转换为相似度
+                similar_items.append({
+                    "content": obj.properties.get('content', ''),
+                    "title": obj.properties.get('title', ''),
+                    "file_path": obj.properties.get('file_path', ''),
+                    "similarity": similarity
+                })
+            
+            return similar_items
+            
+        except Exception as e:
+            self.logger.error(f"历史内容搜索失败: {e}")
+            # 降级到关键词搜索
+            return await self._fallback_keyword_search(chunk, top_k)
+    
+    async def _fallback_keyword_search(self, chunk: Dict[str, Any], top_k: int = 5) -> List[Dict[str, Any]]:
+        """当向量搜索失败时，使用关键词搜索作为降级方案"""
+        try:
+            collection = self.weaviate_client.collections.get("AnalyDesignDocuments")
+            
+            # 使用BM25关键词搜索
+            search_text = f"{chunk['section']} {chunk['content']}"
+            
+            response = collection.query.bm25(
+                query=search_text,
+                limit=top_k,
+                return_metadata=['score']
+            )
+            
+            similar_items = []
+            for obj in response.objects:
+                # BM25得分转换为相似度（简单映射）
+                similarity = min(obj.metadata.score / 10.0, 1.0) if obj.metadata.score else 0.1
+                similar_items.append({
+                    "content": obj.properties.get('content', ''),
+                    "title": obj.properties.get('title', ''),
+                    "file_path": obj.properties.get('file_path', ''),
+                    "similarity": similarity,
+                    "search_method": "BM25关键词搜索"
+                })
+            
+            self.logger.info(f"使用关键词搜索找到 {len(similar_items)} 个相似项")
+            return similar_items
+            
+        except Exception as e:
+            self.logger.error(f"关键词搜索也失败: {e}")
+            return []
+    
+    async def _identify_deleted_items(self, structured_chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """识别删除项"""
+        deleted_items = []
         
-        user_prompt = f"""请分析以下文档内容，识别其中的CRUD操作需求：
+        # 在当前文档中搜索删除相关的关键词
+        delete_keywords = [
+            r"删除[了]?(.+?)功能",
+            r"去除[了]?(.+?)接口",
+            r"取消[了]?(.+?)服务",
+            r"移除[了]?(.+)",
+            r"不再(.+)",
+            r"~~(.+?)~~"  # markdown删除线
+        ]
+        
+        for chunk in structured_chunks:
+            content = chunk['content']
+            section = chunk['section']
+            
+            for pattern in delete_keywords:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    deleted_items.append({
+                        "section": section,
+                        "deleted_item": match.strip(),
+                        "context": content,
+                        "detection_method": "关键词匹配"
+                    })
+        
+        return deleted_items
+    
+    async def _analyze_changes(self, structured_chunks: List[Dict[str, Any]], 
+                             history_comparison: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Step 3: 大模型变更判断与结构化输出
+        
+        Args:
+            structured_chunks: 结构化内容块
+            history_comparison: 历史对比结果
+            
+        Returns:
+            变更分析结果
+        """
+        change_analyses = []
+        
+        for comparison in history_comparison['comparisons']:
+            if comparison['change_type'] in ['修改', '新增'] and comparison['matched_history']:
+                # 对有历史匹配的内容进行详细分析
+                analysis = await self._llm_change_analysis(comparison)
+                if analysis:
+                    change_analyses.append(analysis)
+        
+        # 对删除项进行分析
+        deletion_analyses = []
+        for deleted_item in history_comparison['deleted_items']:
+            analysis = await self._llm_deletion_analysis(deleted_item)
+            if analysis:
+                deletion_analyses.append(analysis)
+        
+        return {
+            "change_analyses": change_analyses,
+            "deletion_analyses": deletion_analyses,
+            "summary": {
+                "total_changes": len(change_analyses),
+                "total_deletions": len(deletion_analyses),
+                "analysis_method": "LLM智能分析"
+            }
+        }
+    
+    async def _llm_change_analysis(self, comparison: Dict[str, Any]) -> Dict[str, Any]:
+        """使用LLM分析变更"""
+        current_content = f"{comparison['current_chunk']['section']}\n{comparison['current_chunk']['content']}"
+        
+        if comparison['matched_history']:
+            history_content = comparison['matched_history'][0]['content']
+            history_title = comparison['matched_history'][0]['title']
+            history_file = comparison['matched_history'][0]['file_path']
+        else:
+            history_content = ""
+            history_title = ""
+            history_file = ""
+        
+        system_prompt = """你是一个专业的需求文档分析师，请分析当前版本与历史版本内容的差异，并按照指定格式输出结果。"""
+        
+        user_prompt = f"""
+【当前版本内容】：
+{current_content}
 
-文档内容：
-{content[:2000]}
+【历史版本内容】：
+标题: {history_title}
+文件: {history_file}
+内容: {history_content}
 
-请按照指定的JSON格式返回分析结果。"""
+请按照以下 JSON 格式输出分析结果：
+
+{{
+    "current_change": [
+        {{
+            "changeType": "新增 | 修改 | 删除",
+            "changeReason": "简要说明判断依据",
+            "changeItems": ["变更点1", "变更点2"],
+            "version": ["{history_file}"]
+        }}
+    ]
+}}
+"""
         
         try:
             response = await self._call_llm(user_prompt, system_prompt, max_tokens=2000)
             if response:
+                # 尝试解析JSON响应
                 try:
-                    crud_result = json.loads(response)
-                    # 添加关键词匹配验证
-                    crud_result["keyword_validation"] = self._validate_crud_keywords(content)
-                    return crud_result
+                    analysis_result = json.loads(response)
+                    return analysis_result
                 except json.JSONDecodeError:
-                    # 如果JSON解析失败，使用关键词匹配作为备选
-                    return self._fallback_crud_analysis(content)
-            else:
-                return self._fallback_crud_analysis(content)
+                    # 如果JSON解析失败，返回原始响应
+                    return {
+                        "current_change": [{
+                            "changeType": comparison['change_type'],
+                            "changeReason": "LLM分析结果解析失败",
+                            "changeItems": [response[:200] + "..."],
+                            "version": [history_file]
+                        }]
+                    }
         except Exception as e:
-            self.logger.error(f"CRUD分析失败: {str(e)}")
-            return self._fallback_crud_analysis(content)
+            self.logger.error(f"LLM变更分析失败: {e}")
+        
+        return None
     
-    def _validate_crud_keywords(self, content: str) -> Dict[str, List[str]]:
-        """验证CRUD关键词"""
-        crud_keywords = {
-            "create": ["创建", "新增", "添加", "注册", "建立", "生成", "create", "add", "insert", "register"],
-            "read": ["查询", "查看", "搜索", "获取", "列表", "详情", "read", "get", "search", "list", "view"],
-            "update": ["修改", "编辑", "更新", "变更", "调整", "update", "edit", "modify", "change"],
-            "delete": ["删除", "移除", "取消", "清除", "delete", "remove", "cancel", "clear"]
-        }
+    async def _llm_deletion_analysis(self, deleted_item: Dict[str, Any]) -> Dict[str, Any]:
+        """使用LLM分析删除项"""
+        system_prompt = """你是一个专业的需求文档分析师，请分析文档中提到的删除项，并确认其历史存在性。"""
         
-        found_keywords = {}
-        content_lower = content.lower()
-        
-        for operation, keywords in crud_keywords.items():
-            found = []
-            for keyword in keywords:
-                if keyword in content_lower:
-                    found.append(keyword)
-            if found:
-                found_keywords[operation] = found
-        
-        return found_keywords
-    
-    def _fallback_crud_analysis(self, content: str) -> Dict[str, Any]:
-        """备选CRUD分析方法"""
-        keyword_validation = self._validate_crud_keywords(content)
-        
-        crud_operations = []
-        for operation, keywords in keyword_validation.items():
-            for keyword in keywords:
-                crud_operations.append({
-                    "type": operation.capitalize(),
-                    "entity": "未指定",
-                    "description": f"检测到{operation}操作关键词: {keyword}",
-                    "scenario": "基于关键词匹配",
-                    "complexity": "中等",
-                    "keywords": [keyword]
-                })
-        
-        return {
-            "crud_operations": crud_operations,
-            "summary": {
-                "total_operations": len(crud_operations),
-                "create_count": len(keyword_validation.get("create", [])),
-                "read_count": len(keyword_validation.get("read", [])),
-                "update_count": len(keyword_validation.get("update", [])),
-                "delete_count": len(keyword_validation.get("delete", []))
-            },
-            "keyword_validation": keyword_validation,
-            "analysis_method": "关键词匹配"
-        }
-    
-    async def _vector_similarity_analysis(self, content: str) -> Dict[str, Any]:
-        """向量数据库相似性分析"""
-        try:
-            # 提取关键句子进行向量搜索
-            sentences = self._extract_key_sentences(content)
-            similarity_results = []
-            
-            for sentence in sentences[:5]:  # 限制搜索数量
-                similar_docs = await self._vector_search(sentence, top_k=3)
-                if similar_docs:
-                    similarity_results.append({
-                        "query": sentence,
-                        "similar_documents": similar_docs
-                    })
-            
-            return {
-                "similarity_results": similarity_results,
-                "total_queries": len(sentences),
-                "found_similarities": len(similarity_results),
-                "analysis_method": "向量相似性搜索"
-            }
-            
-        except Exception as e:
-            self.logger.error(f"向量相似性分析失败: {str(e)}")
-            return {
-                "similarity_results": [],
-                "error": f"向量分析失败: {str(e)}",
-                "analysis_method": "向量相似性搜索"
-            }
-    
-    def _extract_key_sentences(self, content: str) -> List[str]:
-        """提取关键句子"""
-        sentences = re.split(r'[。！？\n]', content)
-        key_sentences = []
-        
-        # 筛选包含重要关键词的句子
-        important_keywords = [
-            "需求", "功能", "系统", "接口", "数据", "用户", "管理", "查询", "创建", "删除", "修改",
-            "requirement", "function", "system", "interface", "data", "user", "manage"
-        ]
-        
-        for sentence in sentences:
-            sentence = sentence.strip()
-            if len(sentence) > 10 and any(keyword in sentence for keyword in important_keywords):
-                key_sentences.append(sentence)
-        
-        return key_sentences[:10]  # 返回前10个关键句子
-    
-    async def _business_requirement_analysis(self, content: str, parsing_result: Dict[str, Any]) -> Dict[str, Any]:
-        """业务需求分析"""
-        system_prompt = """你是一个专业的业务分析师，请分析文档中的业务需求。
+        user_prompt = f"""
+【删除项信息】：
+章节: {deleted_item['section']}
+删除内容: {deleted_item['deleted_item']}
+上下文: {deleted_item['context']}
 
-请识别以下内容：
-1. 核心业务流程
-2. 用户角色和权限
-3. 数据实体和关系
-4. 业务规则和约束
-5. 非功能性需求（性能、安全等）
+请分析该删除项的合理性，并按照以下格式输出：
 
-返回JSON格式：
-{
-    "business_processes": ["流程1", "流程2"],
-    "user_roles": ["角色1", "角色2"],
-    "data_entities": ["实体1", "实体2"],
-    "business_rules": ["规则1", "规则2"],
-    "non_functional_requirements": {
-        "performance": ["性能要求"],
-        "security": ["安全要求"],
-        "usability": ["可用性要求"]
-    },
-    "priority": "高/中/低"
-}"""
-        
-        user_prompt = f"""请分析以下文档的业务需求：
-
-{content[:2000]}
-
-请按照指定的JSON格式返回分析结果。"""
+{{
+    "changeType": "删除",
+    "deletedItem": "{deleted_item['deleted_item']}",
+    "section": "{deleted_item['section']}",
+    "analysisResult": "删除原因和影响分析"
+}}
+"""
         
         try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=1500)
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=1000)
             if response:
                 try:
-                    return json.loads(response)
+                    analysis_result = json.loads(response)
+                    return analysis_result
                 except json.JSONDecodeError:
-                    return {"raw_response": response, "parse_error": "JSON解析失败"}
-            else:
-                return {"error": "LLM响应为空"}
+                    return {
+                        "changeType": "删除",
+                        "deletedItem": deleted_item['deleted_item'],
+                        "section": deleted_item['section'],
+                        "analysisResult": response[:200] + "..."
+                    }
         except Exception as e:
-            return {"error": f"业务需求分析失败: {str(e)}"}
-    
-    async def _complexity_assessment(self, crud_analysis: Dict[str, Any], 
-                                   business_analysis: Dict[str, Any]) -> Dict[str, Any]:
-        """技术复杂度评估"""
-        crud_count = crud_analysis.get("summary", {}).get("total_operations", 0)
-        business_processes = len(business_analysis.get("business_processes", []))
-        data_entities = len(business_analysis.get("data_entities", []))
+            self.logger.error(f"LLM删除分析失败: {e}")
         
-        # 复杂度评分
-        complexity_score = 0
-        complexity_score += crud_count * 2  # CRUD操作权重
-        complexity_score += business_processes * 3  # 业务流程权重
-        complexity_score += data_entities * 2  # 数据实体权重
-        
-        # 复杂度等级
-        if complexity_score <= 10:
-            complexity_level = "简单"
-            estimated_days = "1-3天"
-        elif complexity_score <= 25:
-            complexity_level = "中等"
-            estimated_days = "1-2周"
-        else:
-            complexity_level = "复杂"
-            estimated_days = "2-4周"
-        
-        return {
-            "complexity_score": complexity_score,
-            "complexity_level": complexity_level,
-            "estimated_development_time": estimated_days,
-            "factors": {
-                "crud_operations": crud_count,
-                "business_processes": business_processes,
-                "data_entities": data_entities
-            },
-            "recommendations": self._get_complexity_recommendations(complexity_level)
-        }
-    
-    def _get_complexity_recommendations(self, complexity_level: str) -> List[str]:
-        """获取复杂度建议"""
-        recommendations = {
-            "简单": [
-                "可以使用快速开发框架",
-                "建议采用敏捷开发模式",
-                "重点关注代码质量和测试覆盖"
-            ],
-            "中等": [
-                "建议进行详细的技术设计",
-                "考虑使用微服务架构",
-                "需要完善的测试策略",
-                "建议分阶段开发和部署"
-            ],
-            "复杂": [
-                "必须进行详细的架构设计",
-                "建议使用领域驱动设计(DDD)",
-                "需要完整的CI/CD流程",
-                "建议组建专门的开发团队",
-                "需要详细的项目管理和风险控制"
-            ]
-        }
-        
-        return recommendations.get(complexity_level, []) 
+        return None
+   
