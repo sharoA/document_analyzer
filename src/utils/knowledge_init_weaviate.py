@@ -1358,93 +1358,92 @@ class KnowledgeBaseInitializer:
             self.redis_manager.close()
 
 def main():
-    """主函数"""
+    """主函数 - 检查特定文档"""
     initializer = None
     
     try:
         # 创建初始化器
         initializer = KnowledgeBaseInitializer()
         
-        # 初始化知识库
-        initializer.initialize_knowledge_base()
-        
-        # LangChain示例查询
-        print("\n" + "="*60)
-        print("🔍 LangChain RAG 示例查询测试")
-        print("="*60)
-        
-        queries = [
-            "LS中的数据库表结构",
-            "用户管理相关的代码",
-            "链数后端的配置文件",
-            "Java类的定义",
-            "系统架构设计",
-            "评分功能的实现"
-        ]
-        
-        for query in queries:
-            print(f"\n查询: {query}")
-            print("-" * 40)
-            
-            results = initializer.query_knowledge_base(query, k=3)
-            
-            if results:
-                for i, result in enumerate(results, 1):
-                    metadata = result['metadata']
-                    print(f"{i}. 文件: {metadata.get('file_name', 'N/A')} (项目: {metadata.get('project', 'N/A')})")
-                    print(f"   类型: {metadata.get('file_type', 'N/A')} | 来源: {metadata.get('source_type', 'N/A')}")
-                    print(f"   相似度: {result['similarity_score']:.3f}")
-                    
-                    if metadata.get('section'):
-                        print(f"   章节: {metadata['section']}")
-                    if metadata.get('sheet_name'):
-                        print(f"   工作表: {metadata['sheet_name']}")
-                    
-                    print(f"   内容预览: {result['content'][:100]}...")
-                    print()
-            else:
-                print("   没有找到相关结果")
-        
-        print("🎉 LangChain RAG 示例查询完成！")
-        
-        # 使用_call_llm进行智能问答示例
-        print("\n" + "="*60)
-        print("🤖 智能问答示例 (使用_call_llm)")
-        print("="*60)
-        
-        test_query = "LS系统中的用户管理功能是如何实现的？"
-        print(f"问题: {test_query}")
-        print("-" * 40)
-        
-        # 先检索相关文档
-        search_results = initializer.query_knowledge_base(test_query, k=3)
-        
-        if search_results:
-            # 构建上下文
-            context = "\n".join([f"文档{i+1}: {result['content']}" for i, result in enumerate(search_results)])
-            
-            # 使用_call_llm进行智能回答
-            prompt = f"""基于以下文档内容，回答用户的问题。
+        # 检查特定文档
+        file_name = "LS-1(YS-72)_需求文档-链数一期V1.8.docx"
+        print(f"🔍 检查文档: {file_name}")
+       
 
-相关文档:
-{context}
+        collection = initializer.weaviate_client.collections.get("Document")
+        print(f"🔍 查询出当前文档: {collection}")
 
-用户问题: {test_query}
-
-请基于文档内容给出准确、详细的回答："""
+        # 使用正确的查询语法，使用filters参数而不是where
+        existing_docs = collection.query.fetch_objects(
+            filters=wvc.query.Filter.by_property("file_name").equal(file_name)
+        )
+        print(f"🔍 查询出当前文件名文档: {existing_docs}")
+        
+        # 先获取所有文档，然后过滤
+        print("📋 正在查询数据库...")
+        all_results = collection.query.fetch_objects(limit=1000)
+        
+        if not all_results.objects:
+            print("❌ 数据库为空，没有任何向量化文档")
+            return
+        
+        # 手动过滤特定文件
+        target_docs = []
+        all_files = set()
+        
+        for obj in all_results.objects:
+            props = obj.properties
+            current_file = props.get('file_name', 'unknown')
+            all_files.add(current_file)
             
-            try:
-                response = initializer._call_llm(prompt)
-                print(f"AI回答: {response}")
-            except Exception as e:
-                print(f"AI回答失败: {e}")
+            if file_name in current_file or current_file == file_name:
+                target_docs.append(obj)
+        
+        if not target_docs:
+            print(f"❌ 未找到文件 '{file_name}' 的向量化记录")
+            print(f"\n📋 数据库中的所有文件 (共{len(all_files)}个):")
+            for fname in sorted(all_files):
+                print(f"  - {fname}")
         else:
-            print("没有找到相关文档")
+            print(f"✅ 找到文件 '{file_name}' 的 {len(target_docs)} 个向量化文档块")
+            
+            # 统计信息
+            processors = set()
+            source_types = set()
+            sections = set()
+            
+            # 显示详细信息
+            for i, obj in enumerate(target_docs[:5]):  # 只显示前5个
+                props = obj.properties
+                print(f"\n{i+1}. 章节: {props.get('section', 'N/A')}")
+                print(f"   处理器: {props.get('processor', 'N/A')}")
+                print(f"   来源类型: {props.get('source_type', 'N/A')}")
+                print(f"   文件类型: {props.get('file_type', 'N/A')}")
+                print(f"   项目: {props.get('project', 'N/A')}")
+                print(f"   内容预览: {props.get('content', '')[:200]}...")
+                
+                processors.add(props.get('processor', 'unknown'))
+                source_types.add(props.get('source_type', 'unknown'))
+                if props.get('section'):
+                    sections.add(props.get('section'))
+            
+            if len(target_docs) > 5:
+                print(f"\n... 还有 {len(target_docs) - 5} 个文档块")
+            
+            print(f"\n📊 统计信息:")
+            print(f"  - 总文档块数: {len(target_docs)}")
+            print(f"  - 使用的处理器: {list(processors)}")
+            print(f"  - 来源类型: {list(source_types)}")
+            print(f"  - 章节数量: {len(sections)}")
+            
+            if sections:
+                print(f"  - 章节列表: {list(sections)[:10]}{'...' if len(sections) > 10 else ''}")
         
     except Exception as e:
-        logger.error(f"❌ 程序执行失败: {e}")
-        raise
-    
+        print(f"❌ 检查失败: {e}")
+        import traceback
+        traceback.print_exc()
+        
     finally:
         if initializer:
             initializer.close()

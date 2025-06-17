@@ -2106,7 +2106,10 @@ ${task.timestamps ? `
             word_count: fileFormatInfo.technicalDetails?.wordCount || contentAnalysisData.word_count || 0
           },
           structure_analysis: contentAnalysisData.structure_analysis || docParsingInfo.documentStructure || {},
-          requirements_analysis: contentAnalysisData.crud_analysis || {}
+          requirements_analysis: contentAnalysisData.crud_analysis || {},
+          // 添加变更分析结果支持
+          change_analysis: contentAnalysisData.change_analysis || null,
+          metadata: contentAnalysisData.metadata || null
         },
         aiAnalysis: {
           analysis_type: 'comprehensive',

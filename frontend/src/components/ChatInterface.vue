@@ -519,63 +519,168 @@
                   <!-- 内容分析结果 -->
                   <el-card class="info-card" v-if="analysisResult.contentAnalysis">
                     <template #header>
-                      <h5>内容分析结果</h5>
-                    </template>
-                    <div class="content-analysis-result">
-                      
-                      <!-- 需求分析（如果是需求文档） -->
-                      <div v-if="analysisResult.contentAnalysis.requirements_analysis" class="analysis-section">
-                        <h6>需求分析</h6>
-                        <el-descriptions :column="1" border size="small">
-                          <el-descriptions-item label="功能需求数">
-                            {{ analysisResult.contentAnalysis.requirements_analysis.functional_requirements?.length || 0 }}
-                          </el-descriptions-item>
-                          <el-descriptions-item label="非功能需求数">
-                            {{ analysisResult.contentAnalysis.requirements_analysis.non_functional_requirements?.length || 0 }}
-                          </el-descriptions-item>
-                          <el-descriptions-item label="优先级提及">
-                            {{ analysisResult.contentAnalysis.requirements_analysis.priority_mentions?.length || 0 }}
-                          </el-descriptions-item>
-                        </el-descriptions>
-                      </div>
-                    </div>
-                  </el-card>
-                  
-                  <!-- AI分析结果 -->
-                  <el-card class="info-card" v-if="analysisResult.aiAnalysis">
-                    <template #header>
-                      <div class="ai-analysis-header">
-                        <h5>智能处理结果</h5>
+                      <div class="content-analysis-header">
+                        <h5>📊 智能内容分析结果</h5>
                         <el-tag size="small" type="success">
-                          {{ analysisResult.aiAnalysis.analysis_type || '全面分析' }}
+                          {{ analysisResult.contentAnalysis.metadata?.analysis_method || 'LLM+向量数据库分析' }}
                         </el-tag>
                       </div>
                     </template>
-                    <div class="ai-analysis-result">
-                      <!-- AI分析信息 -->
-                      <el-descriptions :column="2" border size="small" style="margin-bottom: 16px;">
-                        <el-descriptions-item label="分析模型">
-                          {{ analysisResult.aiAnalysis.analysis_model || 'Doubao' }}
-                        </el-descriptions-item>
-                        <el-descriptions-item label="置信度">
-                          {{ ((analysisResult.aiAnalysis.confidence_score || 0.95) * 100).toFixed(1) }}%
-                        </el-descriptions-item>
-                        <el-descriptions-item label="分析时间">
-                          {{ formatTime(analysisResult.aiAnalysis.analyzed_at || Date.now()) }}
-                        </el-descriptions-item>
-                        <el-descriptions-item label="分析耗时">
-                          {{ analysisResult.aiAnalysis.analysis_duration?.toFixed(2) || '0.00' }} 秒
-                        </el-descriptions-item>
-                      </el-descriptions>
+                    <div class="content-analysis-result">
                       
-                      <!-- AI分析内容 -->
-                      <div class="ai-response-content">
-                        <h6>智能分析报告</h6>
-                        <div class="ai-response-text">
-                          <el-scrollbar max-height="60vh" class="ai-content-scrollbar">
-                            <div v-if="analysisResult.aiAnalysis.ai_response" v-html="formatAIResponse(analysisResult.aiAnalysis.ai_response)"></div>
-                            <div v-else class="no-content">{{ analysisResult.aiAnalysis.ai_response || '分析完成' }}</div>
-                          </el-scrollbar>
+                      <!-- 分析元数据信息 -->
+                      <div v-if="analysisResult.contentAnalysis.metadata" class="metadata-section">
+                        <el-descriptions :column="2" border size="small" style="margin-bottom: 20px;">
+                          <el-descriptions-item label="分析方法">
+                            <el-tag type="primary" size="small">
+                              {{ analysisResult.contentAnalysis.metadata.analysis_method }}
+                            </el-tag>
+                          </el-descriptions-item>
+                          <el-descriptions-item label="分析耗时">
+                            {{ (analysisResult.contentAnalysis.metadata.analysis_time || 0).toFixed(2) }} 秒
+                          </el-descriptions-item>
+                          <el-descriptions-item label="内容长度">
+                            {{ (analysisResult.contentAnalysis.metadata.content_length || 0).toLocaleString() }} 字符
+                          </el-descriptions-item>
+                          <el-descriptions-item label="分析块数">
+                            {{ analysisResult.contentAnalysis.metadata.chunks_count || 0 }} 个
+                          </el-descriptions-item>
+                        </el-descriptions>
+                      </div>
+
+                      <!-- 变更分析结果 -->
+                      <div v-if="analysisResult.contentAnalysis.change_analysis" class="change-analysis-section">
+                        <h6 class="section-title">🔄 变更分析结果</h6>
+                        
+                        <!-- 分析概览 -->
+                        <div v-if="analysisResult.contentAnalysis.change_analysis.summary" class="analysis-summary-card">
+                          <el-card class="summary-card">
+                            <template #header>
+                              <span class="summary-header">📈 分析概览</span>
+                            </template>
+                            <el-row :gutter="16">
+                              <el-col :span="8">
+                                <div class="summary-item">
+                                  <div class="summary-number">{{ analysisResult.contentAnalysis.change_analysis.summary.total_changes || 0 }}</div>
+                                  <div class="summary-label">内容变更</div>
+                                </div>
+                              </el-col>
+                              <el-col :span="8">
+                                <div class="summary-item">
+                                  <div class="summary-number">{{ analysisResult.contentAnalysis.change_analysis.summary.total_deletions || 0 }}</div>
+                                  <div class="summary-label">删除项目</div>
+                                </div>
+                              </el-col>
+                              <el-col :span="8">
+                                <div class="summary-item">
+                                  <div class="summary-number">
+                                    {{ (analysisResult.contentAnalysis.change_analysis.summary.total_changes || 0) + (analysisResult.contentAnalysis.change_analysis.summary.total_deletions || 0) }}
+                                  </div>
+                                  <div class="summary-label">总变更数</div>
+                                </div>
+                              </el-col>
+                            </el-row>
+                          </el-card>
+                        </div>
+
+                        <!-- 详细变更分析 -->
+                        <div v-if="analysisResult.contentAnalysis.change_analysis.change_analyses?.length" class="change-details-section">
+                          <h6 class="subsection-title">📝 变更详情</h6>
+                          <div class="change-items">
+                            <el-card 
+                              v-for="(change, index) in analysisResult.contentAnalysis.change_analysis.change_analyses" 
+                              :key="index"
+                              class="change-item-card"
+                              shadow="hover"
+                            >
+                              <template #header>
+                                <div class="change-item-header">
+                                  <span class="change-index">#{{ index + 1 }}</span>
+                                  <el-tag 
+                                    :type="getChangeTypeColor(change.current_change?.[0]?.changeType)"
+                                    size="small"
+                                  >
+                                    {{ change.current_change?.[0]?.changeType || '未知变更' }}
+                                  </el-tag>
+                                </div>
+                              </template>
+                              
+                              <div v-if="change.current_change?.[0]" class="change-content">
+                                <div class="change-reason">
+                                  <strong>变更原因：</strong>
+                                  <p>{{ change.current_change[0].changeReason || '暂无描述' }}</p>
+                                </div>
+                                
+                                <div v-if="change.current_change[0].changeItems?.length" class="change-items-list">
+                                  <strong>具体变更：</strong>
+                                  <ul>
+                                    <li v-for="(item, idx) in change.current_change[0].changeItems" :key="idx">
+                                      {{ item }}
+                                    </li>
+                                  </ul>
+                                </div>
+                                
+                                <div v-if="change.current_change[0].version?.length" class="version-info">
+                                  <strong>参考版本：</strong>
+                                  <el-tag 
+                                    v-for="(version, vIdx) in change.current_change[0].version" 
+                                    :key="vIdx"
+                                    size="small"
+                                    type="info"
+                                    style="margin-right: 4px;"
+                                  >
+                                    {{ version }}
+                                  </el-tag>
+                                </div>
+                              </div>
+                            </el-card>
+                          </div>
+                        </div>
+
+                        <!-- 删除项分析 -->
+                        <div v-if="analysisResult.contentAnalysis.change_analysis.deletion_analyses?.length" class="deletion-section">
+                          <h6 class="subsection-title">🗑️ 删除项分析</h6>
+                          <div class="deletion-items">
+                            <el-card 
+                              v-for="(deletion, index) in analysisResult.contentAnalysis.change_analysis.deletion_analyses" 
+                              :key="index"
+                              class="deletion-item-card"
+                              shadow="hover"
+                            >
+                              <template #header>
+                                <div class="deletion-item-header">
+                                  <span class="deletion-index">#{{ index + 1 }}</span>
+                                  <el-tag type="danger" size="small">删除</el-tag>
+                                </div>
+                              </template>
+                              
+                              <div class="deletion-content">
+                                <div class="deleted-item">
+                                  <strong>删除项：</strong>
+                                  <span class="deleted-text">{{ deletion.deletedItem || '未知项目' }}</span>
+                                </div>
+                                
+                                <div v-if="deletion.section" class="deletion-section-info">
+                                  <strong>所属章节：</strong>
+                                  <el-tag size="small" type="warning">{{ deletion.section }}</el-tag>
+                                </div>
+                                
+                                <div v-if="deletion.analysisResult" class="deletion-analysis">
+                                  <strong>分析结果：</strong>
+                                  <p>{{ deletion.analysisResult }}</p>
+                                </div>
+                              </div>
+                            </el-card>
+                          </div>
+                        </div>
+
+                        <!-- 空状态 -->
+                        <div v-if="!analysisResult.contentAnalysis.change_analysis.change_analyses?.length && !analysisResult.contentAnalysis.change_analysis.deletion_analyses?.length" class="empty-changes">
+                          <el-empty description="暂无检测到内容变更">
+                            <template #image>
+                              <el-icon size="64px" color="#e6a23c"><DocumentChecked /></el-icon>
+                            </template>
+                          </el-empty>
                         </div>
                       </div>
                     </div>
@@ -839,7 +944,8 @@ import {
   ZoomIn,
   ZoomOut,
   DocumentCopy,
-  Delete
+  Delete,
+  DocumentChecked
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DocumentPreview from './DocumentPreview.vue'
@@ -1520,6 +1626,17 @@ const getAnalysisFileSize = () => {
 const getAnalysisCharacterCount = () => {
   return analysisResult.value?.contentAnalysis?.statistics?.character_count || 
          analysisResult.value?.details?.length || 0
+}
+
+// 变更分析相关方法
+const getChangeTypeColor = (changeType) => {
+  const colorMap = {
+    '新增': 'success',
+    '修改': 'warning', 
+    '删除': 'danger',
+    '相同': 'info'
+  }
+  return colorMap[changeType] || 'info'
 }
 </script>
 
@@ -2612,6 +2729,209 @@ const getAnalysisCharacterCount = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+// 内容分析结果样式
+.content-analysis-result {
+  .content-analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    
+    h5 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: #303133;
+    }
+  }
+  
+  .metadata-section {
+    margin-bottom: 20px;
+  }
+  
+  .change-analysis-section {
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #303133;
+      margin: 0 0 16px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #409eff;
+    }
+    
+    .subsection-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #606266;
+      margin: 20px 0 12px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e4e7ed;
+    }
+    
+    .analysis-summary-card {
+      margin-bottom: 20px;
+      
+      .summary-card {
+        .summary-header {
+          font-size: 14px;
+          font-weight: 600;
+          color: #303133;
+        }
+        
+        .summary-item {
+          text-align: center;
+          padding: 16px;
+          
+          .summary-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: #409eff;
+            margin-bottom: 8px;
+          }
+          
+          .summary-label {
+            font-size: 12px;
+            color: #909399;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+        }
+      }
+    }
+    
+    .change-details-section, .deletion-section {
+      margin-bottom: 20px;
+      
+      .change-items, .deletion-items {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        
+        .change-item-card, .deletion-item-card {
+          border-radius: 8px;
+          transition: all 0.3s ease;
+          
+          &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+          }
+          
+          :deep(.el-card__header) {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
+            
+            .change-item-header, .deletion-item-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              
+              .change-index, .deletion-index {
+                font-size: 12px;
+                font-weight: 600;
+                color: #6c757d;
+                background: #e9ecef;
+                padding: 4px 8px;
+                border-radius: 12px;
+              }
+            }
+          }
+          
+          .change-content, .deletion-content {
+            .change-reason, .deletion-analysis {
+              margin-bottom: 16px;
+              
+              strong {
+                color: #495057;
+                font-weight: 600;
+              }
+              
+              p {
+                margin: 8px 0 0 0;
+                line-height: 1.6;
+                color: #6c757d;
+                padding: 12px;
+                background: #f8f9fa;
+                border-radius: 6px;
+                border-left: 4px solid #007bff;
+              }
+            }
+            
+            .change-items-list {
+              margin-bottom: 16px;
+              
+              strong {
+                color: #495057;
+                font-weight: 600;
+              }
+              
+              ul {
+                margin: 8px 0 0 0;
+                padding-left: 0;
+                list-style: none;
+                
+                li {
+                  position: relative;
+                  padding: 8px 0 8px 24px;
+                  margin: 4px 0;
+                  color: #6c757d;
+                  line-height: 1.5;
+                  
+                  &:before {
+                    content: '•';
+                    position: absolute;
+                    left: 8px;
+                    color: #007bff;
+                    font-weight: bold;
+                  }
+                }
+              }
+            }
+            
+            .version-info, .deletion-section-info {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              
+              strong {
+                color: #495057;
+                font-weight: 600;
+              }
+            }
+            
+            .deleted-item {
+              margin-bottom: 12px;
+              
+              strong {
+                color: #495057;
+                font-weight: 600;
+              }
+              
+              .deleted-text {
+                margin-left: 8px;
+                padding: 4px 8px;
+                background: #fff5f5;
+                border: 1px solid #feb2b2;
+                border-radius: 4px;
+                color: #c53030;
+                font-weight: 500;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    .empty-changes {
+      padding: 40px 20px;
+      text-align: center;
+      
+      :deep(.el-empty__description) {
+        color: #909399;
+        font-size: 14px;
+      }
+    }
+  }
 }
 
 // 分析总结样式

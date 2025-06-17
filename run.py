@@ -183,9 +183,18 @@ def start_full_service():
             print("✅ 两个服务器都已启动")
             print("按 Ctrl+C 停止所有服务")
             
-            # 等待任一服务器结束
-            api_future.result()
-            ws_future.result()
+            # 等待任一服务器结束，或者等待键盘中断
+            import concurrent.futures
+            try:
+                # 使用as_completed等待任一服务器完成或失败
+                for future in concurrent.futures.as_completed([api_future, ws_future]):
+                    try:
+                        future.result()  # 获取结果，如果有异常会重新抛出
+                    except Exception as e:
+                        print(f"服务器异常: {e}")
+                        break
+            except KeyboardInterrupt:
+                print("\n收到停止信号，正在关闭服务...")
             
         except KeyboardInterrupt:
             print("\n👋 所有服务器已停止")
@@ -224,7 +233,14 @@ def main():
         
         # 构建新的命令行参数
         new_args = [venv_python, __file__, "--mode", args.mode]
-        subprocess.run(new_args, env=env, cwd=str(Path.cwd()))
+        try:
+            # 使用exec方式替换当前进程，而不是创建子进程
+            os.execve(venv_python, new_args, env)
+        except Exception as e:
+            print(f"❌ 切换虚拟环境失败: {e}")
+            # 如果exec失败，fallback到subprocess
+            result = subprocess.run(new_args, env=env, cwd=str(Path.cwd()))
+            sys.exit(result.returncode)
         return
     
     # 检查依赖

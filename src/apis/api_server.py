@@ -488,8 +488,13 @@ def process_file_parsing(task: FileParsingTask):
             log_analysis_step(task.id, "文件解析", "完成", f"解析结果已保存")
             analysis_logger.info(f"✅ 文件解析完成: {task.id}")
         else:
-            # 降级到原有的解析逻辑
+            # 降级到原有的解析逻辑 - 需要读取文件内容
             task.update_progress(60, "使用传统方法解析文档", "parsing")
+            
+            # 读取文件内容用于传统解析方法
+            with open(task.file_path, 'rb') as f:
+                file_content = f.read()
+            
             if file_name.lower().endswith(('.doc', '.docx')) or 'word' in file_type.lower():
                 result = parse_word_document(file_content, file_name)
             elif file_name.lower().endswith('.pdf') or file_type == 'application/pdf':
