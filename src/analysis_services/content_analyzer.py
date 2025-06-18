@@ -1449,23 +1449,42 @@ class ContentAnalyzerService(BaseAnalysisService):
             
             # 处理change_analyses列表
             if 'change_analyses' in change_analysis and change_analysis['change_analyses']:
-                deduplicated_changes = self._deduplicate_changes(change_analysis['change_analyses'])
-                sorted_changes = self._sort_changes(deduplicated_changes)
+                # Step 1: 传统去重
+                traditional_deduplicated = self._deduplicate_changes(change_analysis['change_analyses'])
+                
+                # Step 2: 大模型智能去重（识别不同变更模块中的相同功能）
+                llm_deduplicated = await self._llm_intelligent_deduplicate(traditional_deduplicated)
+                
+                # Step 3: 排序
+                sorted_changes = self._sort_changes(llm_deduplicated)
                 result['change_analyses'] = sorted_changes
                 
-                self.logger.info(f"change_analyses去重排序: {len(change_analysis['change_analyses'])} -> {len(sorted_changes)}")
+                self.logger.info(f"change_analyses智能去重排序: {len(change_analysis['change_analyses'])} -> {len(traditional_deduplicated)} -> {len(llm_deduplicated)} -> {len(sorted_changes)}")
             
             # 处理deletion_analyses列表
             if 'deletion_analyses' in change_analysis and change_analysis['deletion_analyses']:
-                deduplicated_deletions = self._deduplicate_changes(change_analysis['deletion_analyses'])
-                sorted_deletions = self._sort_changes(deduplicated_deletions)
+                # Step 1: 传统去重
+                traditional_deduplicated = self._deduplicate_changes(change_analysis['deletion_analyses'])
+                
+                # Step 2: 大模型智能去重
+                llm_deduplicated = await self._llm_intelligent_deduplicate(traditional_deduplicated)
+                
+                # Step 3: 排序
+                sorted_deletions = self._sort_changes(llm_deduplicated)
                 result['deletion_analyses'] = sorted_deletions
                 
-                self.logger.info(f"deletion_analyses去重排序: {len(change_analysis['deletion_analyses'])} -> {len(sorted_deletions)}")
+                self.logger.info(f"deletion_analyses智能去重排序: {len(change_analysis['deletion_analyses'])} -> {len(traditional_deduplicated)} -> {len(llm_deduplicated)} -> {len(sorted_deletions)}")
             
             # 更新summary信息
             if 'summary' in result:
-                result['summary']['analysis_method'] = "LLM+向量数据库分析+详细内容提取+智能合并+去重排序"
+                result['summary']['analysis_method'] = "LLM+向量数据库分析+详细内容提取+智能合并+大模型智能去重+排序"
+            
+            # 添加去重元数据
+            if 'metadata' not in result:
+                result['metadata'] = {}
+            result['metadata']['deduplication_applied'] = True
+            result['metadata']['llm_deduplication_applied'] = True
+            result['metadata']['deduplication_timestamp'] = time.time()
             
             return result
             
@@ -1673,6 +1692,167 @@ class ContentAnalyzerService(BaseAnalysisService):
         keywords.extend(chinese_words)
         
         return list(set(keywords))  # 去重
+    
+    async def _llm_intelligent_deduplicate(self, changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        使用大模型进行智能去重，识别不同变更模块中的相同功能
+        
+        Args:
+            changes: 已经过传统去重的变更项列表
+            
+        Returns:
+            经过大模型智能去重的变更项列表
+        """
+        if len(changes) <= 1:
+            return changes
+        
+        try:
+            # 构建变更项摘要供大模型分析
+            change_summaries = []
+            for i, change in enumerate(changes):
+                summary = {
+                    'index': i,
+                    'changeType': change.get('changeType', '未知'),
+                    'changeReason': change.get('changeReason', ''),
+                    'changeItems': change.get('changeItems', []),
+                    'changeDetails': change.get('changeDetails', '')
+                }
+                change_summaries.append(summary)
+            
+            # 构建大模型提示词
+            prompt = f"""
+你是一个专业的文档变更分析专家。现在需要你分析以下{len(changes)}个变更项，识别其中功能相同但表述不同的项目并进行去重合并。
+
+分析原则：
+1. 识别语义相同但表述不同的变更项（如："调整了确权业务申请接口中关于bizSerialNo的校验规则，允许相同业务编号的数据在核心企业内部系统修改后重新推送" 和 "调整了确权业务申请接口中关于bizSerialNo的校验规则，允许相同业务编号的数据在核心企业内部系统修改后再次推送"）
+2. 只有变更类型相同的项目才能合并
+3. 合并时保留最完整、最准确的描述
+4. 如果变更项描述的是不同的功能点，即使表述相似也不要合并
+
+变更项列表：
+{json.dumps(change_summaries, ensure_ascii=False, indent=2)}
+
+请分析这些变更项，返回JSON格式的去重结果：
+{{
+  "merged_groups": [
+    {{
+      "merge_indices": [0, 3],  // 需要合并的变更项索引
+      "reason": "这两个变更项都是关于同一个接口的相同校验规则调整，只是表述略有不同",
+      "merged_changeReason": "合并后的变更原因",
+      "merged_changeItems": ["合并后的变更点1", "合并后的变更点2"],
+      "merged_changeDetails": "合并后的变更详情"
+    }}
+  ],
+  "keep_separate": [1, 2, 4]  // 保持独立的变更项索引
+}}
+
+如果没有需要合并的项目，返回：
+{{
+  "merged_groups": [],
+  "keep_separate": [0, 1, 2, ...]  // 所有索引
+}}
+"""
+
+            # 调用大模型
+            response = await self.llm_client.chat_completion([
+                {"role": "user", "content": prompt}
+            ], temperature=0.1)  # 使用较低温度以获得更稳定的结果
+            
+            if not response:
+                self.logger.warning("大模型智能去重失败，返回原始结果")
+                return changes
+            
+            # 解析大模型响应
+            response_text = response.strip()
+            cleaned_response = self._clean_json_response(response_text)
+            
+            try:
+                dedup_result = json.loads(cleaned_response)
+            except json.JSONDecodeError as e:
+                self.logger.error(f"大模型去重响应解析失败: {e}")
+                return changes
+            
+            # 应用去重结果
+            final_changes = []
+            processed_indices = set()
+            
+            # 处理合并组
+            for merge_group in dedup_result.get('merged_groups', []):
+                merge_indices = merge_group.get('merge_indices', [])
+                if len(merge_indices) < 2:
+                    continue
+                
+                # 获取要合并的变更项
+                changes_to_merge = [changes[i] for i in merge_indices if i < len(changes)]
+                
+                if changes_to_merge:
+                    # 创建合并后的变更项
+                    merged_change = self._create_llm_merged_change(changes_to_merge, merge_group)
+                    final_changes.append(merged_change)
+                    processed_indices.update(merge_indices)
+                    
+                    self.logger.info(f"大模型智能合并变更项 {merge_indices}: {merge_group.get('reason', '未知原因')}")
+            
+            # 添加保持独立的变更项
+            for i, change in enumerate(changes):
+                if i not in processed_indices:
+                    final_changes.append(change)
+            
+            self.logger.info(f"大模型智能去重完成: {len(changes)} -> {len(final_changes)}")
+            return final_changes
+            
+        except Exception as e:
+            self.logger.error(f"大模型智能去重失败: {e}")
+            return changes
+    
+    def _create_llm_merged_change(self, changes_to_merge: List[Dict[str, Any]], merge_info: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        根据大模型的合并建议创建合并后的变更项
+        
+        Args:
+            changes_to_merge: 要合并的变更项列表
+            merge_info: 大模型提供的合并信息
+            
+        Returns:
+            合并后的变更项
+        """
+        base_change = changes_to_merge[0].copy()
+        
+        # 使用大模型建议的合并结果，如果没有则使用传统合并方法
+        if 'merged_changeReason' in merge_info:
+            base_change['changeReason'] = merge_info['merged_changeReason']
+        
+        if 'merged_changeItems' in merge_info:
+            base_change['changeItems'] = merge_info['merged_changeItems']
+        else:
+            # 合并所有变更点
+            all_items = []
+            for change in changes_to_merge:
+                all_items.extend(change.get('changeItems', []))
+            base_change['changeItems'] = self._intelligent_dedup_items(all_items)
+        
+        if 'merged_changeDetails' in merge_info:
+            base_change['changeDetails'] = merge_info['merged_changeDetails']
+        else:
+            # 选择最长的变更详情
+            details_list = [change.get('changeDetails', '') for change in changes_to_merge]
+            base_change['changeDetails'] = max(details_list, key=len) if details_list else ''
+        
+        # 合并版本信息
+        all_versions = []
+        for change in changes_to_merge:
+            all_versions.extend(change.get('version', []))
+        base_change['version'] = list(set(all_versions))
+        
+        # 添加合并信息
+        base_change['mergedFrom'] = [
+            f"变更项{i+1}" for i in range(len(changes_to_merge))
+        ]
+        base_change['mergeReason'] = merge_info.get('reason', '大模型智能合并')
+        base_change['mergeMethod'] = 'llm_intelligent'
+        base_change['mergedCount'] = len(changes_to_merge)
+        
+        return base_change
     
     def _check_semantic_similarity(self, text1: str, text2: str) -> float:
         """
