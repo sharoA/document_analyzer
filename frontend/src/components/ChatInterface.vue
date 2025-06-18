@@ -287,7 +287,7 @@
         </el-tab-pane>
 
         <!-- 文件解析结果 -->
-        <el-tab-pane label="解析结果" name="files">
+                    <el-tab-pane label="解析结果" name="files" data-tab="results">
           <div class="tab-content">
             <div v-if="!analysisResult" class="empty-state">
               <el-empty description="暂无解析结果">
@@ -596,34 +596,41 @@
                               <template #header>
                                 <div class="change-item-header">
                                   <span class="change-index">#{{ index + 1 }}</span>
+                                  <!-- 调试信息 -->
+                                  {{ console.log('Change data:', change) }}
                                   <el-tag 
-                                    :type="getChangeTypeColor(change.current_change?.[0]?.changeType)"
+                                    :type="getChangeTypeColor(change.current_change?.[0]?.changeType || change.changeType)"
                                     size="small"
                                   >
-                                    {{ change.current_change?.[0]?.changeType || '未知变更' }}
+                                    {{ change.current_change?.[0]?.changeType || change.changeType || '未知变更' }}
                                   </el-tag>
                                 </div>
                               </template>
                               
-                              <div v-if="change.current_change?.[0]" class="change-content">
+                              <div v-if="change.current_change?.[0] || change.changeType" class="change-content">
                                 <div class="change-reason">
                                   <strong>变更原因：</strong>
-                                  <p>{{ change.current_change[0].changeReason || '暂无描述' }}</p>
+                                  <div class="change-reason-content" v-html="renderMarkdown((change.current_change?.[0]?.changeReason || change.changeReason) || '暂无描述')"></div>
                                 </div>
                                 
-                                <div v-if="change.current_change[0].changeItems?.length" class="change-items-list">
-                                  <strong>具体变更：</strong>
+                                <div v-if="(change.current_change?.[0]?.changeItems || change.changeItems)?.length" class="change-items-list">
+                                  <strong>变更点：</strong>
                                   <ul>
-                                    <li v-for="(item, idx) in change.current_change[0].changeItems" :key="idx">
+                                    <li v-for="(item, idx) in (change.current_change?.[0]?.changeItems || change.changeItems)" :key="idx">
                                       {{ item }}
                                     </li>
                                   </ul>
                                 </div>
-                                
-                                <div v-if="change.current_change[0].version?.length" class="version-info">
+
+                                <div v-if="(change.current_change?.[0]?.changeDetails || change.changeDetails)?.length" class="change-items-list">
+                                  <strong>变更详情：</strong>
+                                  <div class="change-details-content" v-html="renderMarkdown((change.current_change?.[0]?.changeDetails || change.changeDetails) || '暂无')"></div>
+                                </div>
+
+                                <div v-if="(change.current_change?.[0]?.version || change.version)?.length" class="version-info">
                                   <strong>参考版本：</strong>
                                   <el-tag 
-                                    v-for="(version, vIdx) in change.current_change[0].version" 
+                                    v-for="(version, vIdx) in (change.current_change?.[0]?.version || change.version)" 
                                     :key="vIdx"
                                     size="small"
                                     type="info"
@@ -667,7 +674,12 @@
                                 
                                 <div v-if="deletion.analysisResult" class="deletion-analysis">
                                   <strong>分析结果：</strong>
-                                  <p>{{ deletion.analysisResult }}</p>
+                                  <div class="deletion-analysis-content" v-html="renderMarkdown(deletion.analysisResult)"></div>
+                                </div>
+                                
+                                <div v-if="deletion.changeDetails" class="deletion-details">
+                                  <strong>变更详情：</strong>
+                                  <div class="deletion-details-content" v-html="renderMarkdown(deletion.changeDetails)"></div>
                                 </div>
                               </div>
                             </el-card>
@@ -853,10 +865,14 @@
                 <p>导出完整的需求分析报告，包含所有分析结果和建议</p>
                 <div class="export-actions">
                   <el-button-group>
-                    <el-button @click="exportReport('pdf')" :disabled="!analysisResult">
-                      <el-icon><Download /></el-icon>
-                      PDF
-                    </el-button>
+                                    <el-button @click="exportReport('pdf')" :disabled="!analysisResult">
+                  <el-icon><Download /></el-icon>
+                  结构化PDF
+                </el-button>
+                <el-button @click="exportPageAsPDF" :disabled="!analysisResult" type="primary">
+                  <el-icon><Download /></el-icon>
+                  页面PDF
+                </el-button>
                     <el-button @click="exportReport('word')" :disabled="!analysisResult">
                       <el-icon><Download /></el-icon>
                       Word
@@ -950,6 +966,7 @@ import {
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DocumentPreview from './DocumentPreview.vue'
 import MarkdownIt from 'markdown-it'
+import { exportToPDF, exportAnalysisResultToPDF, exportPageScreenshotToPDF, exportSimplePageToPDF, exportDOMContentToPDF } from '../utils/pdfExport'
 
 // 响应式数据
 const currentMessage = ref('')
@@ -1265,13 +1282,46 @@ const exportReport = async (format) => {
   }
   
   try {
-    // 这里应该调用后端API进行导出
-    ElMessage.success(`正在导出 ${format.toUpperCase()} 格式的分析报告...`)
-    
-    // 模拟导出过程
-    setTimeout(() => {
-      ElMessage.success('导出完成')
-    }, 2000)
+    if (format === 'pdf') {
+      // PDF导出
+      const fileName = getAnalysisFileName().replace(/\.[^/.]+$/, "") // 移除原文件扩展名
+      const pdfFileName = `${fileName}_分析报告_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`
+      
+      // 显示进度提示
+      let progressMessage = null
+      
+      const success = await exportAnalysisResultToPDF(analysisResult.value, pdfFileName, {
+        onProgress: (message) => {
+          if (progressMessage) progressMessage.close()
+          progressMessage = ElMessage({
+            message: message,
+            type: 'info',
+            duration: 0,
+            showClose: false
+          })
+        },
+        onSuccess: (message) => {
+          if (progressMessage) progressMessage.close()
+          ElMessage.success('PDF导出成功！')
+        },
+        onError: (error) => {
+          if (progressMessage) progressMessage.close()
+          console.error('PDF导出失败:', error)
+          ElMessage.error('PDF导出失败: ' + error.message)
+        }
+      })
+      
+      if (progressMessage) progressMessage.close()
+      
+    } else {
+      // 其他格式的导出（保持原有逻辑）
+      ElMessage.success(`正在导出 ${format.toUpperCase()} 格式的分析报告...`)
+      
+      // 模拟导出过程
+      setTimeout(() => {
+        ElMessage.success('导出完成')
+      }, 2000)
+    }
   } catch (error) {
     ElMessage.error('导出失败: ' + error.message)
   }
@@ -1362,6 +1412,156 @@ const exportCustom = async () => {
     ElMessage.success('自定义导出完成')
   } catch (error) {
     ElMessage.error('导出失败: ' + error.message)
+  }
+}
+
+// 导出当前页面为PDF
+const exportPageAsPDF = async () => {
+  if (!analysisResult.value) {
+    ElMessage.warning('暂无分析结果可导出')
+    return
+  }
+  
+  // 确保当前在解析结果页签
+  if (activeTab.value !== 'files') {
+    ElMessage.warning('请先切换到"解析结果"页签')
+    return
+  }
+  
+  try {
+    // 多种方式尝试找到解析结果的容器元素
+    let resultsContainer = null
+    
+    // 优先查找有data-tab属性的元素
+    resultsContainer = document.querySelector('[data-tab="results"]')
+    
+    // 如果找不到，尝试其他选择器
+    if (!resultsContainer) {
+      resultsContainer = document.querySelector('.el-tab-pane[name="files"]')
+    }
+    
+    if (!resultsContainer) {
+      resultsContainer = document.querySelector('div[name="files"]')
+    }
+    
+    // 如果还是找不到，寻找包含解析结果内容的区域
+    if (!resultsContainer) {
+      const tabPanes = document.querySelectorAll('.el-tab-pane')
+      for (let pane of tabPanes) {
+        if (pane.style.display !== 'none' && (pane.querySelector('.tab-content') || pane.querySelector('.analysis-result'))) {
+          resultsContainer = pane
+          break
+        }
+      }
+    }
+    
+    // 最后尝试查找当前激活的页签内容
+    if (!resultsContainer) {
+      const activePane = document.querySelector('.el-tab-pane:not([style*="display: none"])')
+      if (activePane && activePane.querySelector('.analysis-result, .tab-content')) {
+        resultsContainer = activePane
+      }
+    }
+    
+    if (!resultsContainer) {
+      ElMessage.error('找不到解析结果页面，请确保您在"解析结果"页签中且有分析结果')
+      console.log('可用的元素:', {
+        'data-tab': document.querySelector('[data-tab="results"]'),
+        'el-tab-pane[name="files"]': document.querySelector('.el-tab-pane[name="files"]'),
+        'div[name="files"]': document.querySelector('div[name="files"]'),
+        'activeTab': activeTab.value
+      })
+      return
+    }
+    
+    console.log('找到解析结果容器:', resultsContainer)
+    
+    const fileName = getAnalysisFileName().replace(/\.[^/.]+$/, "")
+    const pdfFileName = `${fileName}_页面截图_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`
+    
+    // 显示进度提示
+    let progressMessage = null
+    
+    // 优先使用DOM内容导出（不依赖截图）
+    let success = false
+    try {
+      success = await exportDOMContentToPDF(resultsContainer, pdfFileName, {
+        onProgress: (message) => {
+          if (progressMessage) progressMessage.close()
+          progressMessage = ElMessage({
+            message: message,
+            type: 'info',
+            duration: 0,
+            showClose: false
+          })
+        },
+        onSuccess: (message) => {
+          if (progressMessage) progressMessage.close()
+          ElMessage.success('页面PDF导出成功！')
+        },
+        onError: (error) => {
+          if (progressMessage) progressMessage.close()
+          console.error('DOM内容PDF导出失败:', error)
+          throw error // 抛出错误以便尝试其他版本
+        }
+      })
+    } catch (domError) {
+      console.log('DOM内容导出失败，尝试简化版本...', domError)
+      
+      try {
+        // 如果DOM导出失败，尝试简化版本
+        success = await exportSimplePageToPDF(resultsContainer, pdfFileName, {
+          onProgress: (message) => {
+            if (progressMessage) progressMessage.close()
+            progressMessage = ElMessage({
+              message: message,
+              type: 'info',
+              duration: 0,
+              showClose: false
+            })
+          },
+          onSuccess: (message) => {
+            if (progressMessage) progressMessage.close()
+            ElMessage.success('页面PDF导出成功！')
+          },
+          onError: (error) => {
+            if (progressMessage) progressMessage.close()
+            console.error('简化PDF导出失败:', error)
+            throw error
+          }
+        })
+      } catch (simpleError) {
+        console.log('简化版导出失败，尝试高级版本...', simpleError)
+        
+        // 最后尝试高级版本
+        success = await exportPageScreenshotToPDF(resultsContainer, pdfFileName, {
+          onProgress: (message) => {
+            if (progressMessage) progressMessage.close()
+            progressMessage = ElMessage({
+              message: message,
+              type: 'info',
+              duration: 0,
+              showClose: false
+            })
+          },
+          onSuccess: (message) => {
+            if (progressMessage) progressMessage.close()
+            ElMessage.success('页面PDF导出成功！')
+          },
+          onError: (error) => {
+            if (progressMessage) progressMessage.close()
+            console.error('页面PDF导出失败:', error)
+            ElMessage.error('页面PDF导出失败: ' + error.message)
+          }
+        })
+      }
+    }
+    
+    if (progressMessage) progressMessage.close()
+    
+  } catch (error) {
+    console.error('导出过程异常:', error)
+    ElMessage.error('页面PDF导出失败: ' + error.message)
   }
 }
 
@@ -3212,6 +3412,130 @@ const getChangeTypeColor = (changeType) => {
   
   .document-content-scrollbar {
     max-height: 40vh !important;
+  }
+}
+
+// 变更详情markdown渲染样式
+.change-reason-content,
+.change-details-content,
+.deletion-analysis-content,
+.deletion-details-content {
+  margin-top: 8px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 6px;
+  border: 1px solid #e4e7ed;
+  
+  :deep(h1), :deep(h2), :deep(h3), :deep(h4), :deep(h5), :deep(h6) {
+    margin: 12px 0 8px 0;
+    color: #303133;
+    font-weight: 600;
+  }
+  
+  :deep(h1) { font-size: 18px; }
+  :deep(h2) { font-size: 16px; }
+  :deep(h3) { font-size: 15px; }
+  :deep(h4) { font-size: 14px; }
+  :deep(h5) { font-size: 13px; }
+  :deep(h6) { font-size: 12px; }
+  
+  :deep(p) {
+    margin: 8px 0;
+    line-height: 1.6;
+    color: #606266;
+  }
+  
+  :deep(ul), :deep(ol) {
+    margin: 8px 0;
+    padding-left: 20px;
+    color: #606266;
+    
+    li {
+      margin: 4px 0;
+      line-height: 1.5;
+    }
+  }
+  
+  :deep(blockquote) {
+    margin: 8px 0;
+    padding: 8px 12px;
+    background: #f0f9ff;
+    border-left: 3px solid #409eff;
+    color: #606266;
+    font-style: italic;
+  }
+  
+  :deep(code) {
+    padding: 2px 4px;
+    background: #f1f2f3;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #e6a23c;
+  }
+  
+  :deep(pre) {
+    margin: 8px 0;
+    padding: 12px;
+    background: #2d3748;
+    color: #e2e8f0;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 12px;
+    
+    code {
+      background: none;
+      color: inherit;
+      padding: 0;
+    }
+  }
+  
+  :deep(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 12px;
+    
+    th, td {
+      padding: 6px 8px;
+      border: 1px solid #e4e7ed;
+      text-align: left;
+    }
+    
+    th {
+      background: #f5f7fa;
+      font-weight: 600;
+      color: #303133;
+    }
+    
+    td {
+      color: #606266;
+    }
+  }
+  
+  :deep(hr) {
+    margin: 16px 0;
+    border: none;
+    border-top: 1px solid #e4e7ed;
+  }
+  
+  :deep(strong) {
+    font-weight: 600;
+    color: #303133;
+  }
+  
+  :deep(em) {
+    font-style: italic;
+    color: #909399;
+  }
+  
+  :deep(a) {
+    color: #409eff;
+    text-decoration: none;
+    
+    &:hover {
+      text-decoration: underline;
+    }
   }
 }
 </style> 

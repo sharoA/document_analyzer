@@ -94,6 +94,39 @@
   "version":["LS-4_需求文档 - 北京银行直连链数V1.6.docx"]
   ]
 }
+
+### Step 4：对变更项从原文档提取详细变更点
+根据第三步：change_analysis.changeItems的变更点到当前文档提取具体的字段要求
+输入格式：
+【Step 3分析结果】：
+{{change_analysis}}
+
+【当前版本完整文档】：
+{{document_content}}
+输出格式：
+{
+    "current_change":
+  [
+    "changeType": "新增 | 修改 | 删除",
+  "changeReason": "简要说明判断依据",
+  "changeItems": {
+    "变更点1"
+  },
+  "changeDetails"{
+    "详细变更内容"
+  }
+
+  "version":["LS-4_需求文档 - 北京银行直连链数V1.6.docx"]
+  ]
+}
+注意事项
+确保所有变更项都有对应的详细内容
+对于字段类变更，必须提取完整的字段定义
+保持JSON格式的严格性，确保可解析
+对于复杂变更，提供充分的上下文信息
+标注变更的业务影响和技术影响
+
+
 ## 技术要求
 1、使用langchan框架进行rag；
 2、当前使用的weavite向量数据做的向量存储，初始化客户端和模型 使用client = get_weaviate_client()这个方法

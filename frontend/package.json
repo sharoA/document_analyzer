@@ -16,6 +16,8 @@
     "axios": "^1.6.0",
     "element-plus": "^2.4.0",
     "highlight.js": "^11.9.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
     "mammoth": "^1.9.1",
     "markdown-it": "^14.0.0",
     "marked": "^15.0.12",

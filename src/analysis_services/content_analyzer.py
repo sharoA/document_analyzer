@@ -49,7 +49,14 @@ class ContentAnalyzerService(BaseAnalysisService):
             
             self.logger.info(f"历史比对结果: {history_comparison}")
             # Step 3: 大模型变更判断与结构化输出
-            change_analysis = await self._analyze_changes(structured_chunks, history_comparison)
+            change_analysis = await self._analyze_changes(structured_chunks, history_comparison, document_content)
+            
+            self.logger.info(f"变更分析完成，包含详细内容提取: {change_analysis}")
+            
+            # Step 4: 对变更项从原文档提取详细变更点
+            enhanced_change_analysis = await self._extract_detailed_changes(change_analysis, document_content)
+            
+            self.logger.info(f"详细变更内容提取完成: {enhanced_change_analysis}")
             
             # 清理结构化内容块，移除向量嵌入以减少输出大小
             cleaned_chunks = []
@@ -65,9 +72,9 @@ class ContentAnalyzerService(BaseAnalysisService):
             
             # 合并分析结果
             content_result = {
-                "change_analysis": change_analysis,
+                "change_analysis": enhanced_change_analysis,
                 "metadata": {
-                    "analysis_method": "LLM+向量数据库分析",
+                    "analysis_method": "LLM+向量数据库分析+详细内容提取",
                     "analysis_time": time.time() - start_time,
                     "content_length": len(document_content),
                     "chunks_count": len(structured_chunks)
@@ -375,13 +382,14 @@ class ContentAnalyzerService(BaseAnalysisService):
         return deleted_items
     
     async def _analyze_changes(self, structured_chunks: List[Dict[str, Any]], 
-                             history_comparison: Dict[str, Any]) -> Dict[str, Any]:
+                             history_comparison: Dict[str, Any], document_content: str) -> Dict[str, Any]:
         """
         Step 3: 大模型变更判断与结构化输出
         
         Args:
             structured_chunks: 结构化内容块
             history_comparison: 历史对比结果
+            document_content: 文档内容
             
         Returns:
             变更分析结果
@@ -391,14 +399,14 @@ class ContentAnalyzerService(BaseAnalysisService):
         for comparison in history_comparison['comparisons']:
             if comparison['change_type'] in ['修改', '新增'] and comparison['matched_history']:
                 # 对有历史匹配的内容进行详细分析
-                analysis = await self._llm_change_analysis(comparison)
+                analysis = await self._llm_change_analysis(comparison, document_content)
                 if analysis:
                     change_analyses.append(analysis)
         
         # 对删除项进行分析
         deletion_analyses = []
         for deleted_item in history_comparison['deleted_items']:
-            analysis = await self._llm_deletion_analysis(deleted_item)
+            analysis = await self._llm_deletion_analysis(deleted_item, document_content)
             if analysis:
                 deletion_analyses.append(analysis)
         
@@ -412,7 +420,7 @@ class ContentAnalyzerService(BaseAnalysisService):
             }
         }
     
-    async def _llm_change_analysis(self, comparison: Dict[str, Any]) -> Dict[str, Any]:
+    async def _llm_change_analysis(self, comparison: Dict[str, Any], document_content: str) -> Dict[str, Any]:
         """使用LLM分析变更"""
         current_content = f"{comparison['current_chunk']['section']}\n{comparison['current_chunk']['content']}"
         self.logger.info(f"使用LLM分析变更: {current_content}")
@@ -447,13 +455,16 @@ class ContentAnalyzerService(BaseAnalysisService):
 4. 提供清晰的变更说明"""
         
         user_prompt = f"""
+【完整文档内容】：
+{document_content}
+
 【当前版本需求内容】：
 {current_content}
 
 【历史版本需求内容】：
 {history_context}
 
-请仔细分析当前需求与历史需求的差异，按照以下 JSON 格式输出分析结果：
+请仔细分析当前需求与历史需求的差异，结合完整文档内容的上下文，按照以下 JSON 格式输出分析结果：
 
 {{
     "current_change": [
@@ -467,6 +478,7 @@ class ContentAnalyzerService(BaseAnalysisService):
 }}
 
 注意：
+- 请结合完整文档内容理解当前需求的位置和作用
 - changeItems应该包含具体的功能点变更描述
 - changeReason要说明为什么判断为变更类型
 - 如果是修改，请明确指出修改前后的差异
@@ -600,17 +612,20 @@ class ContentAnalyzerService(BaseAnalysisService):
             # 如果修复失败，返回一个基本的有效JSON
             return '{"error": "JSON格式修复失败"}'
     
-    async def _llm_deletion_analysis(self, deleted_item: Dict[str, Any]) -> Dict[str, Any]:
+    async def _llm_deletion_analysis(self, deleted_item: Dict[str, Any], document_content: str) -> Dict[str, Any]:
         """使用LLM分析删除项"""
         system_prompt = """你是一个专业的需求文档分析师，请分析文档中提到的删除项，并确认其历史存在性。"""
         
         user_prompt = f"""
+【完整文档内容】：
+{document_content}
+
 【删除项信息】：
 章节: {deleted_item['section']}
 删除内容: {deleted_item['deleted_item']}
 上下文: {deleted_item['context']}
 
-请分析该删除项的合理性，并按照以下格式输出：
+请结合完整文档内容分析该删除项的合理性，并按照以下格式输出：
 
 {{
     "changeType": "删除",
@@ -645,4 +660,170 @@ class ContentAnalyzerService(BaseAnalysisService):
             self.logger.error(f"LLM删除分析失败: {e}")
         
         return None
+    
+    async def _extract_detailed_changes(self, change_analysis: Dict[str, Any], document_content: str) -> Dict[str, Any]:
+        """
+        Step 4: 对变更项从原文档提取详细变更点
+        处理整个变更分析结果，为每个变更项提取详细内容
+        
+        Args:
+            change_analysis: Step3的完整分析结果
+            document_content: 完整的当前文档内容
+            
+        Returns:
+            增强后的完整变更分析结果，包含详细变更内容
+        """
+        try:
+            enhanced_analysis = change_analysis.copy()
+            
+            # 处理change_analyses列表
+            if 'change_analyses' in change_analysis and change_analysis['change_analyses']:
+                enhanced_change_analyses = []
+                for analysis in change_analysis['change_analyses']:
+                    enhanced_analysis_item = await self._extract_single_change_details(analysis, document_content)
+                    enhanced_change_analyses.append(enhanced_analysis_item)
+                enhanced_analysis['change_analyses'] = enhanced_change_analyses
+            
+            # 处理deletion_analyses列表
+            if 'deletion_analyses' in change_analysis and change_analysis['deletion_analyses']:
+                enhanced_deletion_analyses = []
+                for analysis in change_analysis['deletion_analyses']:
+                    enhanced_analysis_item = await self._extract_single_change_details(analysis, document_content)
+                    enhanced_deletion_analyses.append(enhanced_analysis_item)
+                enhanced_analysis['deletion_analyses'] = enhanced_deletion_analyses
+            
+            # 更新summary信息
+            if 'summary' in enhanced_analysis:
+                enhanced_analysis['summary']['analysis_method'] = "LLM智能分析+详细内容提取"
+            
+            return enhanced_analysis
+            
+        except Exception as e:
+            self.logger.error(f"详细变更内容提取失败: {e}")
+            # 如果提取失败，返回原始分析结果并添加错误信息
+            error_analysis = change_analysis.copy() if change_analysis else {}
+            error_analysis['step4_error'] = f"详细内容提取失败: {str(e)}"
+            return error_analysis
+    
+    async def _extract_single_change_details(self, change_analysis: Dict[str, Any], document_content: str) -> Dict[str, Any]:
+        """
+        对单个变更分析结果提取详细内容
+        
+        Args:
+            change_analysis: 单个变更分析结果
+            document_content: 完整的当前文档内容
+            
+        Returns:
+            增强后的单个变更分析结果，包含详细变更内容
+        """
+        try:
+            # 检查分析结果的结构
+            if not change_analysis or not isinstance(change_analysis, dict):
+                return change_analysis
+            
+            enhanced_analysis = change_analysis.copy()
+            
+            # 处理current_change列表
+            if 'current_change' in change_analysis and isinstance(change_analysis['current_change'], list):
+                enhanced_changes = []
+                
+                for change_item in change_analysis['current_change']:
+                    enhanced_change = change_item.copy()
+                    
+                    # 提取changeItems中的变更点详细内容
+                    if 'changeItems' in change_item and change_item['changeItems']:
+                        change_items = change_item['changeItems']
+                        if isinstance(change_items, list):
+                            change_items_text = ', '.join(change_items)
+                        else:
+                            change_items_text = str(change_items)
+                        
+                        # 使用LLM从原文档中提取详细内容
+                        detailed_content = await self._llm_extract_details(change_items_text, document_content, change_item)
+                        enhanced_change['changeDetails'] = detailed_content
+                    else:
+                        enhanced_change['changeDetails'] = "无具体变更项可提取"
+                    
+                    enhanced_changes.append(enhanced_change)
+                
+                enhanced_analysis['current_change'] = enhanced_changes
+            
+            # 处理其他可能的结构（如删除分析）
+            elif 'changeType' in change_analysis:
+                deleted_item = change_analysis.get('deletedItem', '')
+                if deleted_item:
+                    detailed_content = await self._llm_extract_details(deleted_item, document_content, change_analysis)
+                    enhanced_analysis['changeDetails'] = detailed_content
+                else:
+                    enhanced_analysis['changeDetails'] = "无具体删除项可提取"
+            
+            return enhanced_analysis
+            
+        except Exception as e:
+            self.logger.error(f"单个变更详细内容提取失败: {e}")
+            # 如果提取失败，返回原始分析结果并添加错误信息
+            enhanced_analysis = change_analysis.copy() if change_analysis else {}
+            enhanced_analysis['changeDetails'] = f"详细内容提取失败: {str(e)}"
+            return enhanced_analysis
+    
+    async def _llm_extract_details(self, change_items_text: str, document_content: str, change_context: Dict[str, Any]) -> str:
+        """
+        使用LLM从原文档中提取变更点的详细内容
+        
+        Args:
+            change_items_text: 变更点文本
+            document_content: 完整文档内容
+            change_context: 变更上下文信息
+            
+        Returns:
+            提取的详细内容
+        """
+        system_prompt = """你是一名专业的需求文档分析师，专门负责从需求文档中提取特定变更点的详细内容。
+
+你的任务是：
+1. 根据给定的变更点，在完整文档中查找相关的详细需求描述
+2. 提取完整的字段定义、业务规则、涉及权限、技术规范等
+3. 确保提取的内容具有完整性和准确性
+4. 对于复杂变更，提供充分的上下文信息"""
+
+        change_type = change_context.get('changeType', '未知')
+        change_reason = change_context.get('changeReason', '')
+        
+        user_prompt = f"""
+【变更类型】：{change_type}
+【变更原因】：{change_reason}
+【变更点】：{change_items_text}
+
+【完整需求文档】：
+{document_content}
+
+请根据上述变更点，从完整需求文档中提取相关的详细内容，包括但不限于：
+- 具体的功能描述
+- 字段定义和数据结构
+- 业务规则和逻辑
+- 涉及权限
+- 接口规范
+- 流程说明
+- 约束条件、限制
+
+要求：
+1. 提取的内容必须与变更点直接相关
+2. 保持内容的完整性，不要截断重要信息
+3. 如果涉及多个相关部分，请都包含进来
+4. 用清晰的结构组织提取的内容
+5. 如果找不到相关内容，请明确说明
+
+请直接返回提取的详细内容，不需要JSON格式。
+"""
+        
+        try:
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=3000)
+            if response and response.strip():
+                return response.strip()
+            else:
+                return f"未能从文档中找到变更点「{change_items_text}」的详细内容"
+                
+        except Exception as e:
+            self.logger.error(f"LLM详细内容提取失败: {e}")
+            return f"详细内容提取过程中出现错误: {str(e)}"
    
