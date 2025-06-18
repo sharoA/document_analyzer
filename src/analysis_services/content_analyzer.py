@@ -51,10 +51,15 @@ class ContentAnalyzerService(BaseAnalysisService):
             # Step 3: 大模型变更判断与结构化输出
             change_analysis = await self._analyze_changes(structured_chunks, history_comparison, document_content)
             
-            self.logger.info(f"变更分析完成，包含详细内容提取: {change_analysis}")
+            self.logger.info(f"变更分析完成: {change_analysis}")
+            
+            # Step 3.5: 智能合并相似的变更项
+            merged_change_analysis = await self._merge_similar_changes(change_analysis)
+            
+            self.logger.info(f"相似变更项合并完成: {merged_change_analysis}")
             
             # Step 4: 对变更项从原文档提取详细变更点
-            enhanced_change_analysis = await self._extract_detailed_changes(change_analysis, document_content)
+            enhanced_change_analysis = await self._extract_detailed_changes(merged_change_analysis, document_content)
             
             self.logger.info(f"详细变更内容提取完成: {enhanced_change_analysis}")
             
@@ -74,7 +79,7 @@ class ContentAnalyzerService(BaseAnalysisService):
             content_result = {
                 "change_analysis": enhanced_change_analysis,
                 "metadata": {
-                    "analysis_method": "LLM+向量数据库分析+详细内容提取",
+                    "analysis_method": "LLM+向量数据库分析+详细内容提取+智能合并",
                     "analysis_time": time.time() - start_time,
                     "content_length": len(document_content),
                     "chunks_count": len(structured_chunks)
@@ -467,14 +472,10 @@ class ContentAnalyzerService(BaseAnalysisService):
 请仔细分析当前需求与历史需求的差异，结合完整文档内容的上下文，按照以下 JSON 格式输出分析结果：
 
 {{
-    "current_change": [
-        {{
-            "changeType": "新增 | 修改 | 删除",
-            "changeReason": "详细说明变更的原因和判断依据",
-            "changeItems": ["具体变更点1", "具体变更点2", "具体变更点3"],
-            "version": {history_files[:1] if history_files else ["无历史版本"]}
-        }}
-    ]
+    "changeType": "新增 | 修改 | 删除",
+    "changeReason": "详细说明变更的原因和判断依据",
+    "changeItems": ["具体变更点1", "具体变更点2", "具体变更点3"],
+    "version": {history_files[:1] if history_files else ["无历史版本"]}
 }}
 
 注意：
@@ -485,7 +486,7 @@ class ContentAnalyzerService(BaseAnalysisService):
 """
         
         try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=2000)
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=12000)
             if response:
                 # 尝试解析JSON响应
                 try:
@@ -507,12 +508,10 @@ class ContentAnalyzerService(BaseAnalysisService):
                         self.logger.warning("JSON修复失败，返回格式化的原始响应")
                         # 如果JSON解析失败，返回格式化的原始响应
                         return {
-                            "current_change": [{
-                                "changeType": comparison['change_type'],
-                                "changeReason": "LLM分析完成，但JSON格式解析失败",
-                                "changeItems": [f"LLM原始分析: {response[:300]}{'...' if len(response) > 300 else ''}"],
-                                "version": history_files[:1] if history_files else ["无历史版本"]
-                            }]
+                            "changeType": comparison['change_type'],
+                            "changeReason": "LLM分析完成，但JSON格式解析失败",
+                            "changeItems": [f"LLM原始分析: {response[:300]}{'...' if len(response) > 300 else ''}"],
+                            "version": history_files[:1] if history_files else ["无历史版本"]
                         }
         except Exception as e:
             self.logger.error(f"LLM变更分析失败: {e}")
@@ -636,7 +635,7 @@ class ContentAnalyzerService(BaseAnalysisService):
 """
         
         try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=1000)
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=12000)
             if response:
                 try:
                     # 先清理响应内容
@@ -723,7 +722,7 @@ class ContentAnalyzerService(BaseAnalysisService):
             
             enhanced_analysis = change_analysis.copy()
             
-            # 处理current_change列表
+            # 处理current_change列表（向后兼容）
             if 'current_change' in change_analysis and isinstance(change_analysis['current_change'], list):
                 enhanced_changes = []
                 
@@ -747,6 +746,18 @@ class ContentAnalyzerService(BaseAnalysisService):
                     enhanced_changes.append(enhanced_change)
                 
                 enhanced_analysis['current_change'] = enhanced_changes
+            
+            # 处理新格式：直接的变更对象（有changeItems字段）
+            elif 'changeItems' in change_analysis and change_analysis['changeItems']:
+                change_items = change_analysis['changeItems']
+                if isinstance(change_items, list):
+                    change_items_text = ', '.join(change_items)
+                else:
+                    change_items_text = str(change_items)
+                
+                # 使用LLM从原文档中提取详细内容
+                detailed_content = await self._llm_extract_details(change_items_text, document_content, change_analysis)
+                enhanced_analysis['changeDetails'] = detailed_content
             
             # 处理其他可能的结构（如删除分析）
             elif 'changeType' in change_analysis:
@@ -817,7 +828,7 @@ class ContentAnalyzerService(BaseAnalysisService):
 """
         
         try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=3000)
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=12000)
             if response and response.strip():
                 return response.strip()
             else:
@@ -826,4 +837,377 @@ class ContentAnalyzerService(BaseAnalysisService):
         except Exception as e:
             self.logger.error(f"LLM详细内容提取失败: {e}")
             return f"详细内容提取过程中出现错误: {str(e)}"
+    
+    async def _merge_similar_changes(self, change_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Step 3.5: 智能合并相似的变更项
+        
+        Args:
+            change_analysis: Step3的变更分析结果
+            
+        Returns:
+            合并后的变更分析结果
+        """
+        try:
+            merged_analysis = change_analysis.copy()
+            
+            # 处理change_analyses列表
+            if 'change_analyses' in change_analysis and change_analysis['change_analyses']:
+                original_changes = change_analysis['change_analyses']
+                
+                # 选择合并策略：可以根据配置选择不同策略
+                merge_strategy = "llm_smart"  # 可选: "similarity", "keyword", "llm_smart", "rule_based"
+                
+                if merge_strategy == "llm_smart":
+                    merged_changes = await self._llm_smart_merge(original_changes)
+                elif merge_strategy == "similarity":
+                    merged_changes = await self._similarity_based_merge(original_changes)
+                elif merge_strategy == "keyword":
+                    merged_changes = await self._keyword_based_merge(original_changes)
+                else:
+                    merged_changes = await self._rule_based_merge(original_changes)
+                
+                merged_analysis['change_analyses'] = merged_changes
+                
+                # 更新summary
+                if 'summary' in merged_analysis:
+                    merged_analysis['summary']['total_changes'] = len(merged_changes)
+                    merged_analysis['summary']['merge_info'] = {
+                        "original_count": len(original_changes),
+                        "merged_count": len(merged_changes),
+                        "reduction_ratio": round((len(original_changes) - len(merged_changes)) / len(original_changes) * 100, 2) if len(original_changes) > 0 else 0,
+                        "strategy": merge_strategy
+                    }
+            
+            return merged_analysis
+            
+        except Exception as e:
+            self.logger.error(f"相似变更项合并失败: {e}")
+            return change_analysis
+    
+    async def _llm_smart_merge(self, changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """方案1: 基于LLM的智能合并"""
+        if len(changes) <= 1:
+            return changes
+        
+        system_prompt = """你是一个专业的需求分析师，负责合并相似的变更项。
+
+你的任务：
+1. 识别功能相关、主题相似的变更项
+2. 将相似的变更项合并成一个更完整的变更项
+3. 保持变更项的完整性和准确性
+4. 避免信息丢失"""
+        
+        changes_text = []
+        for i, change in enumerate(changes):
+            change_info = f"""变更项{i+1}:
+- 类型: {change.get('changeType', '未知')}
+- 原因: {change.get('changeReason', '未知')}
+- 变更点: {change.get('changeItems', [])}
+- 版本: {change.get('version', [])}
+"""
+            changes_text.append(change_info)
+        
+        user_prompt = f"""
+请分析以下变更项，积极主动地将相似和相关的变更点进行合并，并去除重复的变更点所在json对象：
+
+{chr(10).join(changes_text)}
+
+【强制合并规则】：
+1. **功能模块相关性合并**：涉及同一个功能模块（如"接口校验"、"链数额度"、"权限管理"等）的变更项必须合并
+2. **业务关联性合并**：解决同一个业务问题或需求的变更项必须合并
+3. **技术关联性合并**：对同一个技术组件（如API接口、数据库表、前端页面等）的变更项必须合并
+4. **变更类型合并**：相同变更类型（新增/修改/删除）且内容相关的变更项应该合并
+5. **关键词匹配合并**：变更项中包含相同关键词（如"校验"、"额度"、"接口"、"按钮"等）的变更项优先合并
+
+【合并策略】：
+- 优先合并具有多个相似关键词的变更项
+- 将小的、分散的变更点整合成大的、完整的变更项
+- 每个合并后的变更项应该代表一个完整的业务功能或技术组件的变更
+- 目标是将变更项数量减少至少30%以上
+
+【输出要求】：
+- 合并后的changeItems应该包含所有原始变更点，按逻辑分组
+- 合并后的changeReason应该综合说明所有变更原因，突出共同点
+- version字段合并所有相关版本
+- mergedFrom字段记录原始变更项编号
+
+请返回JSON格式的合并结果。**必须返回数组格式，即使只有一个合并结果也要用数组包装**：
+[
+  {{
+    "changeType": "合并后的变更类型",
+    "changeReason": "合并后的综合变更原因",
+    "changeItems": ["合并后的变更点1", "变更点2", ...],
+    "version": ["相关版本1", "版本2", ...],
+    "mergedFrom": [原始变更项编号列表],
+    "mergeReason": "合并原因说明"
+  }}
+]
+
+**重要提醒：**
+1. 必须积极合并相关变更项，不要过于保守！
+2. 返回结果必须是JSON数组格式，不要返回单个对象！
+3. 即使所有变更项合并为一个，也要用 [{{...}}] 数组格式返回！
+"""
+        
+        try:
+            self.logger.info(f"LLM原始输入: {user_prompt}")
+            response = await self._call_llm(user_prompt, system_prompt, max_tokens=12000)
+            if response:
+                self.logger.info(f"LLM原始响应: {response}")
+                cleaned_response = self._clean_json_response(response)
+                self.logger.info(f"LLM清理后响应: {cleaned_response[:500]}...")
+                
+                try:
+                    merged_changes = json.loads(cleaned_response)
+                    self.logger.info(f"JSON解析成功，类型: {type(merged_changes)}, 内容: {merged_changes}")
+                except json.JSONDecodeError as json_error:
+                    self.logger.error(f"JSON解析失败: {json_error}")
+                    self.logger.error(f"尝试解析的内容: {cleaned_response}")
+                    return changes
+                
+                # 处理LLM返回单个对象的情况
+                if isinstance(merged_changes, dict):
+                    # 如果返回的是单个合并对象，转换为数组
+                    if 'changeType' in merged_changes and 'changeItems' in merged_changes:
+                        merged_changes = [merged_changes]
+                        self.logger.info(f"LLM返回单个合并对象，转换为数组: {merged_changes}")
+                    else:
+                        self.logger.warning("LLM返回的单个对象格式不正确，使用原始数据")
+                        return changes
+                
+                # 验证合并结果
+                if isinstance(merged_changes, list) and len(merged_changes) > 0 and len(merged_changes) <= len(changes):
+                    # 验证每个合并项是否包含必要字段
+                    valid_changes = []
+                    for change in merged_changes:
+                        if isinstance(change, dict) and 'changeType' in change and 'changeItems' in change:
+                            valid_changes.append(change)
+                    
+                    if len(valid_changes) > 0:
+                        self.logger.info(f"LLM智能合并成功: {len(changes)} -> {len(valid_changes)}")
+                        return valid_changes
+                    else:
+                        self.logger.warning("LLM合并结果格式异常，使用原始数据")
+                        return changes
+                else:
+                    self.logger.warning(f"LLM合并结果数量异常: 原始{len(changes)}项 -> 合并{len(merged_changes) if isinstance(merged_changes, list) else 'N/A'}项，使用原始数据")
+                    return changes
+        except json.JSONDecodeError as e:
+            self.logger.error(f"LLM合并响应JSON解析失败: {e}")
+            return changes
+        except Exception as e:
+            self.logger.error(f"LLM智能合并失败: {e}")
+        
+        return changes
+    
+    async def _similarity_based_merge(self, changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """方案2: 基于文本相似度的合并"""
+        if len(changes) <= 1:
+            return changes
+        
+        from difflib import SequenceMatcher
+        
+        merged_changes = []
+        used_indices = set()
+        
+        for i, change in enumerate(changes):
+            if i in used_indices:
+                continue
+                
+            similar_group = [change]
+            similar_indices = {i}
+            
+            change_text = f"{change.get('changeReason', '')} {' '.join(change.get('changeItems', []))}"
+            
+            for j, other_change in enumerate(changes[i+1:], i+1):
+                if j in used_indices:
+                    continue
+                    
+                other_text = f"{other_change.get('changeReason', '')} {' '.join(other_change.get('changeItems', []))}"
+                similarity = SequenceMatcher(None, change_text, other_text).ratio()
+                
+                # 相似度阈值
+                if similarity > 0.6:
+                    similar_group.append(other_change)
+                    similar_indices.add(j)
+            
+            used_indices.update(similar_indices)
+            
+            if len(similar_group) > 1:
+                # 合并相似项
+                merged_change = self._merge_change_group(similar_group)
+                merged_changes.append(merged_change)
+            else:
+                merged_changes.append(change)
+        
+        self.logger.info(f"相似度合并: {len(changes)} -> {len(merged_changes)}")
+        return merged_changes
+    
+    async def _keyword_based_merge(self, changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """方案3: 基于关键词的分组合并"""
+        if len(changes) <= 1:
+            return changes
+        
+        # 定义关键词组
+        keyword_groups = {
+            "数据库相关": ["数据库", "字段", "表", "索引", "查询", "存储"],
+            "接口相关": ["接口", "API", "服务", "调用", "请求", "响应"],
+            "功能模块": ["功能", "模块", "页面", "按钮", "操作"],
+            "权限相关": ["权限", "认证", "授权", "角色", "用户"],
+            "业务流程": ["流程", "步骤", "审批", "处理", "业务"]
+        }
+        
+        grouped_changes = {}
+        ungrouped_changes = []
+        
+        for change in changes:
+            change_text = f"{change.get('changeReason', '')} {' '.join(change.get('changeItems', []))}"
+            grouped = False
+            
+            for group_name, keywords in keyword_groups.items():
+                if any(keyword in change_text for keyword in keywords):
+                    if group_name not in grouped_changes:
+                        grouped_changes[group_name] = []
+                    grouped_changes[group_name].append(change)
+                    grouped = True
+                    break
+            
+            if not grouped:
+                ungrouped_changes.append(change)
+        
+        merged_changes = []
+        
+        # 合并各个关键词组
+        for group_name, group_changes in grouped_changes.items():
+            if len(group_changes) > 1:
+                merged_change = self._merge_change_group(group_changes)
+                merged_change['groupType'] = group_name
+                merged_changes.append(merged_change)
+            else:
+                merged_changes.extend(group_changes)
+        
+        # 添加未分组的变更
+        merged_changes.extend(ungrouped_changes)
+        
+        self.logger.info(f"关键词合并: {len(changes)} -> {len(merged_changes)}")
+        return merged_changes
+    
+    async def _rule_based_merge(self, changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """方案4: 基于规则的模式匹配合并"""
+        if len(changes) <= 1:
+            return changes
+        
+        merged_changes = []
+        used_indices = set()
+        
+        # 规则1: 相同changeType的变更项可以考虑合并
+        change_type_groups = {}
+        for i, change in enumerate(changes):
+            change_type = change.get('changeType', '未知')
+            if change_type not in change_type_groups:
+                change_type_groups[change_type] = []
+            change_type_groups[change_type].append((i, change))
+        
+        for change_type, type_changes in change_type_groups.items():
+            if len(type_changes) > 1:
+                # 检查是否有共同的关键词
+                all_items = []
+                for _, change in type_changes:
+                    all_items.extend(change.get('changeItems', []))
+                
+                # 如果有重复的关键词，说明可能相关
+                item_text = ' '.join(all_items)
+                common_keywords = self._extract_common_keywords(item_text)
+                
+                if len(common_keywords) > 0:
+                    # 合并这组变更
+                    group_changes = [change for _, change in type_changes]
+                    merged_change = self._merge_change_group(group_changes)
+                    merged_changes.append(merged_change)
+                    used_indices.update(i for i, _ in type_changes)
+                else:
+                    # 不合并，分别添加
+                    for i, change in type_changes:
+                        if i not in used_indices:
+                            merged_changes.append(change)
+                            used_indices.add(i)
+            else:
+                i, change = type_changes[0]
+                if i not in used_indices:
+                    merged_changes.append(change)
+                    used_indices.add(i)
+        
+        self.logger.info(f"规则合并: {len(changes)} -> {len(merged_changes)}")
+        return merged_changes
+    
+    def _merge_change_group(self, changes: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """合并一组相似的变更项"""
+        if not changes:
+            return {}
+        
+        if len(changes) == 1:
+            return changes[0]
+        
+        # 合并逻辑
+        merged_change = {
+            "changeType": changes[0].get('changeType', '未知'),
+            "changeReason": self._merge_reasons([c.get('changeReason', '') for c in changes]),
+            "changeItems": self._merge_items([c.get('changeItems', []) for c in changes]),
+            "version": self._merge_versions([c.get('version', []) for c in changes]),
+            "mergedCount": len(changes)
+        }
+        
+        return merged_change
+    
+    def _merge_reasons(self, reasons: List[str]) -> str:
+        """合并变更原因"""
+        unique_reasons = []
+        for reason in reasons:
+            if reason and reason not in unique_reasons:
+                unique_reasons.append(reason)
+        
+        if len(unique_reasons) == 1:
+            return unique_reasons[0]
+        else:
+            return f"综合变更原因: {'; '.join(unique_reasons)}"
+    
+    def _merge_items(self, item_lists: List[List[str]]) -> List[str]:
+        """合并变更项，去重但保持逻辑分组"""
+        all_items = []
+        for items in item_lists:
+            all_items.extend(items)
+        
+        # 简单去重，保持顺序
+        unique_items = []
+        for item in all_items:
+            if item not in unique_items:
+                unique_items.append(item)
+        
+        return unique_items
+    
+    def _merge_versions(self, version_lists: List[List[str]]) -> List[str]:
+        """合并版本信息"""
+        all_versions = []
+        for versions in version_lists:
+            all_versions.extend(versions)
+        
+        unique_versions = list(set(all_versions))
+        return unique_versions
+    
+    def _extract_common_keywords(self, text: str) -> List[str]:
+        """提取常见关键词"""
+        import re
+        
+        # 简单的关键词提取
+        words = re.findall(r'[\u4e00-\u9fff]+', text)  # 提取中文词
+        word_count = {}
+        
+        for word in words:
+            if len(word) >= 2:  # 只考虑长度大于等于2的词
+                word_count[word] = word_count.get(word, 0) + 1
+        
+        # 返回出现次数大于1的词
+        common_keywords = [word for word, count in word_count.items() if count > 1]
+        return common_keywords
    

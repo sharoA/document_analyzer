@@ -84,7 +84,7 @@ class BaseAnalysisService(ABC):
         self.logger.error(f"{analysis_type}分析失败 - 任务ID: {task_id}, 错误: {error_msg}")
     
     async def _call_llm(self, prompt: str, system_prompt: str = None, 
-                       max_tokens: int = 4000) -> Optional[str]:
+                       max_tokens: int = 10000) -> Optional[str]:
         """
         调用LLM进行分析
         

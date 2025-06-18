@@ -550,10 +550,10 @@
 
                       <!-- 变更分析结果 -->
                       <div v-if="analysisResult.contentAnalysis.change_analysis" class="change-analysis-section">
-                        <h6 class="section-title">🔄 变更分析结果</h6>
+                        <!-- <h6 class="section-title">🔄 变更分析结果</h6> -->
                         
                         <!-- 分析概览 -->
-                        <div v-if="analysisResult.contentAnalysis.change_analysis.summary" class="analysis-summary-card">
+                        <!-- <div v-if="analysisResult.contentAnalysis.change_analysis.summary" class="analysis-summary-card">
                           <el-card class="summary-card">
                             <template #header>
                               <span class="summary-header">📈 分析概览</span>
@@ -561,7 +561,7 @@
                             <el-row :gutter="16">
                               <el-col :span="8">
                                 <div class="summary-item">
-                                  <div class="summary-number">{{ analysisResult.contentAnalysis.change_analysis.summary.total_changes || 0 }}</div>
+                                  <div class="summary-number">{{ getTotalChangesCount() }}</div>
                                   <div class="summary-label">内容变更</div>
                                 </div>
                               </el-col>
@@ -574,14 +574,14 @@
                               <el-col :span="8">
                                 <div class="summary-item">
                                   <div class="summary-number">
-                                    {{ (analysisResult.contentAnalysis.change_analysis.summary.total_changes || 0) + (analysisResult.contentAnalysis.change_analysis.summary.total_deletions || 0) }}
+                                    {{ getTotalChangesCount() + (analysisResult.contentAnalysis.change_analysis.summary.total_deletions || 0) }}
                                   </div>
                                   <div class="summary-label">总变更数</div>
                                 </div>
                               </el-col>
                             </el-row>
                           </el-card>
-                        </div>
+                        </div> -->
 
                         <!-- 详细变更分析 -->
                         <div v-if="analysisResult.contentAnalysis.change_analysis.change_analyses?.length" class="change-details-section">
@@ -596,41 +596,39 @@
                               <template #header>
                                 <div class="change-item-header">
                                   <span class="change-index">#{{ index + 1 }}</span>
-                                  <!-- 调试信息 -->
-                                  {{ console.log('Change data:', change) }}
                                   <el-tag 
-                                    :type="getChangeTypeColor(change.current_change?.[0]?.changeType || change.changeType)"
+                                    :type="getChangeTypeColor(change.changeType)"
                                     size="small"
                                   >
-                                    {{ change.current_change?.[0]?.changeType || change.changeType || '未知变更' }}
+                                    {{ change.changeType || '未知变更' }}
                                   </el-tag>
                                 </div>
                               </template>
                               
-                              <div v-if="change.current_change?.[0] || change.changeType" class="change-content">
+                              <div class="change-content">
                                 <div class="change-reason">
                                   <strong>变更原因：</strong>
-                                  <div class="change-reason-content" v-html="renderMarkdown((change.current_change?.[0]?.changeReason || change.changeReason) || '暂无描述')"></div>
+                                  <div class="change-reason-content" v-html="renderMarkdown(change.changeReason || '暂无描述')"></div>
                                 </div>
                                 
-                                <div v-if="(change.current_change?.[0]?.changeItems || change.changeItems)?.length" class="change-items-list">
+                                <div v-if="change.changeItems?.length" class="change-items-list">
                                   <strong>变更点：</strong>
                                   <ul>
-                                    <li v-for="(item, idx) in (change.current_change?.[0]?.changeItems || change.changeItems)" :key="idx">
+                                    <li v-for="(item, idx) in change.changeItems" :key="idx">
                                       {{ item }}
                                     </li>
                                   </ul>
                                 </div>
 
-                                <div v-if="(change.current_change?.[0]?.changeDetails || change.changeDetails)?.length" class="change-items-list">
+                                <div v-if="change.changeDetails?.length" class="change-items-list">
                                   <strong>变更详情：</strong>
-                                  <div class="change-details-content" v-html="renderMarkdown((change.current_change?.[0]?.changeDetails || change.changeDetails) || '暂无')"></div>
+                                  <div class="change-details-content" v-html="renderMarkdown(change.changeDetails || '暂无')"></div>
                                 </div>
 
-                                <div v-if="(change.current_change?.[0]?.version || change.version)?.length" class="version-info">
+                                <div v-if="change.version?.length" class="version-info">
                                   <strong>参考版本：</strong>
                                   <el-tag 
-                                    v-for="(version, vIdx) in (change.current_change?.[0]?.version || change.version)" 
+                                    v-for="(version, vIdx) in change.version" 
                                     :key="vIdx"
                                     size="small"
                                     type="info"
@@ -727,13 +725,9 @@
                         <el-icon><Promotion /></el-icon>
                         智能处理
                       </el-button>
-                      <el-button @click="exportResult">
-                        <el-icon><Download /></el-icon>
-                        立即出结果
-                      </el-button>
                       <el-button @click="clearResult">
                         <el-icon><Delete /></el-icon>
-                        访问全结果
+                        清空结果
                       </el-button>
                     </div>
                   </el-card>
@@ -1838,6 +1832,16 @@ const getChangeTypeColor = (changeType) => {
   }
   return colorMap[changeType] || 'info'
 }
+
+// 正确计算变更项的总数
+const getTotalChangesCount = () => {
+  if (!analysisResult.value?.contentAnalysis?.change_analysis?.change_analyses) {
+    return 0
+  }
+  
+  // 现在每个change_analyses项目就是一个变更，直接返回长度
+  return analysisResult.value.contentAnalysis.change_analysis.change_analyses.length
+}
 </script>
 
 <style lang="scss" scoped>
@@ -2161,6 +2165,8 @@ const getChangeTypeColor = (changeType) => {
   display: flex;
   flex-direction: column;
   background: white;
+  width: 100%;
+  min-width: 0; /* 确保flex子元素能够收缩 */
 
   .workspace-header {
     display: flex;
@@ -2182,6 +2188,8 @@ const getChangeTypeColor = (changeType) => {
     flex: 1;
     padding: 0;
     overflow-y: auto;
+    width: 100%;
+    min-width: 0; /* 确保flex子元素能够收缩 */
 
     :deep(.el-tabs__header) {
       margin: 0;
@@ -2194,12 +2202,15 @@ const getChangeTypeColor = (changeType) => {
       padding: 0;
       height: calc(100vh - 120px);
       overflow-y: hidden;
+      width: 100%;
     }
 
     .tab-content {
-      padding: 0px;
+      padding: 16px 24px;
       height: calc(100vh - 180px);
       overflow-y: auto;
+      width: 100%;
+      box-sizing: border-box;
 
       .status-header {
         display: flex;
@@ -2256,9 +2267,12 @@ const getChangeTypeColor = (changeType) => {
         height: 100%;
         display: flex;
         flex-direction: column;
+        width: 100%;
+        min-width: 0; /* 确保flex子元素能够收缩 */
         
         .result-header {
           margin-bottom: 20px;
+          width: 100%;
 
           .result-title {
             h4 {
@@ -2289,8 +2303,12 @@ const getChangeTypeColor = (changeType) => {
         }
 
         .result-content {
+          width: 100%;
+          min-width: 0; /* 确保flex子元素能够收缩 */
+          
           .info-card {
             margin-bottom: 16px;
+            width: 100%;
 
             :deep(.el-card__header) {
               padding: 12px 16px;
@@ -2306,27 +2324,39 @@ const getChangeTypeColor = (changeType) => {
 
             :deep(.el-card__body) {
               padding: 16px;
+              word-wrap: break-word;
+              word-break: break-all;
+              overflow-wrap: break-word;
             }
 
             .analysis-content {
               font-size: 14px;
               line-height: 1.6;
               color: #303133;
+              width: 100%;
+              word-wrap: break-word;
+              word-break: break-all;
+              overflow-wrap: break-word;
 
               h4 {
                 font-size: 16px;
                 font-weight: 600;
                 color: #303133;
                 margin: 16px 0 8px 0;
+                word-wrap: break-word;
               }
 
               ul {
                 margin: 8px 0;
                 padding-left: 20px;
+                width: 100%;
               }
 
               li {
                 margin: 4px 0;
+                word-wrap: break-word;
+                word-break: break-all;
+                overflow-wrap: break-word;
               }
             }
 
@@ -2348,11 +2378,15 @@ const getChangeTypeColor = (changeType) => {
       }
 
       .document-preview {
+        width: 100%;
+        min-width: 0; /* 确保flex子元素能够收缩 */
+        
         .preview-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-bottom: 20px;
+          width: 100%;
           padding-bottom: 12px;
           border-bottom: 1px solid #e4e7ed;
 
@@ -2621,6 +2655,9 @@ const getChangeTypeColor = (changeType) => {
   height: calc(100vh - 400px);
   display: flex;
   flex-direction: column;
+  width: 100%;
+  min-width: 0; /* 确保flex子元素能够收缩 */
+  box-sizing: border-box;
 }
 
 // 悬浮操作按钮样式
@@ -3535,6 +3572,112 @@ const getChangeTypeColor = (changeType) => {
     
     &:hover {
       text-decoration: underline;
+    }
+  }
+}
+
+/* 全局自适应宽度样式 - 确保agent-workspace内所有内容都能自适应 */
+.agent-workspace {
+  * {
+    box-sizing: border-box;
+  }
+  
+  /* 确保所有卡片组件自适应宽度 */
+  .el-card {
+    width: 100% !important;
+    
+    .el-card__body {
+      word-wrap: break-word;
+      word-break: break-all;
+      overflow-wrap: break-word;
+      
+      * {
+        max-width: 100%;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+    }
+  }
+  
+  /* 确保描述列表组件自适应宽度 */
+  .el-descriptions {
+    width: 100% !important;
+    
+    .el-descriptions__body {
+      width: 100% !important;
+    }
+    
+    .el-descriptions__table {
+      width: 100% !important;
+      table-layout: fixed;
+    }
+    
+    .el-descriptions__cell {
+      word-wrap: break-word;
+      word-break: break-all;
+      overflow-wrap: break-word;
+    }
+  }
+  
+  /* 确保所有文本内容自适应 */
+  p, div, span, li, td, th, h1, h2, h3, h4, h5, h6 {
+    word-wrap: break-word;
+    word-break: break-all;
+    overflow-wrap: break-word;
+    max-width: 100%;
+  }
+  
+  /* 确保列表内容自适应 */
+  ul, ol {
+    width: 100%;
+    padding-left: 20px;
+    margin: 0;
+    
+    li {
+      width: calc(100% - 20px);
+      margin: 4px 0;
+      word-wrap: break-word;
+      word-break: break-all;
+      overflow-wrap: break-word;
+    }
+  }
+  
+  /* 确保表格自适应宽度 */
+  .el-table {
+    width: 100% !important;
+    
+    .el-table__body-wrapper {
+      overflow-x: auto;
+    }
+    
+    .cell {
+      word-wrap: break-word;
+      word-break: break-all;
+      overflow-wrap: break-word;
+    }
+  }
+  
+  /* 确保标签组自适应 */
+  .el-tag {
+    max-width: 100%;
+    white-space: normal;
+    word-wrap: break-word;
+    word-break: break-all;
+  }
+  
+  /* 确保分析内容区域自适应 */
+  .analysis-content,
+  .change-reason-content,
+  .change-details-content {
+    width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    word-break: break-all;
+    
+    * {
+      max-width: 100%;
+      overflow-wrap: break-word;
+      word-wrap: break-word;
     }
   }
 }
