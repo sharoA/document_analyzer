@@ -53,15 +53,18 @@ class ContentAnalyzerService(BaseAnalysisService):
             
             self.logger.info(f"变更分析完成: {change_analysis}")
             
-            # Step 3.5: 智能合并相似的变更项
+            # Step 4: 智能合并相似的变更项
             merged_change_analysis = await self._merge_similar_changes(change_analysis)
             
             self.logger.info(f"相似变更项合并完成: {merged_change_analysis}")
             
-            # Step 4: 对变更项从原文档提取详细变更点
+            # Step 5: 对变更项从原文档提取详细变更点
             enhanced_change_analysis = await self._extract_detailed_changes(merged_change_analysis, document_content)
             
-            self.logger.info(f"详细变更内容提取完成: {enhanced_change_analysis}")
+            # Step 6: 对生成的结果进行去重处理，若存在变更详情超过80%的，则进行合并，变更点完全一样的去处重复
+            final_change_analysis = await self._deduplicate_and_sort_changes(enhanced_change_analysis)
+
+            self.logger.info(f"去重排序完成: {final_change_analysis}")
             
             # 清理结构化内容块，移除向量嵌入以减少输出大小
             cleaned_chunks = []
@@ -77,7 +80,7 @@ class ContentAnalyzerService(BaseAnalysisService):
             
             # 合并分析结果
             content_result = {
-                "change_analysis": enhanced_change_analysis,
+                "change_analysis": final_change_analysis,
                 "metadata": {
                     "analysis_method": "LLM+向量数据库分析+详细内容提取+智能合并",
                     "analysis_time": time.time() - start_time,
@@ -520,7 +523,7 @@ class ContentAnalyzerService(BaseAnalysisService):
     
     def _clean_json_response(self, response: str) -> str:
         """
-        清理LLM响应，提取JSON内容
+        清理LLM响应，提取JSON内容（支持数组和对象）
         
         Args:
             response: LLM原始响应
@@ -536,12 +539,39 @@ class ContentAnalyzerService(BaseAnalysisService):
         # 移除额外的空白字符
         response = response.strip()
         
-        # 查找JSON对象的开始和结束
-        start_idx = response.find('{')
-        if start_idx != -1:
-            # 找到最后一个完整的大括号
+        # 优先查找JSON数组的开始和结束
+        array_start = response.find('[')
+        object_start = response.find('{')
+        
+        # 如果同时存在数组和对象，选择最先出现的
+        if array_start != -1 and (object_start == -1 or array_start < object_start):
+            # 处理JSON数组
+            start_idx = array_start
+            bracket_count = 0
             brace_count = 0
             end_idx = -1
+            
+            for i in range(start_idx, len(response)):
+                if response[i] == '[':
+                    bracket_count += 1
+                elif response[i] == ']':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        end_idx = i
+                        break
+                elif response[i] == '{':
+                    brace_count += 1
+                elif response[i] == '}':
+                    brace_count -= 1
+            
+            if end_idx != -1:
+                response = response[start_idx:end_idx + 1]
+        elif object_start != -1:
+            # 处理JSON对象
+            start_idx = object_start
+            brace_count = 0
+            end_idx = -1
+            
             for i in range(start_idx, len(response)):
                 if response[i] == '{':
                     brace_count += 1
@@ -823,6 +853,7 @@ class ContentAnalyzerService(BaseAnalysisService):
 3. 如果涉及多个相关部分，请都包含进来
 4. 用清晰的结构组织提取的内容
 5. 如果找不到相关内容，请明确说明
+6. 如果是前端新增项，请将原文档中对应的页面截图附上
 
 请直接返回提取的详细内容，不需要JSON格式。
 """
@@ -890,6 +921,9 @@ class ContentAnalyzerService(BaseAnalysisService):
         if len(changes) <= 1:
             return changes
         
+        # Step 1: 预处理 - 先修正变更类型
+        preprocessed_changes = await self._preprocess_change_types(changes)
+        
         system_prompt = """你是一个专业的需求分析师，负责合并相似的变更项。
 
 你的任务：
@@ -899,7 +933,7 @@ class ContentAnalyzerService(BaseAnalysisService):
 4. 避免信息丢失"""
         
         changes_text = []
-        for i, change in enumerate(changes):
+        for i, change in enumerate(preprocessed_changes):  # 使用预处理后的数据
             change_info = f"""变更项{i+1}:
 - 类型: {change.get('changeType', '未知')}
 - 原因: {change.get('changeReason', '未知')}
@@ -909,45 +943,55 @@ class ContentAnalyzerService(BaseAnalysisService):
             changes_text.append(change_info)
         
         user_prompt = f"""
-请分析以下变更项，积极主动地将相似和相关的变更点进行合并，并去除重复的变更点所在json对象：
+请分析以下变更项，按照变更类型和功能模块进行合理分类合并：
 
 {chr(10).join(changes_text)}
 
-【强制合并规则】：
-1. **功能模块相关性合并**：涉及同一个功能模块（如"接口校验"、"链数额度"、"权限管理"等）的变更项必须合并
-2. **业务关联性合并**：解决同一个业务问题或需求的变更项必须合并
-3. **技术关联性合并**：对同一个技术组件（如API接口、数据库表、前端页面等）的变更项必须合并
-4. **变更类型合并**：相同变更类型（新增/修改/删除）且内容相关的变更项应该合并
-5. **关键词匹配合并**：变更项中包含相同关键词（如"校验"、"额度"、"接口"、"按钮"等）的变更项优先合并
+【保守合并原则】：
+1. **变更类型严格分离**：不同变更类型（新增/修改/删除）绝对不能合并
+2. **功能子模块细分**：即使在同一功能模块内，也要按具体功能子模块进行细分
+3. **重要功能保留**：重要的具体功能（如导出、查询、定时任务、筛选等）必须保留，不能被合并掉
+4. **避免过度合并**：只有高度相似且重复的变更点才进行合并
+
+【详细合并规则】：
+- **接口校验相关**：只合并完全重复描述同一校验规则调整的变更点
+- **操作功能相关**：按具体功能细分，如"功能重命名"、"新增按钮"、"新增字段"、"导出功能"、"定时任务"、"权限管理"、"数据升级"等应分别保留
+- **页面功能相关**：查询、筛选、导出、汇总等具体功能应该分别保留
+- **数据字段相关**：新增字段、字段类型等应该分别保留
 
 【合并策略】：
-- 优先合并具有多个相似关键词的变更项
-- 将小的、分散的变更点整合成大的、完整的变更项
-- 每个合并后的变更项应该代表一个完整的业务功能或技术组件的变更
-- 目标是将变更项数量减少至少30%以上
+- 只合并描述完全相同或高度重复的变更点
+- 不同具体功能绝对不合并（如导出 ≠ 查询 ≠ 筛选）
+- 保持功能的完整性和独立性
+- 宁可多分几个变更项，也不要丢失重要功能细节
 
 【输出要求】：
-- 合并后的changeItems应该包含所有原始变更点，按逻辑分组
-- 合并后的changeReason应该综合说明所有变更原因，突出共同点
-- version字段合并所有相关版本
+- 保持变更类型的纯粹性，不要混合不同类型
+- 保留所有重要的具体功能，避免丢失功能细节
+- 如果输入的变更点中包含多个功能，则需要将每个功能单独保留再合并
+- changeReason应该说明具体的变更原因，不要过于笼统
+- changeItems应该保留具体功能的独立性
+- version字段合并相关版本
 - mergedFrom字段记录原始变更项编号
 
-请返回JSON格式的合并结果。**必须返回数组格式，即使只有一个合并结果也要用数组包装**：
+请返回JSON格式的合并结果。**按功能子模块细分，保留重要功能细节**：
 [
   {{
-    "changeType": "合并后的变更类型",
-    "changeReason": "合并后的综合变更原因",
-    "changeItems": ["合并后的变更点1", "变更点2", ...],
+    "changeType": "具体的变更类型（新增/修改/删除）",
+    "changeReason": "变更原因说明（说明为什么这些变更点可以在当前变更类型下",
+    "changeItems": ["具体的变更点1", "变更点2", ...],
     "version": ["相关版本1", "版本2", ...],
     "mergedFrom": [原始变更项编号列表],
-    "mergeReason": "合并原因说明"
   }}
 ]
 
 **重要提醒：**
-1. 必须积极合并相关变更项，不要过于保守！
-2. 返回结果必须是JSON数组格式，不要返回单个对象！
-3. 即使所有变更项合并为一个，也要用 [{{...}}] 数组格式返回！
+1. 不同变更类型（新增/修改/删除）绝对不能合并！
+2. 去除完全重复描述的变更点，但保留不同具体功能的变更点
+3. 重要功能（导出、查询、筛选、汇总等）必须单独保留！
+4. 返回结果必须是JSON数组格式！
+5. 宁可多保留几个变更项，也不要丢失重要功能细节！
+6. 每个结果项应该代表一个具体的功能变更，而不是大而全的合并！
 """
         
         try:
@@ -956,7 +1000,10 @@ class ContentAnalyzerService(BaseAnalysisService):
             if response:
                 self.logger.info(f"LLM原始响应: {response}")
                 cleaned_response = self._clean_json_response(response)
-                self.logger.info(f"LLM清理后响应: {cleaned_response[:500]}...")
+                self.logger.info(f"LLM清理后响应长度: {len(cleaned_response)}")
+                self.logger.info(f"LLM清理后响应开头: {cleaned_response[:200]}...")
+                if len(cleaned_response) > 500:
+                    self.logger.info(f"LLM清理后响应结尾: ...{cleaned_response[-200:]}")
                 
                 try:
                     merged_changes = json.loads(cleaned_response)
@@ -964,7 +1011,7 @@ class ContentAnalyzerService(BaseAnalysisService):
                 except json.JSONDecodeError as json_error:
                     self.logger.error(f"JSON解析失败: {json_error}")
                     self.logger.error(f"尝试解析的内容: {cleaned_response}")
-                    return changes
+                    return preprocessed_changes
                 
                 # 处理LLM返回单个对象的情况
                 if isinstance(merged_changes, dict):
@@ -973,11 +1020,11 @@ class ContentAnalyzerService(BaseAnalysisService):
                         merged_changes = [merged_changes]
                         self.logger.info(f"LLM返回单个合并对象，转换为数组: {merged_changes}")
                     else:
-                        self.logger.warning("LLM返回的单个对象格式不正确，使用原始数据")
-                        return changes
+                        self.logger.warning("LLM返回的单个对象格式不正确，使用预处理数据")
+                        return preprocessed_changes
                 
-                # 验证合并结果
-                if isinstance(merged_changes, list) and len(merged_changes) > 0 and len(merged_changes) <= len(changes):
+                # 验证合并结果 - 移除数量限制，允许分拆出更多变更项
+                if isinstance(merged_changes, list) and len(merged_changes) > 0:
                     # 验证每个合并项是否包含必要字段
                     valid_changes = []
                     for change in merged_changes:
@@ -988,18 +1035,18 @@ class ContentAnalyzerService(BaseAnalysisService):
                         self.logger.info(f"LLM智能合并成功: {len(changes)} -> {len(valid_changes)}")
                         return valid_changes
                     else:
-                        self.logger.warning("LLM合并结果格式异常，使用原始数据")
-                        return changes
+                        self.logger.warning("LLM合并结果格式异常，使用预处理数据")
+                        return preprocessed_changes
                 else:
-                    self.logger.warning(f"LLM合并结果数量异常: 原始{len(changes)}项 -> 合并{len(merged_changes) if isinstance(merged_changes, list) else 'N/A'}项，使用原始数据")
-                    return changes
+                    self.logger.warning(f"LLM合并结果格式异常: 原始{len(changes)}项 -> 合并{len(merged_changes) if isinstance(merged_changes, list) else 'N/A'}项，使用预处理数据")
+                    return preprocessed_changes
         except json.JSONDecodeError as e:
             self.logger.error(f"LLM合并响应JSON解析失败: {e}")
-            return changes
+            return preprocessed_changes
         except Exception as e:
             self.logger.error(f"LLM智能合并失败: {e}")
         
-        return changes
+        return preprocessed_changes
     
     async def _similarity_based_merge(self, changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """方案2: 基于文本相似度的合并"""
@@ -1210,4 +1257,598 @@ class ContentAnalyzerService(BaseAnalysisService):
         # 返回出现次数大于1的词
         common_keywords = [word for word, count in word_count.items() if count > 1]
         return common_keywords
+    
+    async def _preprocess_change_types(self, changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        预处理变更类型，正确识别新增、修改、删除类型
+        
+        Args:
+            changes: 原始变更项列表
+            
+        Returns:
+            类型修正后的变更项列表
+        """
+        preprocessed_changes = []
+        
+        for change in changes:
+            change_items = change.get('changeItems', [])
+            
+            # 分析变更项的内容，判断实际的变更类型
+            new_items = []  # 新增功能项
+            modify_items = []  # 修改功能项
+            delete_items = []  # 删除功能项
+            
+            self.logger.info(f"正在分析变更项: {change.get('changeType', '未知')} - {change_items}")
+            
+            for item in change_items:
+                change_type = self._analyze_single_change_item(item)
+                
+                if change_type == '新增':
+                    new_items.append(item)
+                elif change_type == '删除':
+                    delete_items.append(item)
+                else:  # 修改
+                    modify_items.append(item)
+                
+                self.logger.info(f"  变更点分析: '{item[:50]}...' -> {change_type}")
+            
+            # 创建基础变更信息
+            base_change = {
+                'changeReason': change.get('changeReason', ''),
+                'version': change.get('version', [])
+            }
+            
+            # 根据分析结果创建变更项
+            created_changes = []
+            
+            if new_items:
+                new_change = base_change.copy()
+                new_change.update({
+                    'changeType': '新增',
+                    'changeItems': new_items,
+                    'changeReason': self._generate_change_reason('新增', base_change['changeReason'], new_items)
+                })
+                created_changes.append(new_change)
+            
+            if modify_items:
+                modify_change = base_change.copy()
+                modify_change.update({
+                    'changeType': '修改',
+                    'changeItems': modify_items,
+                    'changeReason': self._generate_change_reason('修改', base_change['changeReason'], modify_items)
+                })
+                created_changes.append(modify_change)
+            
+            if delete_items:
+                delete_change = base_change.copy()
+                delete_change.update({
+                    'changeType': '删除',
+                    'changeItems': delete_items,
+                    'changeReason': self._generate_change_reason('删除', base_change['changeReason'], delete_items)
+                })
+                created_changes.append(delete_change)
+            
+            # 如果没有任何变更项被归类，保留原变更项
+            if not created_changes:
+                original_change = change.copy()
+                original_change['changeType'] = '修改'  # 默认为修改
+                created_changes.append(original_change)
+            
+            preprocessed_changes.extend(created_changes)
+            
+            self.logger.info(f"  变更项拆分结果: 1 -> {len(created_changes)} 项")
+        
+        self.logger.info(f"变更类型预处理完成: {len(changes)} -> {len(preprocessed_changes)}")
+        for i, change in enumerate(preprocessed_changes):
+            self.logger.info(f"预处理后变更项{i+1}: {change.get('changeType')} - 包含{len(change.get('changeItems', []))}个变更点")
+        
+        return preprocessed_changes
+    
+    def _analyze_single_change_item(self, item: str) -> str:
+        """
+        分析单个变更项的类型
+        
+        Args:
+            item: 单个变更描述
+            
+        Returns:
+            变更类型: '新增', '修改', '删除'
+        """
+        item_text = item.strip()
+        
+        # 定义更精确的关键词匹配规则
+        new_keywords = [
+            '新增', '新建', '添加', '增加', '创建', '引入', 
+            '支持', '提供', '实现', '设置',
+            '新增功能', '新增按钮', '新增字段', '新增页面',
+            '列表页', '详情页'  # 通常指新增页面
+        ]
+        
+        delete_keywords = [
+            '删除', '移除', '去除', '取消', '废弃', '停用',
+            '不再', '禁用', '隐藏'
+        ]
+        
+        modify_keywords = [
+            '调整', '修改', '变更', '优化', '更新', '改为',
+            '由.*变更为', '从.*调整为', '将.*修改为',
+            '名称.*变更', '功能.*调整'
+        ]
+        
+        # 优先级检查：先检查明确的新增标识
+        for keyword in new_keywords:
+            if keyword in item_text:
+                # 进一步验证是否真的是新增
+                if any(exclude in item_text for exclude in ['调整', '修改', '变更为', '改为']):
+                    # 如果同时包含修改关键词，可能是修改现有功能
+                    continue
+                return '新增'
+        
+        # 检查删除关键词
+        for keyword in delete_keywords:
+            if keyword in item_text:
+                return '删除'
+        
+        # 检查修改关键词
+        import re
+        for keyword in modify_keywords:
+            if re.search(keyword, item_text):
+                return '修改'
+        
+        # 特殊情况处理
+        # 1. 功能名称变更通常是修改
+        if re.search(r'名称.*(?:由|从).+(?:变更为|改为|调整为)', item_text):
+            return '修改'
+        
+        # 2. 包含"新增"但也包含"在...下"可能是在现有功能下新增子功能
+        if '新增' in item_text and any(phrase in item_text for phrase in ['在.*下', '功能下', '页面.*新增']):
+            return '新增'
+        
+        # 3. 按钮、字段、页面相关的描述
+        if any(element in item_text for element in ['按钮', '字段', '页面', '功能', '接口', '列表']):
+            # 如果明确说是新增这些元素
+            if any(action in item_text for action in ['新增', '添加', '创建']):
+                return '新增'
+            # 如果是调整现有元素
+            elif any(action in item_text for action in ['调整', '修改', '变更', '优化']):
+                return '修改'
+        
+        # 默认归类为修改（保守策略）
+        return '修改'
+    
+    def _generate_change_reason(self, change_type: str, original_reason: str, items: List[str]) -> str:
+        """
+        生成更精确的变更原因
+        
+        Args:
+            change_type: 变更类型
+            original_reason: 原始变更原因
+            items: 变更项列表
+            
+        Returns:
+            生成的变更原因
+        """
+        # 简化处理：直接基于变更类型和数量生成通用描述
+        if len(items) == 1:
+            return f"{change_type}相关功能"
+        else:
+            return f"{change_type}多项相关功能"
+    
+    async def _deduplicate_and_sort_changes(self, change_analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Step 6: 对变更分析结果进行去重和排序
+        
+        Args:
+            change_analysis: Step5的变更分析结果
+            
+        Returns:
+            去重排序后的变更分析结果
+        """
+        try:
+            result = change_analysis.copy()
+            
+            # 处理change_analyses列表
+            if 'change_analyses' in change_analysis and change_analysis['change_analyses']:
+                deduplicated_changes = self._deduplicate_changes(change_analysis['change_analyses'])
+                sorted_changes = self._sort_changes(deduplicated_changes)
+                result['change_analyses'] = sorted_changes
+                
+                self.logger.info(f"change_analyses去重排序: {len(change_analysis['change_analyses'])} -> {len(sorted_changes)}")
+            
+            # 处理deletion_analyses列表
+            if 'deletion_analyses' in change_analysis and change_analysis['deletion_analyses']:
+                deduplicated_deletions = self._deduplicate_changes(change_analysis['deletion_analyses'])
+                sorted_deletions = self._sort_changes(deduplicated_deletions)
+                result['deletion_analyses'] = sorted_deletions
+                
+                self.logger.info(f"deletion_analyses去重排序: {len(change_analysis['deletion_analyses'])} -> {len(sorted_deletions)}")
+            
+            # 更新summary信息
+            if 'summary' in result:
+                result['summary']['analysis_method'] = "LLM+向量数据库分析+详细内容提取+智能合并+去重排序"
+            
+            return result
+            
+        except Exception as e:
+            self.logger.error(f"去重排序失败: {e}")
+            return change_analysis
+    
+    def _deduplicate_changes(self, changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        对变更项进行去重处理
+        
+        Args:
+            changes: 变更项列表
+            
+        Returns:
+            去重后的变更项列表
+        """
+        if len(changes) <= 1:
+            return changes
+        
+        deduplicated = []
+        used_indices = set()
+        
+        for i, change in enumerate(changes):
+            if i in used_indices:
+                continue
+            
+            # 查找相似的变更项
+            similar_changes = [change]
+            similar_indices = {i}
+            
+            for j, other_change in enumerate(changes[i+1:], i+1):
+                if j in used_indices:
+                    continue
+                
+                # 检查是否需要合并
+                if self._should_merge_changes(change, other_change):
+                    similar_changes.append(other_change)
+                    similar_indices.add(j)
+            
+            used_indices.update(similar_indices)
+            
+            # 如果找到相似项，进行合并
+            if len(similar_changes) > 1:
+                merged_change = self._merge_similar_change_details(similar_changes)
+                deduplicated.append(merged_change)
+                self.logger.info(f"合并了 {len(similar_changes)} 个相似变更项")
+            else:
+                deduplicated.append(change)
+        
+        return deduplicated
+    
+    def _should_merge_changes(self, change1: Dict[str, Any], change2: Dict[str, Any]) -> bool:
+        """
+        判断两个变更项是否应该合并
+        
+        Args:
+            change1: 变更项1
+            change2: 变更项2
+            
+        Returns:
+            是否应该合并
+        """
+        # 1. 变更类型必须相同
+        if change1.get('changeType') != change2.get('changeType'):
+            return False
+        
+        # 2. 检查变更点是否完全相同（去重）
+        items1 = set(change1.get('changeItems', []))
+        items2 = set(change2.get('changeItems', []))
+        
+        # 如果变更点完全相同，应该合并
+        if items1 == items2:
+            return True
+        
+        # 3. 检查变更点之间的高相似度（针对意思相同但表述略有不同的情况）
+        items1_list = change1.get('changeItems', [])
+        items2_list = change2.get('changeItems', [])
+        
+        # 如果两个变更项都只有一个changeItem，且高度相似，则合并
+        if len(items1_list) == 1 and len(items2_list) == 1:
+            item_similarity = self._calculate_text_similarity(items1_list[0], items2_list[0])
+            if item_similarity >= 0.85:  # 85%相似度阈值，针对意思相同但表述略有不同的情况
+                self.logger.info(f"发现高相似度变更点 (相似度: {item_similarity:.2f}): '{items1_list[0][:50]}...' vs '{items2_list[0][:50]}...'")
+                return True
+        
+        # 4. 检查变更点列表的整体相似度
+        if items1_list and items2_list:
+            # 计算变更点列表的文本相似度
+            text1 = ' '.join(items1_list)
+            text2 = ' '.join(items2_list)
+            items_similarity = self._calculate_text_similarity(text1, text2)
+            if items_similarity >= 0.8:  # 80%相似度阈值
+                self.logger.info(f"发现高相似度变更点列表 (相似度: {items_similarity:.2f})")
+                return True
+        
+        # 5. 检查变更详情相似度（如果有changeDetails字段）
+        details1 = change1.get('changeDetails', '')
+        details2 = change2.get('changeDetails', '')
+        
+        if details1 and details2:
+            similarity = self._calculate_text_similarity(details1, details2)
+            if similarity >= 0.8:  # 80%相似度阈值
+                self.logger.info(f"发现高相似度变更详情 (相似度: {similarity:.2f})")
+                return True
+        
+        # 6. 检查变更原因相似度
+        reason1 = change1.get('changeReason', '')
+        reason2 = change2.get('changeReason', '')
+        
+        if reason1 and reason2:
+            reason_similarity = self._calculate_text_similarity(reason1, reason2)
+            if reason_similarity >= 0.9:  # 变更原因90%相似
+                return True
+        
+        return False
+    
+    def _calculate_text_similarity(self, text1: str, text2: str) -> float:
+        """
+        计算两个文本的相似度（针对中文文本优化）
+        
+        Args:
+            text1: 文本1
+            text2: 文本2
+            
+        Returns:
+            相似度 (0-1)
+        """
+        from difflib import SequenceMatcher
+        import re
+        
+        # 如果文本为空，返回0
+        if not text1 or not text2:
+            return 0.0
+        
+        # 去除多余空格和标点符号，保留核心内容
+        clean_text1 = re.sub(r'[，。、；：！？\s]+', '', text1.strip())
+        clean_text2 = re.sub(r'[，。、；：！？\s]+', '', text2.strip())
+        
+        # 方法1: 基础字符序列相似度
+        basic_similarity = SequenceMatcher(None, clean_text1, clean_text2).ratio()
+        
+        # 方法2: 关键词匹配相似度（针对业务术语）
+        # 提取关键业务词汇
+        keywords1 = self._extract_business_keywords(text1)
+        keywords2 = self._extract_business_keywords(text2)
+        
+        if keywords1 and keywords2:
+            common_keywords = len(set(keywords1) & set(keywords2))
+            total_keywords = len(set(keywords1) | set(keywords2))
+            keyword_similarity = common_keywords / total_keywords if total_keywords > 0 else 0.0
+        else:
+            keyword_similarity = 0.0
+        
+        # 方法3: 语义相似度（检查核心概念）
+        semantic_similarity = self._check_semantic_similarity(text1, text2)
+        
+        # 综合相似度计算（权重分配）
+        final_similarity = (
+            basic_similarity * 0.5 +      # 基础字符相似度权重50%
+            keyword_similarity * 0.3 +    # 关键词相似度权重30%
+            semantic_similarity * 0.2     # 语义相似度权重20%
+        )
+        
+        self.logger.debug(f"相似度计算: 基础={basic_similarity:.3f}, 关键词={keyword_similarity:.3f}, 语义={semantic_similarity:.3f}, 综合={final_similarity:.3f}")
+        
+        return final_similarity
+    
+    def _extract_business_keywords(self, text: str) -> List[str]:
+        """
+        提取业务关键词
+        
+        Args:
+            text: 输入文本
+            
+        Returns:
+            关键词列表
+        """
+        import re
+        
+        # 定义业务关键词模式
+        business_patterns = [
+            r'确权业务申请',
+            r'bizSerialNo',
+            r'校验规则',
+            r'业务编号',
+            r'核心企业',
+            r'内部系统',
+            r'修改',
+            r'推送',
+            r'相同',
+            r'允许',
+            r'数据',
+            r'接口',
+            r'调整'
+        ]
+        
+        keywords = []
+        for pattern in business_patterns:
+            if re.search(pattern, text):
+                keywords.append(pattern)
+        
+        # 提取其他中文关键词（2-6个字符）
+        chinese_words = re.findall(r'[\u4e00-\u9fff]{2,6}', text)
+        keywords.extend(chinese_words)
+        
+        return list(set(keywords))  # 去重
+    
+    def _check_semantic_similarity(self, text1: str, text2: str) -> float:
+        """
+        检查语义相似度
+        
+        Args:
+            text1: 文本1
+            text2: 文本2
+            
+        Returns:
+            语义相似度 (0-1)
+        """
+        # 定义语义等价词组
+        semantic_groups = [
+            {'重新推送', '再次推送', '重推', '再推'},
+            {'修改后', '修改后的', '修改之后'},
+            {'允许', '支持', '可以'},
+            {'相同', '同样', '相同的', '同一'},
+            {'业务编号', '业务号', 'bizSerialNo'},
+            {'校验规则', '验证规则', '校验'},
+            {'核心企业内部系统', '核心企业系统', '内部系统'},
+            {'调整了', '修改了', '变更了', '更新了'}
+        ]
+        
+        # 检查两个文本是否包含语义等价的词组
+        semantic_score = 0.0
+        total_checks = 0
+        
+        for group in semantic_groups:
+            found_in_text1 = any(word in text1 for word in group)
+            found_in_text2 = any(word in text2 for word in group)
+            
+            if found_in_text1 or found_in_text2:
+                total_checks += 1
+                if found_in_text1 and found_in_text2:
+                    semantic_score += 1.0
+        
+        return semantic_score / total_checks if total_checks > 0 else 0.0
+    
+    def _merge_similar_change_details(self, changes: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        合并相似的变更项详情
+        
+        Args:
+            changes: 相似的变更项列表
+            
+        Returns:
+            合并后的变更项
+        """
+        if len(changes) == 1:
+            return changes[0]
+        
+        base_change = changes[0].copy()
+        
+        # 记录详细的合并信息用于调试
+        self.logger.info(f"开始合并 {len(changes)} 个相似变更项:")
+        for i, change in enumerate(changes):
+            items = change.get('changeItems', [])
+            self.logger.info(f"  变更项{i+1}: {change.get('changeType', '未知')} - {items}")
+        
+        # 合并变更点（去重但保留相似表述）
+        all_items = []
+        for change in changes:
+            all_items.extend(change.get('changeItems', []))
+        
+        # 智能去重：保留最详细的表述
+        unique_items = self._intelligent_dedup_items(all_items)
+        base_change['changeItems'] = unique_items
+        
+        self.logger.info(f"  合并后变更点: {unique_items}")
+        
+        # 合并版本信息
+        all_versions = []
+        for change in changes:
+            all_versions.extend(change.get('version', []))
+        base_change['version'] = list(set(all_versions))
+        
+        # 合并mergedFrom信息（如果存在）
+        all_merged_from = []
+        for change in changes:
+            if 'mergedFrom' in change:
+                if isinstance(change['mergedFrom'], list):
+                    all_merged_from.extend(change['mergedFrom'])
+                else:
+                    all_merged_from.append(change['mergedFrom'])
+        if all_merged_from:
+            base_change['mergedFrom'] = list(set(all_merged_from))
+        
+        # 合并变更详情（选择最长的或合并多个）
+        all_details = []
+        for change in changes:
+            if 'changeDetails' in change and change['changeDetails']:
+                all_details.append(change['changeDetails'])
+        
+        if len(all_details) > 1:
+            # 如果有多个详情，选择最详细的一个
+            base_change['changeDetails'] = max(all_details, key=len)
+        elif len(all_details) == 1:
+            base_change['changeDetails'] = all_details[0]
+        
+        # 添加合并标记
+        base_change['mergedChangesCount'] = len(changes)
+        base_change['originalItems'] = [change.get('changeItems', []) for change in changes]  # 保留原始信息用于调试
+        
+        self.logger.info(f"变更项合并完成: {len(changes)} -> 1")
+        
+        return base_change
+    
+    def _intelligent_dedup_items(self, items: List[str]) -> List[str]:
+        """
+        智能去重变更点，保留最详细的表述
+        
+        Args:
+            items: 变更点列表
+            
+        Returns:
+            去重后的变更点列表
+        """
+        if len(items) <= 1:
+            return items
+        
+        unique_items = []
+        used_indices = set()
+        
+        for i, item in enumerate(items):
+            if i in used_indices:
+                continue
+            
+            # 查找相似的项
+            similar_group = [item]
+            similar_indices = {i}
+            
+            for j, other_item in enumerate(items[i+1:], i+1):
+                if j in used_indices:
+                    continue
+                
+                similarity = self._calculate_text_similarity(item, other_item)
+                if similarity >= 0.85:  # 高相似度阈值
+                    similar_group.append(other_item)
+                    similar_indices.add(j)
+                    self.logger.info(f"发现相似变更点 (相似度: {similarity:.2f}): '{item[:30]}...' vs '{other_item[:30]}...'")
+            
+            used_indices.update(similar_indices)
+            
+            if len(similar_group) > 1:
+                # 选择最详细的表述（通常是最长的）
+                best_item = max(similar_group, key=len)
+                unique_items.append(best_item)
+                self.logger.info(f"相似变更点合并: 选择 '{best_item[:50]}...' 作为代表")
+            else:
+                unique_items.append(item)
+        
+        return unique_items
+    
+    def _sort_changes(self, changes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        对变更项进行排序
+        
+        Args:
+            changes: 变更项列表
+            
+        Returns:
+            排序后的变更项列表
+        """
+        def sort_key(change):
+            # 按照变更类型、变更原因、变更点数量、版本数量进行排序
+            change_type = change.get('changeType', '')
+            change_reason = change.get('changeReason', '')
+            items_count = len(change.get('changeItems', []))
+            version_count = len(change.get('version', []))
+            
+            # 变更类型排序：新增 -> 修改 -> 删除
+            type_order = {'新增': 1, '修改': 2, '删除': 3}
+            type_priority = type_order.get(change_type, 4)
+            
+            return (type_priority, change_reason, -items_count, -version_count)
+        
+        return sorted(changes, key=sort_key)
    
