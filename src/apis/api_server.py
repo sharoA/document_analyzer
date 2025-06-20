@@ -1705,9 +1705,9 @@ def process_document_generation(task: FileParsingTask):
                    f"content_analysis={bool(result_data.get('content_analysis'))}, "
                    f"ai_analysis={bool(result_data.get('ai_analysis'))}")
         
-        # 生成Markdown内容，将ai_analysis转换为Markdown格式    
+        # 生成Markdown内容，传递完整的结果数据
         task.update_progress(60, "转换为Markdown格式", "document_generating")
-        markdown_content = generate_markdown_report(ai_analysis)
+        markdown_content = generate_markdown_report(result_data)
         
         # 保存Markdown内容Redis
         task.update_progress(90, "保存文档内容", "document_generating")
