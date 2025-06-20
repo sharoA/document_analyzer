@@ -5,7 +5,7 @@
 
 import logging
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 from .document_parser import DocumentParserService
 from .content_analyzer import ContentAnalyzerService
 from .ai_analyzer import AIAnalyzerService
@@ -172,13 +172,14 @@ class AnalysisServiceManager:
         return await self.content_analyzer.analyze(task_id, input_data)
     
     async def ai_analyze(self, task_id: str, content_analysis: Dict[str, Any], 
-                        parsing_result: Dict[str, Any] = None) -> Dict[str, Any]:
+                        parsing_result: Dict[str, Any] = None, 
+                        progress_callback: Callable = None) -> Dict[str, Any]:
         """执行AI智能分析"""
         input_data = {
             "content_analysis": content_analysis,
             "parsing_result": parsing_result or {}
         }
-        return await self.ai_analyzer.analyze(task_id, input_data)
+        return await self.ai_analyzer.analyze(task_id, input_data, progress_callback)
     
     def parse_document_sync(self, task_id: str, file_content: str, 
                            file_type: str, file_name: str) -> Dict[str, Any]:
@@ -193,10 +194,11 @@ class AnalysisServiceManager:
         return asyncio.run(self.analyze_content(task_id, parsing_result, document_content))
     
     def ai_analyze_sync(self, task_id: str, content_analysis: Dict[str, Any], 
-                        parsing_result: Dict[str, Any] = None) -> Dict[str, Any]:
+                        parsing_result: Dict[str, Any] = None,
+                        progress_callback: Callable = None) -> Dict[str, Any]:
         """执行AI智能分析 - 同步版本"""
         import asyncio
-        return asyncio.run(self.ai_analyze(task_id, content_analysis, parsing_result))
+        return asyncio.run(self.ai_analyze(task_id, content_analysis, parsing_result, progress_callback))
     
     def _generate_analysis_summary(self, parsing_result: Dict, content_result: Dict, 
                                  ai_result: Dict) -> Dict[str, Any]:

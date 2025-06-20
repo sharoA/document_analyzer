@@ -1,23 +1,33 @@
 """
 AI智能分析服务
-基于CRUD操作生成API接口设计和MQ配置
+基于LangChain PlanAndExecution框架实现AI系统架构设计师
+按照7步骤工作流程生成完整的系统架构设计
 """
 
 import json
 import time
-from typing import Dict, Any, List
+import asyncio
+import logging
+from typing import Dict, Any, List, Optional, Callable
+from datetime import datetime
 from .base_service import BaseAnalysisService
 
 class AIAnalyzerService(BaseAnalysisService):
-    """AI智能分析服务类"""
+    """基于LangChain的AI智能分析服务"""
     
-    async def analyze(self, task_id: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def __init__(self, llm_client=None, vector_db=None):
+        super().__init__(llm_client, vector_db)
+        self.planner = None
+        
+    async def analyze(self, task_id: str, input_data: Dict[str, Any], 
+                     progress_callback: Optional[Callable] = None) -> Dict[str, Any]:
         """
-        执行AI智能分析
+        执行AI智能分析 - LangChain版本
         
         Args:
             task_id: 任务ID
             input_data: 包含内容分析结果的数据
+            progress_callback: 进度回调函数
             
         Returns:
             AI分析结果字典
@@ -25,469 +35,642 @@ class AIAnalyzerService(BaseAnalysisService):
         start_time = time.time()
         
         try:
-            # 提取内容分析结果
+            # 创建AI架构设计师规划器
+            self.planner = AIArchitectPlanner(
+                llm_client=self.llm_client,
+                progress_callback=progress_callback
+            )
+            
+            # 提取输入数据
             content_analysis = input_data.get("content_analysis", {})
-            crud_operations = content_analysis.get("crud_analysis", {}).get("crud_operations", [])
-            business_analysis = content_analysis.get("business_analysis", {})
+            parsing_result = input_data.get("parsing_result", {})
             
-            self._log_analysis_start(task_id, "AI智能分析", len(crud_operations))
+            self._log_analysis_start(task_id, "AI架构设计", 0)
             
-            # API接口设计
-            api_design = await self._generate_api_design(crud_operations, business_analysis)
-            
-            # MQ消息队列配置
-            mq_config = await self._generate_mq_config(crud_operations, business_analysis)
-            
-            # 技术架构建议
-            architecture_design = await self._generate_architecture_design(content_analysis)
-            
-            # 实现优先级规划
-            implementation_plan = await self._generate_implementation_plan(crud_operations, business_analysis)
-            
-            # 代码生成建议
-            code_generation = await self._generate_code_suggestions(api_design, mq_config)
-            
-            # 合并AI分析结果
-            ai_result = {
-                "api_design": api_design,
-                "mq_config": mq_config,
-                "architecture_design": architecture_design,
-                "implementation_plan": implementation_plan,
-                "code_generation": code_generation,
-                "metadata": {
-                    "analysis_method": "AI智能分析",
-                    "analysis_time": time.time() - start_time,
-                    "crud_operations_count": len(crud_operations)
-                }
-            }
+            # 执行架构设计
+            design_result = await self.planner.execute_architecture_design(
+                task_id, content_analysis, parsing_result
+            )
             
             duration = time.time() - start_time
-            self._log_analysis_complete(task_id, "AI智能分析", duration, len(str(ai_result)))
+            self._log_analysis_complete(task_id, "AI架构设计", duration, len(str(design_result)))
             
             return self._create_response(
                 success=True,
-                data=ai_result,
-                metadata={"analysis_duration": duration}
+                data=design_result,
+                metadata={
+                    "analysis_method": "LangChain PlanAndExecution",
+                    "framework": "AI系统架构设计师",
+                    "compliance": "遵循AI系统架构设计师规范",
+                    "analysis_duration": duration
+                }
             )
             
         except Exception as e:
-            self._log_error(task_id, "AI智能分析", e)
+            self._log_error(task_id, "AI架构设计", e)
             return self._create_response(
                 success=False,
-                error=f"AI智能分析失败: {str(e)}"
+                error=f"AI架构设计失败: {str(e)}"
             )
     
-    async def _generate_api_design(self, crud_operations: List[Dict], business_analysis: Dict) -> Dict[str, Any]:
-        """生成API接口设计"""
-        system_prompt = """你是一个专业的API架构师，请根据CRUD操作需求设计RESTful API接口。
-
-对每个CRUD操作，请设计：
-1. HTTP方法和URL路径
-2. 请求参数（路径参数、查询参数、请求体）
-3. 响应格式（成功和错误响应）
-4. 状态码
-5. 认证和权限要求
-6. 接口描述和使用场景
-
-返回JSON格式：
-{
-    "api_interfaces": [
-        {
-            "name": "接口名称",
-            "method": "GET/POST/PUT/DELETE",
-            "path": "/api/resource/{id}",
-            "description": "接口描述",
-            "parameters": {
-                "path": [{"name": "id", "type": "string", "required": true}],
-                "query": [{"name": "page", "type": "int", "required": false}],
-                "body": {"type": "object", "properties": {}}
-            },
-            "responses": {
-                "200": {"description": "成功", "schema": {}},
-                "400": {"description": "请求错误"},
-                "401": {"description": "未授权"},
-                "404": {"description": "资源不存在"}
-            },
-            "authentication": "Bearer Token",
-            "permissions": ["read", "write"],
-            "crud_type": "Create/Read/Update/Delete"
-        }
-    ],
-    "api_summary": {
-        "total_interfaces": 数量,
-        "base_url": "/api/v1",
-        "authentication_method": "JWT",
-        "rate_limiting": "100 requests/minute"
-    }
-}"""
+class AIArchitectPlanner:
+    """AI系统架构设计师规划器"""
+    
+    def __init__(self, llm_client, progress_callback: Optional[Callable] = None):
+        self.llm_client = llm_client
+        self.progress_callback = progress_callback
+        self.memory = ArchitectureMemory()
+        self.logger = logging.getLogger(self.__class__.__name__)
         
-        crud_summary = self._summarize_crud_operations(crud_operations)
-        business_entities = business_analysis.get("data_entities", [])
-        
-        user_prompt = f"""请根据以下CRUD操作需求设计API接口：
-
-CRUD操作摘要：
-{json.dumps(crud_summary, ensure_ascii=False, indent=2)}
-
-业务实体：
-{json.dumps(business_entities, ensure_ascii=False, indent=2)}
-
-请按照指定的JSON格式返回API设计结果。"""
+    async def execute_architecture_design(self, task_id: str, content_analysis: Dict, parsing_result: Dict) -> Dict:
+        """执行完整的系统架构设计"""
         
         try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=3000)
-            if response:
-                try:
-                    api_design = json.loads(response)
-                    # 添加接口验证和优化
-                    api_design["validation"] = self._validate_api_design(api_design)
-                    return api_design
-                except json.JSONDecodeError:
-                    return {"raw_response": response, "parse_error": "JSON解析失败"}
-            else:
-                return {"error": "LLM响应为空"}
+            # 创建执行计划
+            execution_plan = self._create_execution_plan(content_analysis, parsing_result)
+            
+            # 执行7个步骤
+            results = {}
+            
+            # 步骤1: 需求分析与功能拆解 (10%)
+            self._update_progress(10, "需求分析与功能拆解")
+            results["business_requirements"] = await self._step1_requirements_analysis(content_analysis, parsing_result)
+            self.memory.add_step_result("step1", results["business_requirements"])
+ 
+            # 步骤2: 数据流程图与接口设计 (25%)
+            self._update_progress(25, "设计数据流程与API接口")
+            results["api_design"], results["data_flow"] = await self._step2_api_design(results["business_requirements"])
+            self.memory.add_step_result("step2", {"api_design": results["api_design"], "data_flow": results["data_flow"]})
+            
+            # 步骤3: 前后端详细架构设计 (40%)
+            self._update_progress(40, "前后端架构设计")
+            results["frontend_arch"], results["backend_arch"] = await self._step3_architecture_design(results["business_requirements"])
+            self.memory.add_step_result("step3", {"frontend_arch": results["frontend_arch"], "backend_arch": results["backend_arch"]})
+            
+            # 步骤4: 安全与权限方案设计 (55%)
+            self._update_progress(55, "安全权限方案设计")
+            results["security_design"] = await self._step4_security_design(results["api_design"])
+            self.memory.add_step_result("step4", results["security_design"])
+            
+            # 步骤5: 消息队列与定时任务设计 (70%)
+            self._update_progress(70, "MQ与定时任务设计")
+            results["mq_design"], results["scheduler_design"] = await self._step5_mq_scheduler_design(results["business_requirements"])
+            self.memory.add_step_result("step5", {"mq_design": results["mq_design"], "scheduler_design": results["scheduler_design"]})
+            
+            # 步骤6: 数据库设计与初始化SQL (85%)
+            self._update_progress(85, "数据库设计")
+            results["database_design"] = await self._step6_database_design(results["business_requirements"])
+            self.memory.add_step_result("step6", results["database_design"])
+            
+            # 步骤7: LangChain集成方案设计 (95%)
+            self._update_progress(95, "LangChain集成方案")
+            results["langchain_integration"] = await self._step7_langchain_integration(results["business_requirements"])
+            self.memory.add_step_result("step7", results["langchain_integration"])
+            
+            # 生成最终方案 (100%)
+            final_result = await self._generate_final_architecture(results)
+            self._update_progress(100, "AI架构设计完成", "ai_analyzed")
+            
+            return final_result
+            
         except Exception as e:
-            return {"error": f"API设计生成失败: {str(e)}"}
+            self.logger.error(f"架构设计执行失败: {str(e)}")
+            raise
     
-    def _summarize_crud_operations(self, crud_operations: List[Dict]) -> Dict[str, Any]:
-        """总结CRUD操作"""
-        summary = {
-            "create_operations": [],
-            "read_operations": [],
-            "update_operations": [],
-            "delete_operations": []
-        }
-        
-        for operation in crud_operations:
-            op_type = operation.get("type", "").lower()
-            if "create" in op_type:
-                summary["create_operations"].append(operation)
-            elif "read" in op_type:
-                summary["read_operations"].append(operation)
-            elif "update" in op_type:
-                summary["update_operations"].append(operation)
-            elif "delete" in op_type:
-                summary["delete_operations"].append(operation)
-        
-        return summary
+    def _update_progress(self, stage: int, message: str, status: str = "ai_analyzing"):
+        """更新进度"""
+        if self.progress_callback:
+            self.progress_callback(stage, message, status)
+        self.logger.info(f"架构设计进度: {stage}% - {message}")
     
-    def _validate_api_design(self, api_design: Dict) -> Dict[str, Any]:
-        """验证API设计"""
-        validation_results = {
-            "valid_interfaces": 0,
-            "issues": [],
-            "suggestions": []
-        }
-        
-        interfaces = api_design.get("api_interfaces", [])
-        
-        for interface in interfaces:
-            # 检查必要字段
-            required_fields = ["name", "method", "path", "description"]
-            missing_fields = [field for field in required_fields if not interface.get(field)]
-            
-            if missing_fields:
-                validation_results["issues"].append(f"接口 {interface.get('name', '未知')} 缺少字段: {missing_fields}")
-            else:
-                validation_results["valid_interfaces"] += 1
-            
-            # 检查HTTP方法和路径的匹配
-            method = interface.get("method", "").upper()
-            path = interface.get("path", "")
-            
-            if method == "GET" and "{id}" not in path and "list" not in interface.get("name", "").lower():
-                validation_results["suggestions"].append(f"GET接口 {interface.get('name')} 建议添加分页参数")
-            
-            if method in ["POST", "PUT"] and not interface.get("parameters", {}).get("body"):
-                validation_results["suggestions"].append(f"{method}接口 {interface.get('name')} 建议添加请求体参数")
-        
-        return validation_results
-    
-    async def _generate_mq_config(self, crud_operations: List[Dict], business_analysis: Dict) -> Dict[str, Any]:
-        """生成MQ消息队列配置"""
-        system_prompt = """你是一个专业的消息队列架构师，请根据业务需求设计消息队列配置。
-
-请设计：
-1. 消息主题(Topic)和队列(Queue)
-2. 生产者和消费者配置
-3. 消息格式和路由规则
-4. 错误处理和重试机制
-5. 监控和告警配置
-
-返回JSON格式：
-{
-    "mq_topics": [
-        {
-            "name": "topic_name",
-            "description": "主题描述",
-            "message_type": "事件类型",
-            "producers": ["服务A", "服务B"],
-            "consumers": ["服务C", "服务D"],
-            "message_schema": {
-                "type": "object",
-                "properties": {}
-            },
-            "routing_key": "routing.key.pattern",
-            "retention_policy": "7 days",
-            "partition_count": 3
-        }
-    ],
-    "mq_queues": [
-        {
-            "name": "queue_name",
-            "description": "队列描述",
-            "binding_topic": "topic_name",
-            "consumer_group": "group_name",
-            "max_retry_count": 3,
-            "dead_letter_queue": "dlq_name"
-        }
-    ],
-    "mq_config": {
-        "broker_type": "RabbitMQ/Kafka",
-        "cluster_nodes": ["node1", "node2"],
-        "authentication": "SASL_PLAINTEXT",
-        "monitoring": {
-            "metrics": ["message_rate", "consumer_lag"],
-            "alerts": ["high_lag", "failed_messages"]
-        }
-    }
-}"""
-        
-        business_processes = business_analysis.get("business_processes", [])
-        
-        user_prompt = f"""请根据以下业务需求设计消息队列配置：
-
-CRUD操作数量：{len(crud_operations)}
-业务流程：
-{json.dumps(business_processes, ensure_ascii=False, indent=2)}
-
-主要考虑的消息场景：
-1. 数据变更通知
-2. 异步处理任务
-3. 系统间集成
-4. 事件驱动架构
-
-请按照指定的JSON格式返回MQ配置结果。"""
-        
-        try:
-            response = await self._call_llm(user_prompt, system_prompt, max_tokens=2500)
-            if response:
-                try:
-                    mq_config = json.loads(response)
-                    # 添加配置验证
-                    mq_config["validation"] = self._validate_mq_config(mq_config)
-                    return mq_config
-                except json.JSONDecodeError:
-                    return {"raw_response": response, "parse_error": "JSON解析失败"}
-            else:
-                return {"error": "LLM响应为空"}
-        except Exception as e:
-            return {"error": f"MQ配置生成失败: {str(e)}"}
-    
-    def _validate_mq_config(self, mq_config: Dict) -> Dict[str, Any]:
-        """验证MQ配置"""
-        validation_results = {
-            "valid_topics": 0,
-            "valid_queues": 0,
-            "issues": [],
-            "suggestions": []
-        }
-        
-        topics = mq_config.get("mq_topics", [])
-        queues = mq_config.get("mq_queues", [])
-        
-        # 验证主题配置
-        for topic in topics:
-            if topic.get("name") and topic.get("description"):
-                validation_results["valid_topics"] += 1
-            else:
-                validation_results["issues"].append(f"主题配置不完整: {topic.get('name', '未知')}")
-        
-        # 验证队列配置
-        for queue in queues:
-            if queue.get("name") and queue.get("binding_topic"):
-                validation_results["valid_queues"] += 1
-            else:
-                validation_results["issues"].append(f"队列配置不完整: {queue.get('name', '未知')}")
-        
-        # 检查主题和队列的绑定关系
-        topic_names = {topic.get("name") for topic in topics}
-        for queue in queues:
-            binding_topic = queue.get("binding_topic")
-            if binding_topic and binding_topic not in topic_names:
-                validation_results["issues"].append(f"队列 {queue.get('name')} 绑定的主题 {binding_topic} 不存在")
-        
-        return validation_results
-    
-    async def _generate_architecture_design(self, content_analysis: Dict) -> Dict[str, Any]:
-        """生成技术架构设计"""
-        complexity_level = content_analysis.get("complexity_analysis", {}).get("complexity_level", "中等")
-        crud_count = len(content_analysis.get("crud_analysis", {}).get("crud_operations", []))
-        
-        architecture_suggestions = {
-            "简单": {
-                "architecture_pattern": "单体架构",
-                "database": "MySQL/PostgreSQL",
-                "cache": "Redis",
-                "framework": "Spring Boot/Django",
-                "deployment": "Docker容器"
-            },
-            "中等": {
-                "architecture_pattern": "分层架构/微服务",
-                "database": "MySQL主从 + MongoDB",
-                "cache": "Redis集群",
-                "framework": "Spring Cloud/Django + Celery",
-                "deployment": "Kubernetes"
-            },
-            "复杂": {
-                "architecture_pattern": "微服务架构",
-                "database": "分布式数据库 + 数据湖",
-                "cache": "Redis集群 + CDN",
-                "framework": "Spring Cloud Gateway + 服务网格",
-                "deployment": "Kubernetes + Istio"
-            }
-        }
-        
-        base_suggestion = architecture_suggestions.get(complexity_level, architecture_suggestions["中等"])
-        
+    def _create_execution_plan(self, content_analysis: Dict, parsing_result: Dict) -> Dict:
+        """创建执行计划"""
         return {
-            "complexity_level": complexity_level,
-            "recommended_architecture": base_suggestion,
-            "scalability_considerations": [
-                f"预计支持{crud_count * 10}个并发操作",
-                "考虑水平扩展能力",
-                "设计缓存策略",
-                "实现负载均衡"
+            "steps": [
+                {"id": 1, "name": "需求分析与功能拆解", "progress": 10},
+                {"id": 2, "name": "数据流程图与接口设计", "progress": 25},
+                {"id": 3, "name": "前后端详细架构设计", "progress": 40},
+                {"id": 4, "name": "安全与权限方案设计", "progress": 55},
+                {"id": 5, "name": "消息队列与定时任务设计", "progress": 70},
+                {"id": 6, "name": "数据库设计与初始化SQL", "progress": 85},
+                {"id": 7, "name": "LangChain集成方案设计", "progress": 95}
             ],
-            "security_recommendations": [
-                "实现JWT认证",
-                "API网关限流",
-                "数据加密传输",
-                "审计日志记录"
-            ],
-            "monitoring_strategy": [
-                "应用性能监控(APM)",
-                "业务指标监控",
-                "错误率和响应时间监控",
-                "资源使用率监控"
+            "input_analysis": content_analysis,
+            "parsing_result": parsing_result
+        }
+    
+    async def _step1_requirements_analysis(self, content_analysis: Dict, parsing_result: Dict) -> Dict:
+        """步骤1: 需求分析与功能拆解"""
+        
+        system_prompt = """你是一个专业的业务分析师，专门处理金融科技和供应链金融系统的需求分析。根据文档分析结果，提取业务需求和功能要求。
+
+请特别关注：
+1. 变更分析中的changeType（新增/修改/删除）
+2. 接口相关的校验规则调整
+3. 前端功能的界面交互变更
+4. 权限控制和业务规则变化
+
+输出JSON格式：
+{
+    "functional_requirements": [
+        {"id": "FR001", "name": "组织单元额度管理", "priority": "high", "complexity": "medium", "description": "新增组织单元额度列表页面，支持查询、筛选、导出功能", "change_type": "新增"}
+    ],
+    "non_functional_requirements": [
+        {"type": "performance", "description": "页面响应时间<500ms", "metric": "latency", "target": "500ms"},
+        {"type": "security", "description": "多组织企业权限控制", "metric": "access_control", "target": "role_based"}
+    ],
+    "business_entities": [
+        {"name": "OrganizationUnit", "attributes": ["id", "name", "quotaAmount", "quotaType"], "relationships": ["belongs_to:enterprise"]},
+        {"name": "Quota", "attributes": ["id", "name", "type", "allocatedAmount", "usedAmount"], "relationships": ["assigned_to:organization_unit"]}
+    ],
+    "user_stories": [
+        {"as": "多组织企业管理员", "want": "查看各组织单元的额度分配情况", "so_that": "更好地管理资金配置"},
+        {"as": "核心企业用户", "want": "重新推送已修改的业务数据", "so_that": "保持数据的准确性"}
+    ],
+    "api_requirements": [
+        {"name": "确权业务申请", "change_type": "修改", "description": "调整bizSerialNo校验规则，允许特定条件下重复推送"}
+    ],
+    "ui_requirements": [
+        {"component": "额度管理页面", "change_type": "修改", "description": "功能名称变更，新增组织单元额度按钮"},
+        {"component": "组织单元额度列表", "change_type": "新增", "description": "新增独立的组织单元额度管理页面"}
+    ],
+    "complexity_assessment": {
+        "level": "medium",
+        "estimated_effort": "2-3人月",
+        "risk_factors": ["多组织权限复杂度", "接口校验逻辑调整", "前后端联调"]
+    }
+}"""
+        
+        # 构建用户输入，整合两个数据源
+        # 从content_analysis中提取数据
+        content_data = content_analysis.get("data", {})
+        change_analysis = content_data.get("change_analysis", {})
+        
+        # 从parsing_result中提取数据
+        parsing_data = parsing_result.get("data", {})
+        document_structure = parsing_data.get("documentStructure", {})
+        content_summary = document_structure.get("contentSummary", {})
+        content_keywords = document_structure.get("contentKeyWord", {})
+        file_format = parsing_data.get("fileFormat", {})
+        
+        user_prompt = f"""
+请根据以下文档分析结果，提取业务需求：
+
+【文档基本信息】：
+文件名：{file_format.get("fileName", "未知")}
+文档类型：{file_format.get("primaryType", "未知")}
+字符数：{file_format.get("technicalDetails", {}).get("charCount", 0)}
+语言：{file_format.get("basicInfo", {}).get("language", "未知")}
+
+【文档内容摘要】：
+摘要：{content_summary.get("abstract", "无摘要")}
+功能数量：{content_summary.get("functionCount", 0)}
+功能列表：{json.dumps(content_summary.get("functionName", []), ensure_ascii=False)}
+API数量：{content_summary.get("apiCount", 0)}
+API列表：{json.dumps(content_summary.get("apiName", []), ensure_ascii=False)}
+
+【关键词分析】：
+主要关键词：{json.dumps(content_keywords.get("primaryKeywords", []), ensure_ascii=False, indent=2)}
+语义集群：{json.dumps(content_keywords.get("semanticClusters", []), ensure_ascii=False, indent=2)}
+
+【变更分析结果】：
+{json.dumps(change_analysis, ensure_ascii=False, indent=2)}
+
+请基于上述信息，按照JSON格式输出详细的需求分析结果。
+注意：
+1. 优先从变更分析中提取功能需求（change_analyses字段）
+2. 参考文档摘要了解整体业务背景
+3. 结合关键词分析理解业务领域
+4. 将变更项转化为具体的功能需求和用户故事
+"""
+        
+        response = await self._call_llm_with_retry(user_prompt, system_prompt)
+        return self._parse_json_response(response, "需求分析")
+    
+    async def _step2_api_design(self, business_requirements: Dict) -> tuple:
+        """步骤2: 数据流程图与接口设计"""
+        
+        # API接口设计
+        api_system_prompt = """你是一个专业的API架构师。根据业务需求设计RESTful API接口。
+
+输出JSON格式：
+{
+    "api_specification": {
+        "version": "v1",
+        "base_url": "/api/v1",
+        "authentication": "JWT Bearer Token"
+    },
+    "interfaces": [
+        {
+            "resource": "users",
+            "endpoints": [
+                {
+                    "method": "GET",
+                    "path": "/api/v1/users",
+                    "description": "获取用户列表",
+                    "parameters": {
+                        "query": [{"name": "page", "type": "integer", "required": false}]
+                    },
+                    "responses": {
+                        "200": {"description": "成功", "schema": "UserListResponse"}
+                    },
+                    "security": ["jwt_auth"]
+                }
             ]
         }
+    ],
+    "data_models": [
+        {
+            "name": "User",
+            "properties": {
+                "id": {"type": "integer", "description": "用户ID"},
+                "name": {"type": "string", "description": "用户名"}
+            }
+        }
+    ]
+}"""
+        
+        # 数据流程设计
+        flow_system_prompt = """你是一个专业的系统架构师。设计系统数据流程和交互模式。
+
+输出JSON格式：
+{
+    "data_flow_diagram": {
+        "mermaid_syntax": "graph TD; A[前端] --> B[网关]; B --> C[服务层]",
+        "components": [
+            {"name": "前端层", "type": "Vue3", "responsibilities": ["用户交互", "数据展示"]},
+            {"name": "网关层", "type": "Spring Gateway", "responsibilities": ["路由", "认证", "限流"]},
+            {"name": "服务层", "type": "Spring Boot", "responsibilities": ["业务逻辑", "数据处理"]}
+        ]
+    },
+    "interaction_patterns": [
+        {"pattern": "Request-Response", "usage": "同步API调用"},
+        {"pattern": "Event-Driven", "usage": "异步消息处理"}
+    ],
+    "performance_targets": {
+        "response_time": "< 500ms",
+        "throughput": "1000 req/s",
+        "availability": "99.9%"
+    }
+}"""
+        
+        # 并行执行API设计和数据流程设计
+        api_task = self._call_llm_with_retry(
+            self._build_api_prompt(business_requirements),
+            api_system_prompt
+        )
+        
+        flow_task = self._call_llm_with_retry(
+            self._build_flow_prompt(business_requirements),
+            flow_system_prompt
+        )
+        
+        api_response, flow_response = await asyncio.gather(api_task, flow_task)
+        
+        return (
+            self._parse_json_response(api_response, "API设计"),
+            self._parse_json_response(flow_response, "数据流程设计")
+        )
     
-    async def _generate_implementation_plan(self, crud_operations: List[Dict], business_analysis: Dict) -> Dict[str, Any]:
-        """生成实现优先级规划"""
-        # 根据复杂度和业务重要性排序
-        prioritized_operations = self._prioritize_operations(crud_operations)
+    async def _step3_architecture_design(self, business_requirements: Dict) -> tuple:
+        """步骤3: 前后端详细架构设计"""
         
-        phases = []
-        current_phase = []
-        phase_complexity = 0
+        frontend_prompt = f"""
+请根据以下业务需求设计前端架构：
+{json.dumps(business_requirements, ensure_ascii=False, indent=2)}
+
+输出JSON格式的前端架构设计：
+{{
+    "framework": "Vue3",
+    "architecture_pattern": "组件化架构",
+    "state_management": "Pinia",
+    "ui_components": [
+        {{"name": "Layout", "description": "布局组件"}},
+        {{"name": "DataTable", "description": "数据表格组件"}}
+    ],
+    "routing_strategy": "Vue Router",
+    "build_tools": ["Vite", "TypeScript"]
+}}
+"""
         
-        for operation in prioritized_operations:
-            op_complexity = self._calculate_operation_complexity(operation)
-            
-            if phase_complexity + op_complexity > 10 and current_phase:
-                phases.append({
-                    "phase": len(phases) + 1,
-                    "operations": current_phase.copy(),
-                    "estimated_time": self._estimate_phase_time(current_phase),
-                    "complexity_score": phase_complexity
-                })
-                current_phase = []
-                phase_complexity = 0
-            
-            current_phase.append(operation)
-            phase_complexity += op_complexity
+        backend_prompt = f"""
+请根据以下业务需求设计后端架构：
+{json.dumps(business_requirements, ensure_ascii=False, indent=2)}
+
+输出JSON格式的后端架构设计：
+{{
+    "framework": "Spring Boot",
+    "architecture_pattern": "分层架构",
+    "microservices": [
+        {{"name": "user-service", "description": "用户管理服务"}},
+        {{"name": "document-service", "description": "文档处理服务"}}
+    ],
+    "service_discovery": "Nacos",
+    "database": "MySQL + Redis"
+}}
+"""
         
-        if current_phase:
-            phases.append({
-                "phase": len(phases) + 1,
-                "operations": current_phase,
-                "estimated_time": self._estimate_phase_time(current_phase),
-                "complexity_score": phase_complexity
-            })
+        frontend_task = self._call_llm_with_retry(frontend_prompt, "你是前端架构师")
+        backend_task = self._call_llm_with_retry(backend_prompt, "你是后端架构师")
+        
+        frontend_response, backend_response = await asyncio.gather(frontend_task, backend_task)
+        
+        return (
+            self._parse_json_response(frontend_response, "前端架构设计"),
+            self._parse_json_response(backend_response, "后端架构设计")
+        )
+    
+    async def _step4_security_design(self, api_design: Dict) -> Dict:
+        """步骤4: 安全与权限方案设计"""
+        
+        prompt = f"""
+基于以下API设计，制定安全方案：
+{json.dumps(api_design, ensure_ascii=False, indent=2)}
+
+输出JSON格式的安全设计：
+{{
+    "authentication": {{
+        "method": "JWT",
+        "token_expiry": "24h",
+        "refresh_strategy": "sliding_window"
+    }},
+    "authorization": {{
+        "model": "RBAC",
+        "roles": ["admin", "user", "viewer"],
+        "permissions": ["read", "write", "delete"]
+    }},
+    "security_measures": [
+        "API限流",
+        "HTTPS强制",
+        "XSS防护",
+        "CSRF防护"
+    ]
+}}
+"""
+        
+        response = await self._call_llm_with_retry(prompt, "你是安全架构师")
+        return self._parse_json_response(response, "安全设计")
+    
+    async def _step5_mq_scheduler_design(self, business_requirements: Dict) -> tuple:
+        """步骤5: 消息队列与定时任务设计"""
+        
+        mq_prompt = f"""
+基于业务需求设计消息队列：
+{json.dumps(business_requirements, ensure_ascii=False, indent=2)}
+
+输出JSON格式的MQ设计：
+{{
+    "message_broker": "RabbitMQ",
+    "exchanges": [
+        {{"name": "document.exchange", "type": "topic"}},
+        {{"name": "notification.exchange", "type": "direct"}}
+    ],
+    "queues": [
+        {{"name": "document.processing", "routing_key": "document.process"}},
+        {{"name": "notification.email", "routing_key": "notify.email"}}
+    ]
+}}
+"""
+        
+        scheduler_prompt = f"""
+基于业务需求设计定时任务：
+{json.dumps(business_requirements, ensure_ascii=False, indent=2)}
+
+输出JSON格式的定时任务设计：
+{{
+    "scheduler": "Quartz",
+    "jobs": [
+        {{"name": "DocumentCleanupJob", "cron": "0 0 2 * * ?", "description": "清理过期文档"}},
+        {{"name": "ReportGenerationJob", "cron": "0 0 8 * * MON", "description": "生成周报"}}
+    ]
+}}
+"""
+        
+        mq_task = self._call_llm_with_retry(mq_prompt, "你是消息队列架构师")
+        scheduler_task = self._call_llm_with_retry(scheduler_prompt, "你是系统架构师")
+        
+        mq_response, scheduler_response = await asyncio.gather(mq_task, scheduler_task)
+        
+        return (
+            self._parse_json_response(mq_response, "MQ设计"),
+            self._parse_json_response(scheduler_response, "定时任务设计")
+        )
+    
+    async def _step6_database_design(self, business_requirements: Dict) -> Dict:
+        """步骤6: 数据库设计与初始化SQL"""
+        
+        prompt = f"""
+基于业务需求设计数据库：
+{json.dumps(business_requirements, ensure_ascii=False, indent=2)}
+
+输出JSON格式的数据库设计：
+{{
+    "database_type": "MySQL",
+    "tables": [
+        {{
+            "name": "users",
+            "columns": [
+                {{"name": "id", "type": "BIGINT", "constraint": "PRIMARY KEY AUTO_INCREMENT"}},
+                {{"name": "username", "type": "VARCHAR(50)", "constraint": "UNIQUE NOT NULL"}},
+                {{"name": "email", "type": "VARCHAR(100)", "constraint": "NOT NULL"}}
+            ],
+            "indexes": ["INDEX idx_username (username)"]
+        }}
+    ],
+    "relationships": [
+        {{"from_table": "documents", "to_table": "users", "type": "many_to_one"}}
+    ]
+}}
+"""
+        
+        response = await self._call_llm_with_retry(prompt, "你是数据库架构师")
+        return self._parse_json_response(response, "数据库设计")
+    
+    async def _step7_langchain_integration(self, business_requirements: Dict) -> Dict:
+        """步骤7: LangChain集成方案设计"""
+        
+        prompt = f"""
+基于业务需求设计LangChain集成方案：
+{json.dumps(business_requirements, ensure_ascii=False, indent=2)}
+
+输出JSON格式的LangChain集成设计：
+{{
+    "framework": "LangChain",
+    "components": {{
+        "llm": "火山引擎",
+        "memory": "ConversationBufferMemory",
+        "vector_store": "Weaviate",
+        "embeddings": "文本嵌入模型"
+    }},
+    "chains": [
+        {{"name": "DocumentAnalysisChain", "description": "文档分析链"}},
+        {{"name": "QuestionAnswerChain", "description": "问答链"}}
+    ],
+    "tools": [
+        {{"name": "DocumentParser", "description": "文档解析工具"}},
+        {{"name": "ContentAnalyzer", "description": "内容分析工具"}}
+    ]
+}}
+"""
+        
+        response = await self._call_llm_with_retry(prompt, "你是AI架构师")
+        return self._parse_json_response(response, "LangChain集成设计")
+    
+    async def _generate_final_architecture(self, results: Dict) -> Dict:
+        """生成最终架构方案"""
         
         return {
-            "implementation_phases": phases,
-            "total_phases": len(phases),
-            "estimated_total_time": sum(phase["estimated_time"] for phase in phases),
-            "priority_strategy": "核心功能优先，复杂度递增",
-            "risk_assessment": self._assess_implementation_risks(phases)
+            "architecture_design": {
+                "business_analysis": results.get("business_requirements", {}),
+                "api_design": {
+                    "api_specification": results.get("api_design", {}),
+                    "data_flow": results.get("data_flow", {})
+                },
+                "system_architecture": {
+                    "frontend_architecture": results.get("frontend_arch", {}),
+                    "backend_architecture": results.get("backend_arch", {}),
+                },
+                "security_design": results.get("security_design", {}),
+                "infrastructure_design": {
+                    "mq_configuration": results.get("mq_design", {}),
+                    "scheduler_configuration": results.get("scheduler_design", {}),
+                    "database_schema": results.get("database_design", {})
+                },
+                "implementation_plan": {
+                    "phases": [
+                        {"phase": 1, "name": "基础架构搭建", "duration": "2周"},
+                        {"phase": 2, "name": "核心功能开发", "duration": "4周"},
+                        {"phase": 3, "name": "AI分析功能", "duration": "3周"},
+                        {"phase": 4, "name": "系统优化", "duration": "2周"}
+                    ],
+                    "total_duration": "11周",
+                    "risk_assessment": "中等风险"
+                },
+                "langchain_integration": results.get("langchain_integration", {})
+            },
+            "metadata": {
+                "design_timestamp": datetime.now().isoformat(),
+                "framework": "AI系统架构设计师",
+                "tech_stack": {
+                    "frontend": "Vue3",
+                    "backend": "Java8 + Spring Boot + Nacos",
+                    "database": "MySQL",
+                    "mq": "RabbitMQ",
+                    "ai_framework": "LangChain"
+                },
+                "design_principles": ["前后端分离", "微服务架构", "RESTful API", "安全第一"]
+            }
         }
     
-    def _prioritize_operations(self, crud_operations: List[Dict]) -> List[Dict]:
-        """操作优先级排序"""
-        def priority_score(operation):
-            # 基础CRUD操作优先级：Read > Create > Update > Delete
-            type_priority = {
-                "read": 4,
-                "create": 3,
-                "update": 2,
-                "delete": 1
+    def _build_api_prompt(self, business_requirements: Dict) -> str:
+        """构建API设计提示"""
+        
+        functional_reqs = business_requirements.get("functional_requirements", [])
+        api_reqs = business_requirements.get("api_requirements", [])
+        ui_reqs = business_requirements.get("ui_requirements", [])
+        entities = business_requirements.get("business_entities", [])
+        
+        return f"""
+基于以下业务需求设计RESTful API：
+
+功能需求：
+{json.dumps(functional_reqs, ensure_ascii=False, indent=2)}
+
+API需求：
+{json.dumps(api_reqs, ensure_ascii=False, indent=2)}
+
+界面需求：
+{json.dumps(ui_reqs, ensure_ascii=False, indent=2)}
+
+业务实体：
+{json.dumps(entities, ensure_ascii=False, indent=2)}
+
+请设计完整的RESTful API接口规范，特别关注：
+1. 组织单元额度相关的查询、筛选、导出接口
+2. 确权业务申请接口的校验规则调整
+3. 多组织企业的权限控制
+"""
+    
+    def _build_flow_prompt(self, business_requirements: Dict) -> str:
+        """构建数据流程设计提示"""
+        return f"""
+基于以下业务需求设计系统数据流程：
+{json.dumps(business_requirements, ensure_ascii=False, indent=2)}
+
+请设计系统组件间的数据流程和交互模式。
+"""
+    
+    async def _call_llm_with_retry(self, prompt: str, system_prompt: str, max_retries: int = 3) -> str:
+        """带重试机制的LLM调用"""
+        import logging
+        logger = logging.getLogger(self.__class__.__name__)
+        
+        for attempt in range(max_retries):
+            try:
+                response = await self._call_llm(prompt, system_prompt, max_tokens=4000)
+                if response:
+                    return response
+            except Exception as e:
+                logger.warning(f"LLM调用失败，尝试 {attempt + 1}/{max_retries}: {str(e)}")
+                if attempt == max_retries - 1:
+                    raise
+                await asyncio.sleep(2 ** attempt)  # 指数退避
+        
+        raise Exception("LLM调用失败，已达最大重试次数")
+
+    async def _call_llm(self, prompt: str, system_prompt: str = None, max_tokens: int = 4000) -> Optional[str]:
+        """调用LLM进行分析"""
+        if not self.llm_client:
+            raise ValueError("LLM客户端未初始化")
+        
+        try:
+            response = self.llm_client.chat(
+                messages=[
+                    {"role": "system", "content": system_prompt or "你是一个专业的系统架构师"},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens
+            )
+            return response
+        except Exception as e:
+            self.logger.error(f"LLM调用失败: {str(e)}")
+            return None
+
+    def _parse_json_response(self, response: str, step_name: str) -> Dict:
+        """解析JSON响应，包含错误处理"""
+        try:
+            # 尝试提取JSON部分
+            if "```json" in response:
+                json_start = response.find("```json") + 7
+                json_end = response.find("```", json_start)
+                json_str = response[json_start:json_end].strip()
+            else:
+                json_str = response.strip()
+            
+            return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            self.logger.error(f"{step_name}JSON解析失败: {str(e)}")
+            return {
+                "error": f"JSON解析失败: {str(e)}",
+                "raw_response": response,
+                "step": step_name
             }
-            
-            op_type = operation.get("type", "").lower()
-            base_score = type_priority.get(op_type, 2)
-            
-            # 复杂度影响（简单的优先）
-            complexity = operation.get("complexity", "中等")
-            complexity_score = {"简单": 3, "中等": 2, "复杂": 1}.get(complexity, 2)
-            
-            return base_score + complexity_score
-        
-        return sorted(crud_operations, key=priority_score, reverse=True)
+
+
+class ArchitectureMemory:
+    """架构设计记忆管理"""
     
-    def _calculate_operation_complexity(self, operation: Dict) -> int:
-        """计算操作复杂度分数"""
-        complexity_map = {"简单": 2, "中等": 5, "复杂": 8}
-        return complexity_map.get(operation.get("complexity", "中等"), 5)
-    
-    def _estimate_phase_time(self, operations: List[Dict]) -> int:
-        """估算阶段开发时间（天）"""
-        total_complexity = sum(self._calculate_operation_complexity(op) for op in operations)
-        return max(3, total_complexity)  # 最少3天
-    
-    def _assess_implementation_risks(self, phases: List[Dict]) -> List[str]:
-        """评估实现风险"""
-        risks = []
+    def __init__(self):
+        self.design_context = {}
+        self.step_results = {}
         
-        if len(phases) > 4:
-            risks.append("项目阶段过多，可能导致开发周期过长")
+    def add_step_result(self, step: str, result: Dict):
+        """添加步骤结果到记忆"""
+        self.step_results[step] = result
         
-        max_complexity = max(phase["complexity_score"] for phase in phases) if phases else 0
-        if max_complexity > 15:
-            risks.append("存在高复杂度阶段，需要额外的技术评审")
-        
-        total_time = sum(phase["estimated_time"] for phase in phases)
-        if total_time > 30:
-            risks.append("总开发时间超过1个月，建议考虑资源投入")
-        
-        return risks or ["风险评估正常"]
-    
-    async def _generate_code_suggestions(self, api_design: Dict, mq_config: Dict) -> Dict[str, Any]:
-        """生成代码建议"""
+    def get_context_for_step(self, step: str) -> Dict:
+        """获取步骤所需的上下文"""
         return {
-            "framework_recommendations": {
-                "backend": ["Spring Boot", "Django", "FastAPI"],
-                "frontend": ["React", "Vue.js", "Angular"],
-                "database": ["MySQL", "PostgreSQL", "MongoDB"]
-            },
-            "code_structure": {
-                "controller_layer": "处理HTTP请求和响应",
-                "service_layer": "业务逻辑处理",
-                "repository_layer": "数据访问层",
-                "message_layer": "消息队列处理"
-            },
-            "best_practices": [
-                "使用依赖注入",
-                "实现统一异常处理",
-                "添加参数验证",
-                "实现分页查询",
-                "使用事务管理",
-                "添加单元测试"
-            ],
-            "generated_examples": {
-                "api_count": len(api_design.get("api_interfaces", [])),
-                "mq_topic_count": len(mq_config.get("mq_topics", [])),
-                "estimated_code_lines": len(api_design.get("api_interfaces", [])) * 50
-            }
+            "previous_results": self.step_results,
+            "design_context": self.design_context
         } 

@@ -1583,6 +1583,12 @@ onMounted(() => {
   
   // 监听切换到结果页签的事件
   window.addEventListener('switchToResultsTab', handleSwitchToResultsTab)
+  
+  // 设置全局图片预览函数
+  window.previewDocumentImage = previewDocumentImage
+  window.closeImagePreview = closeImagePreview
+  window.downloadImage = downloadImage
+  window.copyImageUrl = copyImageUrl
 })
 
 // 事件处理函数
@@ -1597,6 +1603,12 @@ const handleSwitchToResultsTab = (event) => {
 // 组件卸载时清理事件监听器
 onUnmounted(() => {
   window.removeEventListener('switchToResultsTab', handleSwitchToResultsTab)
+  
+  // 清理全局图片预览函数
+  delete window.previewDocumentImage
+  delete window.closeImagePreview
+  delete window.downloadImage
+  delete window.copyImageUrl
 })
 
 const getResultTypeTag = (type) => {
@@ -1746,7 +1758,313 @@ const md = new MarkdownIt({
 // Markdown渲染方法
 const renderMarkdown = (content) => {
   if (!content) return ''
-  return md.render(content)
+  
+  // 在渲染markdown之前，先处理图片链接
+  const preprocessedContent = preprocessImageLinks(content)
+  
+  // 进行基础的Markdown渲染
+  let rendered = md.render(preprocessedContent)
+  
+  // 后处理：将图片链接转换为图片显示
+  rendered = postProcessImageLinks(rendered)
+  
+  return rendered
+}
+
+// 后处理图片链接 - 在markdown渲染之后处理
+const postProcessImageLinks = (htmlContent) => {
+  if (!htmlContent) return ''
+  
+  // 图片文件扩展名正则
+  const imageExtensions = /\.(jpg|jpeg|png|gif|bmp|webp|svg)(\?[^\s]*)?$/i
+  
+  // 第一步：处理HTML中的链接标签
+  let processed = htmlContent.replace(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>([^<]+)<\/a>/g, (match, url, linkText) => {
+    // 检查URL是否为图片
+    if (imageExtensions.test(url)) {
+      const fileName = url.split('/').pop().split('?')[0]
+      const imageId = `img-${Math.random().toString(36).substr(2, 9)}`
+      
+      // 返回图片容器而不是链接
+      return `<div class="document-image-container">
+<img 
+  id="${imageId}"
+  src="${url}" 
+  alt="文档图片" 
+  class="document-image" 
+  onclick="previewDocumentImage('${url}', '${imageId}')"
+  onerror="this.style.display='none'; this.nextSibling.style.display='inline';" 
+/>
+<span style="display:none; color: #f56c6c; font-size: 12px;">
+  图片加载失败: <a href="${url}" target="_blank" style="color: #409eff;">${url}</a>
+</span>
+<div class="image-info">
+  <span class="image-label">📷 文档图片</span>
+  <span class="image-url">${fileName}</span>
+</div>
+</div>`
+    }
+    
+    // 如果不是图片，保持原来的链接
+    return match
+  })
+  
+  // 第二步：处理普通文本中的图片URL（不在HTML标签内的）
+  processed = processed.replace(/(^|[^"'>])(https?:\/\/[^\s<>"']+)/g, (match, prefix, url) => {
+    // 检查URL是否为图片，且不在HTML标签内
+    if (imageExtensions.test(url) && !match.includes('src=') && !match.includes('href=')) {
+      const fileName = url.split('/').pop().split('?')[0]
+      const imageId = `img-${Math.random().toString(36).substr(2, 9)}`
+      
+      // 返回图片容器
+      return `${prefix}<div class="document-image-container">
+<img 
+  id="${imageId}"
+  src="${url}" 
+  alt="文档图片" 
+  class="document-image" 
+  onclick="previewDocumentImage('${url}', '${imageId}')"
+  onerror="this.style.display='none'; this.nextSibling.style.display='inline';" 
+/>
+<span style="display:none; color: #f56c6c; font-size: 12px;">
+  图片加载失败: <a href="${url}" target="_blank" style="color: #409eff;">${url}</a>
+</span>
+<div class="image-info">
+  <span class="image-label">📷 文档图片</span>
+  <span class="image-url">${fileName}</span>
+</div>
+</div>`
+    }
+    
+    // 如果不是图片或已在标签内，保持原样
+    return match
+  })
+  
+  return processed
+}
+
+// 预处理图片链接 - 在markdown渲染之前处理
+const preprocessImageLinks = (content) => {
+  if (!content) return ''
+  
+  // 图片文件扩展名正则 - 更严格的匹配
+  const imageExtensions = /\.(jpg|jpeg|png|gif|bmp|webp|svg)(\?[^\s]*)?$/i
+  
+  // 分行处理，避免重复替换
+  const lines = content.split('\n')
+  let processed = []
+  
+  for (let line of lines) {
+    // 跳过已经处理过的内容
+    if (line.includes('document-image-container') || 
+        line.includes('![') || 
+        line.includes('<img')) {
+      processed.push(line)
+      continue
+    }
+    
+    // 检查是否整行都是图片URL
+    const trimmedLine = line.trim()
+    const fullUrlMatch = trimmedLine.match(/^(https?:\/\/[^\s]+)$/)
+    
+    if (fullUrlMatch && imageExtensions.test(fullUrlMatch[1])) {
+      const imageUrl = fullUrlMatch[1]
+      const fileName = imageUrl.split('/').pop().split('?')[0] // 去掉query参数
+      const imageId = `img-${Math.random().toString(36).substr(2, 9)}`
+      
+      // 转换为自定义的图片显示格式
+      processed.push(`<div class="document-image-container">
+<img 
+  id="${imageId}"
+  src="${imageUrl}" 
+  alt="文档图片" 
+  class="document-image" 
+  onclick="previewDocumentImage('${imageUrl}', '${imageId}')"
+  onerror="this.style.display='none'; this.nextSibling.style.display='inline';" 
+/>
+<span style="display:none; color: #f56c6c; font-size: 12px;">
+  图片加载失败: <a href="${imageUrl}" target="_blank" style="color: #409eff;">${imageUrl}</a>
+</span>
+<div class="image-info">
+  <span class="image-label">📷 文档图片</span>
+  <span class="image-url">${fileName}</span>
+</div>
+</div>`)
+      continue
+    }
+    
+    // 对于其他行，保持原样
+    processed.push(line)
+  }
+  
+  return processed.join('\n')
+}
+
+// 图片预览功能
+const previewDocumentImage = (imageSrc, imageId) => {
+  // 创建图片预览对话框
+  const dialog = document.createElement('div')
+  dialog.className = 'image-preview-dialog'
+  dialog.innerHTML = `
+    <div class="image-preview-overlay" onclick="closeImagePreview()">
+      <div class="image-preview-content" onclick="event.stopPropagation()">
+        <div class="image-preview-header">
+          <span class="image-preview-title">图片预览</span>
+          <button class="image-preview-close" onclick="closeImagePreview()">×</button>
+        </div>
+        <div class="image-preview-body">
+          <img src="${imageSrc}" alt="图片预览" class="preview-image" />
+        </div>
+        <div class="image-preview-footer">
+          <button class="preview-btn" onclick="window.open('${imageSrc}', '_blank')">在新窗口打开</button>
+          <button class="preview-btn" onclick="downloadImage('${imageSrc}')">下载图片</button>
+          <button class="preview-btn" onclick="copyImageUrl('${imageSrc}')">复制链接</button>
+        </div>
+      </div>
+    </div>
+  `
+  
+  document.body.appendChild(dialog)
+  
+  // 添加样式
+  if (!document.querySelector('#image-preview-styles')) {
+    const style = document.createElement('style')
+    style.id = 'image-preview-styles'
+    style.textContent = `
+      .image-preview-dialog {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 9999;
+        animation: fadeIn 0.3s ease;
+      }
+      
+      .image-preview-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      
+      .image-preview-content {
+        background: white;
+        border-radius: 8px;
+        max-width: 90vw;
+        max-height: 90vh;
+        cursor: default;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+      
+      .image-preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e4e7ed;
+        background: #f8f9fa;
+      }
+      
+      .image-preview-title {
+        font-weight: 600;
+        color: #303133;
+      }
+      
+      .image-preview-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #909399;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+      }
+      
+      .image-preview-close:hover {
+        background: #e4e7ed;
+        color: #606266;
+      }
+      
+      .image-preview-body {
+        padding: 20px;
+        text-align: center;
+        max-height: 70vh;
+        overflow: auto;
+      }
+      
+      .preview-image {
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      
+      .image-preview-footer {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px 20px;
+        border-top: 1px solid #e4e7ed;
+        background: #f8f9fa;
+      }
+      
+      .preview-btn {
+        padding: 8px 16px;
+        border: 1px solid #dcdfe6;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #606266;
+        transition: all 0.3s;
+      }
+      
+      .preview-btn:hover {
+        border-color: #409eff;
+        color: #409eff;
+      }
+    `
+    document.head.appendChild(style)
+  }
+}
+
+// 全局函数定义，供HTML中的onclick使用（在onMounted中设置）
+const closeImagePreview = () => {
+  const dialog = document.querySelector('.image-preview-dialog')
+  if (dialog) {
+    dialog.remove()
+  }
+}
+
+const downloadImage = (imageSrc) => {
+  const a = document.createElement('a')
+  a.href = imageSrc
+  a.download = imageSrc.split('/').pop()
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
+const copyImageUrl = async (imageSrc) => {
+  try {
+    await navigator.clipboard.writeText(imageSrc)
+    ElMessage.success('图片链接已复制到剪贴板')
+  } catch (error) {
+    ElMessage.error('复制失败')
+  }
 }
 
 // Markdown操作方法
@@ -3678,6 +3996,90 @@ const getTotalChangesCount = () => {
       max-width: 100%;
       overflow-wrap: break-word;
       word-wrap: break-word;
+    }
+  }
+  
+  /* 文档图片容器样式 */
+  :deep(.document-image-container) {
+    margin: 16px 0;
+    border: 1px solid #e4e7ed;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+  }
+  
+  /* 文档图片样式 */
+  :deep(.document-image) {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    
+    &:hover {
+      opacity: 0.9;
+    }
+    
+    /* 图片加载动画 */
+    &[src] {
+      animation: fadeIn 0.3s ease-in;
+    }
+  }
+  
+  /* 图片信息标签 */
+  :deep(.image-info) {
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-top: 1px solid #e4e7ed;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    
+    .image-label {
+      color: #67c23a;
+      font-weight: 500;
+    }
+    
+    .image-url {
+      color: #909399;
+      font-family: 'Courier New', monospace;
+      background: #e4e7ed;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  /* 图片链接样式优化 */
+  :deep(a[href*=".jpg"]),
+  :deep(a[href*=".jpeg"]),
+  :deep(a[href*=".png"]),
+  :deep(a[href*=".gif"]),
+  :deep(a[href*=".webp"]),
+  :deep(a[href*=".svg"]) {
+    color: #67c23a;
+    font-weight: 500;
+    
+    &:before {
+      content: "🖼️ ";
+      margin-right: 4px;
     }
   }
 }

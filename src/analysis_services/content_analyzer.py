@@ -1755,9 +1755,10 @@ class ContentAnalyzerService(BaseAnalysisService):
 """
 
             # 调用大模型
-            response = await self.llm_client.chat_completion([
-                {"role": "user", "content": prompt}
-            ], temperature=0.1)  # 使用较低温度以获得更稳定的结果
+            response = self.llm_client.chat(
+                messages=[{"role": "user", "content": prompt}], 
+                temperature=0.1
+            )  # 使用较低温度以获得更稳定的结果
             
             if not response:
                 self.logger.warning("大模型智能去重失败，返回原始结果")

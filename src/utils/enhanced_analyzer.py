@@ -32,10 +32,11 @@ logger = logging.getLogger(__name__)
 class EnhancedAnalyzer:
     """增强分析器 - 提供高级文本分析功能"""
     
-    def __init__(self):
+    def __init__(self, base_url: str = "http://localhost:8082"):
         """初始化增强分析器"""
         self.text_patterns = self._init_text_patterns()
         self.structure_patterns = self._init_structure_patterns()
+        self.base_url = base_url
         logger.info("增强分析器初始化完成")
         if not DOCX_AVAILABLE:
             logger.warning("python-docx未安装，Word文档解析功能受限")
@@ -1211,6 +1212,11 @@ class EnhancedAnalyzer:
                         # 生成唯一文件名
                         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                         base_name = os.path.splitext(file_name)[0]
+
+                        # 截取文件名中_前面的部分
+                        base_name = base_name.split('_')[0]
+
+                        
                         image_filename = f"{base_name}_img_{timestamp}_{image_count}.{ext}"
                         image_path = os.path.join(temp_dir, image_filename)
                         
@@ -1218,15 +1224,15 @@ class EnhancedAnalyzer:
                         with open(image_path, 'wb') as img_file:
                             img_file.write(image_data)
                         
-                        # 创建Markdown图片语法
-                        relative_path = f"uploads/temp/{image_filename}"
-                        markdown_image = f"![图片{image_count + 1}]({relative_path})"
+                        # 创建Markdown图片语法 - 使用完整URL
+                        full_url = f"{self.base_url}/uploads/temp/{image_filename}"
+                        markdown_image = f"![图片{image_count + 1}]({full_url})"
                         
                         # 建立关系映射
                         image_relationships[rel.rId] = markdown_image
                         
                         image_count += 1
-                        logger.info(f"图片已保存: {relative_path}")
+                        logger.info(f"图片已保存: {full_url}")
                         
                     except Exception as e:
                         logger.warning(f"保存图片失败: {e}")

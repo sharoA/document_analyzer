@@ -556,8 +556,6 @@ def process_content_analysis(task: FileParsingTask, parsing_result: dict):
                     document_content=content
                 )
                 
-                # 更新任务的内容分析结果
-                task.content_analysis = content_result
                 # 保存内容分析结果到Redis
                 redis_task_storage.save_content_analysis(task.id, content_result)
                 task.update_progress(100, "内容分析完成", "content_analyzed")
@@ -632,14 +630,14 @@ def process_content_analysis(task: FileParsingTask, parsing_result: dict):
         task.status = "failed"
         task.update_progress(task.progress, error_msg, "failed")
 
-def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensive", content_analysis_result: dict = None, crud_operations: dict = None):
+def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensive", content_analysis_result: dict = None, parsing_result: dict = None):
     """处理AI分析任务 - 使用分析服务模块"""
     try:
         # 检查前置条件 - 允许 ai_analyzing 状态（V2流程中已经预先设置了状态）
         if task.status not in ["content_analyzed", "ai_analyzing"]:
             raise ValueError(f"任务状态不正确，期望 'content_analyzed' 或 'ai_analyzing'，实际 '{task.status}'")
         
-        if not task.content_analysis:
+        if not content_analysis_result:
             raise ValueError("内容分析结果不存在，无法进行AI分析")
         
         analysis_logger.info(f"🤖 开始AI分析任务: {task.id}")
@@ -652,17 +650,21 @@ def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensi
         if analysis_service_manager:
             task.update_progress(30, "使用分析服务进行AI分析", "ai_analyzing")
             
-            # 从内容分析结果中提取CRUD操作
-            crud_ops = task.content_analysis.get('crud_analysis', {})
+            # 创建进度回调函数
+            def progress_callback(stage: int, message: str, status: str = "ai_analyzing"):
+                # 将AI分析的进度映射到30-100的范围
+                mapped_progress = int(30 + (stage * 0.7))  # 30% + (stage% * 70%)
+                task.update_progress(mapped_progress, message, status)
             
+            # 从内容分析结果中提取数据
+            content_data = content_analysis_result
             ai_result = analysis_service_manager.ai_analyze_sync(
                 task_id=task.id,
-                content_analysis=task.content_analysis,
-                parsing_result=task.result
+                content_analysis=content_data,
+                parsing_result=parsing_result,
+                progress_callback=progress_callback
             )
             
-            # 更新任务的AI分析结果
-            task.ai_analysis = ai_result
             # 保存AI分析结果到Redis
             redis_task_storage.save_ai_analysis(task.id, ai_result)
             task.update_progress(100, "AI分析完成", "ai_analyzed")
@@ -674,7 +676,7 @@ def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensi
             
             # 获取内容分析结果
             content_analysis = content_analysis_result or task.content_analysis
-            crud_ops = crud_operations or content_analysis.get('crud_analysis', {})
+            change_analysis = parsing_result
             
             # 获取原始文档内容
             content = task.result.get("text_content", "") or task.result.get("content", "")
@@ -689,16 +691,16 @@ def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensi
                 system_prompt = """你是一个专业的软件架构师和API设计专家。请根据提供的文档内容和CRUD操作分析，设计具体的开发接口和消息队列配置。"""
                 
                 # 构建用户提示
-                crud_summary = ""
-                if crud_ops:
-                    operations = crud_ops.get('operations', [])
-                    crud_summary = f"识别的CRUD操作：{len(operations)}个"
+                change_summary = ""
+                if change_analysis:
+                    operations = change_analysis.get('operations', [])
+                    change_summary = f"识别的变更操作：{len(operations)}个"
                 
                 user_prompt = f"""
 请根据以下信息设计开发接口：
 
 文档摘要：{content_analysis.get('summary', '无摘要')[:300]}
-{crud_summary}
+{change_summary}
 
 请设计：
 1. RESTful API接口
@@ -1245,7 +1247,7 @@ def ai_analyze(task_id):
             logger.info(f"🔍 接收到内容分析结果: CRUD操作={len(crud_operations.get('operations', []))}")
             
             # 异步开始AI分析，传入内容分析结果和CRUD操作
-            executor.submit(process_ai_analysis, task, analysis_type, content_analysis_result, crud_operations)
+            executor.submit(process_ai_analysis, task, analysis_type, content_analysis_result, parsing_result)
             
             return jsonify({
                 "success": True,
@@ -1707,15 +1709,11 @@ def process_document_generation(task: FileParsingTask):
         task.update_progress(60, "转换为Markdown格式", "document_generating")
         markdown_content = generate_markdown_report(ai_analysis)
         
-        # 保存Markdown内容到任务中和Redis
+        # 保存Markdown内容Redis
         task.update_progress(90, "保存文档内容", "document_generating")
-        task.markdown_content = markdown_content
         
         # 保存到Redis用于接口返回
         redis_task_storage.save_markdown_content(task.id, markdown_content)
-        
-        # 注释：不需要保存到SQLite数据库，因为没有地方会读取
-        # task_storage.save_markdown_content(task.id, markdown_content)
         
         # 更新任务状态
         task.update_progress(100, "文档生成完成", "document_generated")
@@ -1727,6 +1725,213 @@ def process_document_generation(task: FileParsingTask):
         task.update_progress(0, f"文档生成失败: {str(e)}", "document_failed")
         analysis_logger.error(f"❌ 文档生成失败: {task.id} - {e}")
         raise
+
+def _generate_architecture_design_markdown(architecture_design: dict) -> str:
+    """生成架构设计的Markdown内容"""
+    markdown = ""
+    
+    # 1. 业务分析
+    if "business_analysis" in architecture_design:
+        markdown += "### 📋 业务需求分析\n\n"
+        business_analysis = architecture_design["business_analysis"]
+        
+        # 功能需求
+        if "functional_requirements" in business_analysis:
+            markdown += "#### 功能需求\n\n"
+            for req in business_analysis["functional_requirements"]:
+                change_type = req.get("change_type", "未知")
+                priority = req.get("priority", "未知")
+                complexity = req.get("complexity", "未知")
+                markdown += f"- **{req.get('name', '未命名')}** ({change_type})\n"
+                markdown += f"  - ID: {req.get('id', 'N/A')}\n"
+                markdown += f"  - 优先级: {priority} | 复杂度: {complexity}\n"
+                markdown += f"  - 描述: {req.get('description', '无描述')}\n\n"
+        
+        # API需求
+        if "api_requirements" in business_analysis:
+            markdown += "#### API接口需求\n\n"
+            for api_req in business_analysis["api_requirements"]:
+                markdown += f"- **{api_req.get('name', '未命名接口')}** ({api_req.get('change_type', '未知')})\n"
+                markdown += f"  - 描述: {api_req.get('description', '无描述')}\n\n"
+        
+        # UI需求
+        if "ui_requirements" in business_analysis:
+            markdown += "#### 用户界面需求\n\n"
+            for ui_req in business_analysis["ui_requirements"]:
+                markdown += f"- **{ui_req.get('component', '未命名组件')}** ({ui_req.get('change_type', '未知')})\n"
+                markdown += f"  - 描述: {ui_req.get('description', '无描述')}\n\n"
+        
+        # 用户故事
+        if "user_stories" in business_analysis:
+            markdown += "#### 用户故事\n\n"
+            for story in business_analysis["user_stories"]:
+                markdown += f"- **作为** {story.get('as', '用户')}\n"
+                markdown += f"  **我希望** {story.get('want', '执行某个操作')}\n"
+                markdown += f"  **以便** {story.get('so_that', '达成某个目标')}\n\n"
+    
+    # 2. API设计
+    if "api_design" in architecture_design:
+        markdown += "### 🔌 API接口设计\n\n"
+        api_design = architecture_design["api_design"]
+        
+        # API规范
+        if "api_specification" in api_design:
+            api_spec = api_design["api_specification"]
+            if "interfaces" in api_spec:
+                markdown += "#### RESTful API接口\n\n"
+                for interface in api_spec["interfaces"]:
+                    resource = interface.get("resource", "未知资源")
+                    markdown += f"##### {resource.title()} 资源\n\n"
+                    
+                    for endpoint in interface.get("endpoints", []):
+                        method = endpoint.get("method", "GET")
+                        path = endpoint.get("path", "/")
+                        desc = endpoint.get("description", "")
+                        markdown += f"- **{method}** `{path}` - {desc}\n"
+                        
+                        # 响应信息
+                        responses = endpoint.get("responses", {})
+                        if responses:
+                            markdown += "  - 响应:\n"
+                            for code, response in responses.items():
+                                resp_desc = response.get("description", "")
+                                markdown += f"    - {code}: {resp_desc}\n"
+                        markdown += "\n"
+        
+        # 数据流程
+        if "data_flow" in api_design:
+            markdown += "#### 数据流程设计\n\n"
+            data_flow = api_design["data_flow"]
+            
+            # 系统组件
+            if "data_flow_diagram" in data_flow and "components" in data_flow["data_flow_diagram"]:
+                markdown += "##### 系统组件\n\n"
+                for component in data_flow["data_flow_diagram"]["components"]:
+                    name = component.get("name", "未命名组件")
+                    comp_type = component.get("type", "未知类型")
+                    responsibilities = component.get("responsibilities", [])
+                    
+                    markdown += f"- **{name}** ({comp_type})\n"
+                    if responsibilities:
+                        for resp in responsibilities:
+                            markdown += f"  - {resp}\n"
+                    markdown += "\n"
+            
+            # 交互模式
+            if "interaction_patterns" in data_flow:
+                markdown += "##### 交互模式\n\n"
+                for pattern in data_flow["interaction_patterns"]:
+                    pattern_name = pattern.get("pattern", "未知模式")
+                    usage = pattern.get("usage", "")
+                    markdown += f"- **{pattern_name}**: {usage}\n"
+                markdown += "\n"
+    
+    # 3. 系统架构
+    if "system_architecture" in architecture_design:
+        markdown += "### 🏗️ 系统架构设计\n\n"
+        system_arch = architecture_design["system_architecture"]
+        
+        # 前端架构
+        if "frontend_architecture" in system_arch:
+            frontend = system_arch["frontend_architecture"]
+            framework = frontend.get("framework", "未知")
+            pattern = frontend.get("architecture_pattern", "未知")
+            markdown += f"#### 前端架构\n\n"
+            markdown += f"- **框架**: {framework}\n"
+            markdown += f"- **架构模式**: {pattern}\n\n"
+            
+            # UI组件
+            if "ui_components" in frontend:
+                markdown += "##### 核心组件\n\n"
+                for component in frontend["ui_components"]:
+                    name = component.get("name", "未命名组件")
+                    comp_type = component.get("type", "未知类型")
+                    features = component.get("features", [])
+                    
+                    markdown += f"- **{name}** ({comp_type})\n"
+                    for feature in features:
+                        markdown += f"  - {feature}\n"
+                    markdown += "\n"
+        
+        # 后端架构
+        if "backend_architecture" in system_arch:
+            backend = system_arch["backend_architecture"]
+            framework = backend.get("framework", "未知")
+            pattern = backend.get("architecture_pattern", "未知")
+            markdown += f"#### 后端架构\n\n"
+            markdown += f"- **框架**: {framework}\n"
+            markdown += f"- **架构模式**: {pattern}\n\n"
+            
+            # 微服务
+            if "microservices" in backend:
+                markdown += "##### 微服务架构\n\n"
+                for service in backend["microservices"]:
+                    name = service.get("name", "未命名服务")
+                    desc = service.get("description", "")
+                    responsibilities = service.get("responsibilities", [])
+                    
+                    markdown += f"- **{name}**: {desc}\n"
+                    for resp in responsibilities:
+                        markdown += f"  - {resp}\n"
+                    markdown += "\n"
+    
+    # 4. 安全设计
+    if "security_design" in architecture_design:
+        markdown += "### 🔒 安全设计\n\n"
+        security = architecture_design["security_design"]
+        
+        # 认证
+        if "authentication" in security:
+            auth = security["authentication"]
+            method = auth.get("method", "未知")
+            markdown += f"#### 认证方式\n\n"
+            markdown += f"- **方法**: {method}\n"
+            if "token_expiry" in auth:
+                markdown += f"- **Token有效期**: {auth['token_expiry']}\n"
+            markdown += "\n"
+        
+        # 安全措施
+        if "security_measures" in security:
+            markdown += "#### 安全措施\n\n"
+            for measure in security["security_measures"]:
+                name = measure.get("name", "未命名措施")
+                config = measure.get("config", {})
+                markdown += f"- **{name}**\n"
+                for key, value in config.items():
+                    markdown += f"  - {key}: {value}\n"
+                markdown += "\n"
+    
+    # 5. 实施计划
+    if "implementation_plan" in architecture_design:
+        markdown += "### 📅 实施计划\n\n"
+        impl_plan = architecture_design["implementation_plan"]
+        
+        if "phases" in impl_plan:
+            markdown += "#### 开发阶段\n\n"
+            for phase in impl_plan["phases"]:
+                phase_num = phase.get("phase", 0)
+                name = phase.get("name", "未命名阶段")
+                duration = phase.get("duration", "未知")
+                markdown += f"{phase_num}. **{name}** ({duration})\n"
+            
+            total_duration = impl_plan.get("total_duration", "未知")
+            risk = impl_plan.get("risk_assessment", "未知")
+            markdown += f"\n- **总时长**: {total_duration}\n"
+            markdown += f"- **风险评估**: {risk}\n\n"
+    
+    return markdown
+
+def _generate_legacy_ai_analysis_markdown(ai_analysis: dict) -> str:
+    """生成旧格式AI分析的Markdown内容"""
+    markdown = ""
+    for key, value in ai_analysis.items():
+        markdown += f"### {key}\n\n"
+        if isinstance(value, dict):
+            for sub_key, sub_value in value.items():
+                markdown += f"**{sub_key}**: {sub_value}\n\n"
+        else:
+            markdown += f"{value}\n\n"
+    return markdown
 
 def generate_markdown_report(result_data):
     """将JSON结果转换为Markdown格式"""
@@ -1742,11 +1947,19 @@ def generate_markdown_report(result_data):
     # AI智能分析结果
     if result_data.get("ai_analysis"):
         ai_analysis = result_data["ai_analysis"]
+        markdown += "## 🤖 AI智能分析\n\n"
+        
         if isinstance(ai_analysis, str):
             markdown += f"{ai_analysis}\n\n"
         elif isinstance(ai_analysis, dict):
-            for key, value in ai_analysis.items():
-                markdown += f"### {key}\n\n{value}\n\n"
+            # 处理新的AI分析结构
+            ai_data = ai_analysis.get("data", {})
+            if "architecture_design" in ai_data:
+                markdown += _generate_architecture_design_markdown(ai_data["architecture_design"])
+            else:
+                # 兼容旧格式
+                markdown += _generate_legacy_ai_analysis_markdown(ai_analysis)
+        
         markdown += "---\n\n"
     
     # 技术执行要求
@@ -1779,16 +1992,19 @@ def run_full_analysis_pipeline(task: FileParsingTask):
         
         # 阶段2: 内容分析
         task.update_progress(40, "开始内容分析", "content_analyzing")
-        process_content_analysis(task, task.result)
+        parsing_result = redis_task_storage.get_parsing_result(task.id)
+
+        process_content_analysis(task, parsing_result)
         
         # 检查内容分析是否成功
         if task.status != "content_analyzed":
             logger.error(f"内容分析失败，停止后续流程: {task.id}")
             return
         
+        content_analysis = redis_task_storage.get_content_analysis(task.id)
         # 阶段3: AI智能分析
         task.update_progress(70, "开始AI智能分析", "ai_analyzing")
-        process_ai_analysis(task, "comprehensive", task.content_analysis, {})
+        process_ai_analysis(task, "comprehensive", content_analysis, parsing_result)
         
         # 检查AI分析是否成功
         if task.status != "ai_analyzed":
