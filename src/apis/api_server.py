@@ -771,7 +771,8 @@ def index():
             "parsing_status": "/api/file/parsing/<task_id>",
             "content_analysis": "/api/file/analyze/<task_id>",
             "ai_analysis": "/api/file/ai-analyze/<task_id>",
-            "analysis_result": "/api/file/result/<task_id>"
+            "analysis_result": "/api/file/result/<task_id>",
+            "static_files": "/uploads/<path:filename>"
         },
         "features": [
             "HTTP RESTful API",
@@ -957,6 +958,44 @@ def internal_error(error):
         "error": "服务器内部错误",
         "timestamp": datetime.now().isoformat()
     }), 500
+
+# ==================== 静态文件服务接口 ====================
+
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    """静态文件服务 - 提供uploads目录下的文件访问"""
+    try:
+        # 获取项目根目录
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        uploads_dir = os.path.join(project_root, 'uploads')
+        
+        # 构建完整的文件路径
+        file_path = os.path.join(uploads_dir, filename)
+        
+        # 安全检查：确保文件路径在uploads目录内（防止路径遍历攻击）
+        uploads_dir_abs = os.path.abspath(uploads_dir)
+        file_path_abs = os.path.abspath(file_path)
+        
+        if not file_path_abs.startswith(uploads_dir_abs):
+            logger.warning(f"非法文件访问尝试: {filename}")
+            return jsonify({"error": "非法文件路径"}), 403
+        
+        # 检查文件是否存在
+        if not os.path.exists(file_path):
+            logger.warning(f"文件不存在: {file_path}")
+            return jsonify({"error": "文件不存在"}), 404
+        
+        # 获取文件的目录和文件名
+        directory = os.path.dirname(file_path)
+        basename = os.path.basename(file_path)
+        
+        # 使用Flask的send_from_directory发送文件
+        from flask import send_from_directory
+        return send_from_directory(directory, basename, as_attachment=False)
+        
+    except Exception as e:
+        logger.error(f"静态文件服务错误: {e}")
+        return jsonify({"error": f"文件访问失败: {str(e)}"}), 500
 
 # ==================== 文件处理接口 ====================
 
