@@ -20,6 +20,9 @@ class ContentAnalyzerService(BaseAnalysisService):
         self.embedding_model = SentenceTransformer('BAAI/bge-large-zh')
         # 初始化Weaviate客户端
         self.weaviate_client = get_weaviate_client()
+        # 添加向量缓存机制，避免重复计算
+        self._embedding_cache = {}
+        self._cache_max_size = 1000  # 最多缓存1000个向量
     
     async def analyze(self, task_id: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -108,7 +111,7 @@ class ContentAnalyzerService(BaseAnalysisService):
     
     async def _preprocess_document(self, document_content: str) -> List[Dict[str, Any]]:
         """
-        Step 1: 文档预处理
+        Step 1: 文档预处理 - 优化版本，支持批量向量化
         将markdown文档拆解为结构化内容块
         
         Args:
@@ -125,6 +128,9 @@ class ContentAnalyzerService(BaseAnalysisService):
         current_content = []
         current_level = 0
         
+        # 第一步：分割文档但不生成向量
+        temp_chunks = []
+        
         for line in lines:
             line = line.strip()
             if not line:
@@ -136,17 +142,14 @@ class ContentAnalyzerService(BaseAnalysisService):
                 if current_section and current_content:
                     content_text = '\n'.join(current_content).strip()
                     if content_text:
-                        # 生成向量嵌入
-                        embedding = self.embedding_model.encode(f"{current_section}\n{content_text}").tolist()
-                        
-                        chunk = {
+                        temp_chunk = {
                             "section": current_section,
                             "content": content_text,
                             "level": current_level,
-                            "embedding": embedding,
+                            "text_for_embedding": f"{current_section}\n{content_text}",
                             "image_refs": self._extract_image_refs(content_text)
                         }
-                        structured_chunks.append(chunk)
+                        temp_chunks.append(temp_chunk)
                 
                 # 开始新的段落
                 current_level = len(line) - len(line.lstrip('#'))
@@ -160,16 +163,54 @@ class ContentAnalyzerService(BaseAnalysisService):
         if current_section and current_content:
             content_text = '\n'.join(current_content).strip()
             if content_text:
-                embedding = self.embedding_model.encode(f"{current_section}\n{content_text}").tolist()
-                
-                chunk = {
+                temp_chunk = {
                     "section": current_section,
                     "content": content_text,
                     "level": current_level,
-                    "embedding": embedding,
+                    "text_for_embedding": f"{current_section}\n{content_text}",
                     "image_refs": self._extract_image_refs(content_text)
                 }
-                structured_chunks.append(chunk)
+                temp_chunks.append(temp_chunk)
+        
+        # 第二步：批量生成向量嵌入（性能优化关键）
+        if temp_chunks:
+            try:
+                self.logger.info(f"开始批量生成向量嵌入，共 {len(temp_chunks)} 个段落")
+                start_time = time.time()
+                
+                # 提取所有需要向量化的文本
+                texts_for_embedding = [chunk["text_for_embedding"] for chunk in temp_chunks]
+                
+                # 🚀 批量生成向量（支持缓存，一次调用处理所有文本）
+                embeddings = self._batch_get_embeddings(texts_for_embedding)
+                
+                embedding_time = time.time() - start_time
+                self.logger.info(f"批量向量生成完成，耗时: {embedding_time:.2f}秒，平均每段: {embedding_time/len(temp_chunks):.3f}秒")
+                
+                # 第三步：组装最终结果
+                for i, chunk in enumerate(temp_chunks):
+                    chunk_with_embedding = {
+                        "section": chunk["section"],
+                        "content": chunk["content"],
+                        "level": chunk["level"],
+                        "embedding": embeddings[i].tolist(),
+                        "image_refs": chunk["image_refs"]
+                    }
+                    structured_chunks.append(chunk_with_embedding)
+                    
+            except Exception as e:
+                self.logger.error(f"批量向量生成失败，回退到逐个处理: {e}")
+                # 回退到原始方法
+                for chunk in temp_chunks:
+                    embedding = self.embedding_model.encode(chunk["text_for_embedding"]).tolist()
+                    chunk_with_embedding = {
+                        "section": chunk["section"],
+                        "content": chunk["content"],
+                        "level": chunk["level"],
+                        "embedding": embedding,
+                        "image_refs": chunk["image_refs"]
+                    }
+                    structured_chunks.append(chunk_with_embedding)
         
         return structured_chunks
     
@@ -2033,4 +2074,80 @@ class ContentAnalyzerService(BaseAnalysisService):
             return (type_priority, change_reason, -items_count, -version_count)
         
         return sorted(changes, key=sort_key)
+    
+    def _get_cached_embedding(self, text: str):
+        """
+        获取带缓存的向量嵌入
+        
+        Args:
+            text: 需要向量化的文本
+            
+        Returns:
+            向量嵌入（numpy数组或列表）
+        """
+        import hashlib
+        
+        # 计算文本哈希作为缓存键
+        text_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
+        
+        # 检查缓存
+        if text_hash in self._embedding_cache:
+            self.logger.debug(f"命中向量缓存: {text[:50]}...")
+            return self._embedding_cache[text_hash]
+        
+        # 生成新向量
+        embedding = self.embedding_model.encode(text)
+        
+        # 缓存管理：如果超过最大缓存数量，清理一些旧缓存
+        if len(self._embedding_cache) >= self._cache_max_size:
+            # 简单策略：清理一半缓存
+            keys_to_remove = list(self._embedding_cache.keys())[:self._cache_max_size // 2]
+            for key in keys_to_remove:
+                del self._embedding_cache[key]
+            self.logger.info(f"清理向量缓存，删除 {len(keys_to_remove)} 个条目")
+        
+        # 存储到缓存
+        self._embedding_cache[text_hash] = embedding
+        self.logger.debug(f"新增向量缓存: {text[:50]}...")
+        
+        return embedding
+    
+    def _batch_get_embeddings(self, texts: List[str]):
+        """
+        批量获取向量嵌入（支持缓存）
+        
+        Args:
+            texts: 文本列表
+            
+        Returns:
+            向量嵌入列表
+        """
+        import hashlib
+        
+        embeddings = []
+        uncached_texts = []
+        uncached_indices = []
+        
+        # 第一步：检查缓存
+        for i, text in enumerate(texts):
+            text_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
+            if text_hash in self._embedding_cache:
+                embeddings.append(self._embedding_cache[text_hash])
+            else:
+                embeddings.append(None)  # 占位符
+                uncached_texts.append(text)
+                uncached_indices.append(i)
+        
+        # 第二步：批量处理未缓存的文本
+        if uncached_texts:
+            self.logger.info(f"批量生成 {len(uncached_texts)} 个新向量（已缓存: {len(texts) - len(uncached_texts)}）")
+            new_embeddings = self.embedding_model.encode(uncached_texts, show_progress_bar=True)
+            
+            # 第三步：更新缓存和结果
+            for i, (text, embedding) in enumerate(zip(uncached_texts, new_embeddings)):
+                text_hash = hashlib.md5(text.encode('utf-8')).hexdigest()
+                self._embedding_cache[text_hash] = embedding
+                embeddings[uncached_indices[i]] = embedding
+        
+        return embeddings
    

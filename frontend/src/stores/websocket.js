@@ -2242,6 +2242,9 @@ ${task.timestamps ? `
     lastMessage,
     isFileProcessing,
     
+    // API实例
+    api,
+    
     // 方法
     connect,
     disconnect,

@@ -25,7 +25,17 @@ def check_environment():
     current_python = Path(sys.executable).resolve()
     venv_python_resolved = venv_python.resolve()
     
-    if current_python != venv_python_resolved:
+    # 添加调试信息
+    print(f"🔍 调试信息:")
+    print(f"   当前Python: {current_python}")
+    print(f"   虚拟环境Python: {venv_python_resolved}")
+    print(f"   路径相等: {current_python == venv_python_resolved}")
+    
+    # 检查是否已经在虚拟环境中运行
+    # 使用更宽松的检查方式，避免路径解析问题
+    if "venv" in str(current_python).lower() and "Scripts" in str(current_python):
+        print("✅ 已在虚拟环境中")
+    elif current_python != venv_python_resolved:
         print("⚠️ 当前未使用虚拟环境")
         print(f"当前Python: {current_python}")
         print(f"虚拟环境Python: {venv_python_resolved}")
@@ -234,13 +244,13 @@ def main():
         # 构建新的命令行参数
         new_args = [venv_python, __file__, "--mode", args.mode]
         try:
-            # 使用exec方式替换当前进程，而不是创建子进程
-            os.execve(venv_python, new_args, env)
-        except Exception as e:
-            print(f"❌ 切换虚拟环境失败: {e}")
-            # 如果exec失败，fallback到subprocess
+            # 在Windows上直接使用subprocess.run，避免exec的问题
+            print(f"🔄 执行命令: {' '.join(new_args)}")
             result = subprocess.run(new_args, env=env, cwd=str(Path.cwd()))
             sys.exit(result.returncode)
+        except Exception as e:
+            print(f"❌ 切换虚拟环境失败: {e}")
+            sys.exit(1)
         return
     
     # 检查依赖

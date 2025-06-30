@@ -1,0 +1,54 @@
+
+import requests
+import time
+
+def create_fastapi_project():
+    """创建FastAPI项目的完整示例"""
+    
+    # 1. 创建对话
+    conversation_data = {
+        "initial_user_msg": "创建一个FastAPI应用，包含：1）用户注册/登录 2）JWT认证 3）SQLAlchemy数据库模型 4）RESTful API端点",
+        "conversation_instructions": "使用现代Python开发最佳实践，包含类型提示、异常处理、API文档"
+    }
+    
+    response = requests.post(
+        "http://localhost:3002/api/conversations",
+        json=conversation_data,
+        headers={"Content-Type": "application/json"}
+    )
+    
+    if response.status_code != 200:
+        print(f"创建对话失败: {response.text}")
+        return None
+        
+    conversation_id = response.json()["conversation_id"]
+    print(f"✅ 对话创建成功: {conversation_id}")
+    
+    # 2. 等待代码生成完成 (通常需要几分钟)
+    time.sleep(30)
+    
+    # 3. 获取生成的文件列表
+    files_response = requests.get(
+        f"http://localhost:3002/api/conversations/{conversation_id}/list-files"
+    )
+    
+    if files_response.status_code == 200:
+        files = files_response.json()
+        print(f"✅ 生成了 {len(files)} 个文件")
+        
+        # 4. 查看主文件内容
+        for file_path in files[:5]:  # 只看前5个文件
+            content_response = requests.get(
+                f"http://localhost:3002/api/conversations/{conversation_id}/select-file",
+                params={"file": file_path}
+            )
+            if content_response.status_code == 200:
+                content = content_response.json()["code"]
+                print(f"\n📄 文件: {file_path}")
+                print(f"内容预览: {content[:200]}...")
+    
+    return conversation_id
+
+# 运行示例
+if __name__ == "__main__":
+    create_fastapi_project()

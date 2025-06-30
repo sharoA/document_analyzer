@@ -42,6 +42,7 @@ try:
     from ..utils.llm_logger import LLMLogger
     from ..utils.task_storage import get_task_storage
     from ..utils.redis_task_storage import get_redis_task_storage
+    from ..utils.markdown_storage import get_markdown_storage
     # 导入分析服务模块
     from ..analysis_services import (
         AnalysisServiceManager,
@@ -68,6 +69,7 @@ except ImportError:
     from src.utils.llm_logger import LLMLogger
     from src.utils.task_storage import get_task_storage
     from src.utils.redis_task_storage import get_redis_task_storage
+    from src.utils.markdown_storage import get_markdown_storage
     # 导入分析服务模块
     from src.analysis_services import (
         AnalysisServiceManager,
@@ -89,6 +91,7 @@ except ImportError:
 config = get_config()
 task_storage = get_task_storage()
 redis_task_storage = get_redis_task_storage()
+markdown_storage = get_markdown_storage()
 
 app = Flask(__name__)
 # 配置CORS，允许所有来源和方法
@@ -1291,6 +1294,39 @@ def get_analysis_result(task_id):
         content_analysis = redis_task_storage.get_content_analysis(task_id) or {}
         ai_analysis = redis_task_storage.get_ai_analysis(task_id) or {}
         
+        # 添加详细的类型检查日志
+        logger.info(f"🔍 数据类型诊断 - parsing_result: {type(parsing_result)}")
+        logger.info(f"🔍 数据类型诊断 - content_analysis: {type(content_analysis)}")
+        logger.info(f"🔍 数据类型诊断 - ai_analysis: {type(ai_analysis)}")
+        
+        # 如果是字符串，尝试解析
+        if isinstance(parsing_result, str):
+            logger.warning(f"⚠️ parsing_result是字符串，尝试JSON解析: {parsing_result[:200]}...")
+            try:
+                parsing_result = json.loads(parsing_result)
+                logger.info("✅ parsing_result JSON解析成功")
+            except Exception as e:
+                logger.error(f"❌ parsing_result JSON解析失败: {e}")
+                parsing_result = {}
+        
+        if isinstance(content_analysis, str):
+            logger.warning(f"⚠️ content_analysis是字符串，尝试JSON解析: {content_analysis[:200]}...")
+            try:
+                content_analysis = json.loads(content_analysis)
+                logger.info("✅ content_analysis JSON解析成功")
+            except Exception as e:
+                logger.error(f"❌ content_analysis JSON解析失败: {e}")
+                content_analysis = {}
+        
+        if isinstance(ai_analysis, str):
+            logger.warning(f"⚠️ ai_analysis是字符串，尝试JSON解析: {ai_analysis[:200]}...")
+            try:
+                ai_analysis = json.loads(ai_analysis)
+                logger.info("✅ ai_analysis JSON解析成功")
+            except Exception as e:
+                logger.error(f"❌ ai_analysis JSON解析失败: {e}")
+                ai_analysis = {}
+        
         # 从SQLite获取任务基本信息
         task = get_task(task_id)
         if task:
@@ -1686,6 +1722,39 @@ def process_document_generation(task: FileParsingTask):
         content_analysis = redis_task_storage.get_content_analysis(task.id) or {}
         ai_analysis = redis_task_storage.get_ai_analysis(task.id) or {}
         
+        # 添加详细的类型检查日志
+        logger.info(f"🔍 数据类型诊断 - parsing_result: {type(parsing_result)}")
+        logger.info(f"🔍 数据类型诊断 - content_analysis: {type(content_analysis)}")
+        logger.info(f"🔍 数据类型诊断 - ai_analysis: {type(ai_analysis)}")
+        
+        # 如果是字符串，尝试解析
+        if isinstance(parsing_result, str):
+            logger.warning(f"⚠️ parsing_result是字符串，尝试JSON解析: {parsing_result[:200]}...")
+            try:
+                parsing_result = json.loads(parsing_result)
+                logger.info("✅ parsing_result JSON解析成功")
+            except Exception as e:
+                logger.error(f"❌ parsing_result JSON解析失败: {e}")
+                parsing_result = {}
+        
+        if isinstance(content_analysis, str):
+            logger.warning(f"⚠️ content_analysis是字符串，尝试JSON解析: {content_analysis[:200]}...")
+            try:
+                content_analysis = json.loads(content_analysis)
+                logger.info("✅ content_analysis JSON解析成功")
+            except Exception as e:
+                logger.error(f"❌ content_analysis JSON解析失败: {e}")
+                content_analysis = {}
+        
+        if isinstance(ai_analysis, str):
+            logger.warning(f"⚠️ ai_analysis是字符串，尝试JSON解析: {ai_analysis[:200]}...")
+            try:
+                ai_analysis = json.loads(ai_analysis)
+                logger.info("✅ ai_analysis JSON解析成功")
+            except Exception as e:
+                logger.error(f"❌ ai_analysis JSON解析失败: {e}")
+                ai_analysis = {}
+        
         # 构建完整的结果数据
         result_data = {
             "basic_info": {
@@ -1728,42 +1797,54 @@ def process_document_generation(task: FileParsingTask):
 
 def _generate_architecture_design_markdown(architecture_design: dict) -> str:
     """生成架构设计的Markdown内容"""
+    # 类型检查，确保输入是字典
+    if not isinstance(architecture_design, dict):
+        logger.warning(f"架构设计数据类型错误，期望dict，实际为: {type(architecture_design)}")
+        return f"## 📋 架构设计\n\n{str(architecture_design)}\n\n"
+    
     markdown = ""
     
     # 1. 业务分析
     if "business_analysis" in architecture_design:
-        markdown += "### 📋 业务需求分析\n\n"
+        markdown += "## 📋 业务需求分析\n\n"
         business_analysis = architecture_design["business_analysis"]
         
         # 功能需求
         if "functional_requirements" in business_analysis:
-            markdown += "#### 功能需求\n\n"
-            for req in business_analysis["functional_requirements"]:
-                change_type = req.get("change_type", "未知")
-                priority = req.get("priority", "未知")
-                complexity = req.get("complexity", "未知")
-                markdown += f"- **{req.get('name', '未命名')}** ({change_type})\n"
-                markdown += f"  - ID: {req.get('id', 'N/A')}\n"
-                markdown += f"  - 优先级: {priority} | 复杂度: {complexity}\n"
-                markdown += f"  - 描述: {req.get('description', '无描述')}\n\n"
+            markdown += "### 功能需求\n\n"
+            functional_reqs = business_analysis["functional_requirements"]
+            if isinstance(functional_reqs, list):
+                for req in functional_reqs:
+                    if isinstance(req, dict):
+                        change_type = req.get("change_type", "未知")
+                        priority = req.get("priority", "未知")
+                        complexity = req.get("complexity", "未知")
+                        markdown += f"- **{req.get('name', '未命名')}** ({change_type})\n"
+                        markdown += f"  - ID: {req.get('id', 'N/A')}\n"
+                        markdown += f"  - 优先级: {priority} | 复杂度: {complexity}\n"
+                        markdown += f"  - 描述: {req.get('description', '无描述')}\n\n"
+                    else:
+                        markdown += f"- {str(req)}\n\n"
+            else:
+                markdown += f"{str(functional_reqs)}\n\n"
         
         # API需求
         if "api_requirements" in business_analysis:
-            markdown += "#### API接口需求\n\n"
+            markdown += "### API接口需求\n\n"
             for api_req in business_analysis["api_requirements"]:
                 markdown += f"- **{api_req.get('name', '未命名接口')}** ({api_req.get('change_type', '未知')})\n"
                 markdown += f"  - 描述: {api_req.get('description', '无描述')}\n\n"
         
         # UI需求
         if "ui_requirements" in business_analysis:
-            markdown += "#### 用户界面需求\n\n"
+            markdown += "### 用户界面需求\n\n"
             for ui_req in business_analysis["ui_requirements"]:
                 markdown += f"- **{ui_req.get('component', '未命名组件')}** ({ui_req.get('change_type', '未知')})\n"
                 markdown += f"  - 描述: {ui_req.get('description', '无描述')}\n\n"
         
         # 用户故事
         if "user_stories" in business_analysis:
-            markdown += "#### 用户故事\n\n"
+            markdown += "### 用户故事\n\n"
             for story in business_analysis["user_stories"]:
                 markdown += f"- **作为** {story.get('as', '用户')}\n"
                 markdown += f"  **我希望** {story.get('want', '执行某个操作')}\n"
@@ -1771,17 +1852,17 @@ def _generate_architecture_design_markdown(architecture_design: dict) -> str:
     
     # 2. API设计
     if "api_design" in architecture_design:
-        markdown += "### 🔌 API接口设计\n\n"
+        markdown += "## 🔌 API接口设计\n\n"
         api_design = architecture_design["api_design"]
         
         # API规范
         if "api_specification" in api_design:
             api_spec = api_design["api_specification"]
             if "interfaces" in api_spec:
-                markdown += "#### RESTful API接口\n\n"
+                markdown += "### RESTful API接口\n\n"
                 for interface in api_spec["interfaces"]:
                     resource = interface.get("resource", "未知资源")
-                    markdown += f"##### {resource.title()} 资源\n\n"
+                    markdown += f"#### {resource.title()} 资源\n\n"
                     
                     for endpoint in interface.get("endpoints", []):
                         method = endpoint.get("method", "GET")
@@ -1800,12 +1881,12 @@ def _generate_architecture_design_markdown(architecture_design: dict) -> str:
         
         # 数据流程
         if "data_flow" in api_design:
-            markdown += "#### 数据流程设计\n\n"
+            markdown += "### 数据流程设计\n\n"
             data_flow = api_design["data_flow"]
             
             # 系统组件
             if "data_flow_diagram" in data_flow and "components" in data_flow["data_flow_diagram"]:
-                markdown += "##### 系统组件\n\n"
+                markdown += "#### 系统组件\n\n"
                 for component in data_flow["data_flow_diagram"]["components"]:
                     name = component.get("name", "未命名组件")
                     comp_type = component.get("type", "未知类型")
@@ -1819,7 +1900,7 @@ def _generate_architecture_design_markdown(architecture_design: dict) -> str:
             
             # 交互模式
             if "interaction_patterns" in data_flow:
-                markdown += "##### 交互模式\n\n"
+                markdown += "#### 交互模式\n\n"
                 for pattern in data_flow["interaction_patterns"]:
                     pattern_name = pattern.get("pattern", "未知模式")
                     usage = pattern.get("usage", "")
@@ -1842,7 +1923,7 @@ def _generate_architecture_design_markdown(architecture_design: dict) -> str:
             
             # UI组件
             if "ui_components" in frontend:
-                markdown += "##### 核心组件\n\n"
+                markdown += "##### UI组件\n\n"
                 for component in frontend["ui_components"]:
                     name = component.get("name", "未命名组件")
                     comp_type = component.get("type", "未知类型")
@@ -1877,9 +1958,10 @@ def _generate_architecture_design_markdown(architecture_design: dict) -> str:
     
     # 4. 安全设计
     if "security_design" in architecture_design:
-        markdown += "### 🔒 安全设计\n\n"
+     
         security = architecture_design["security_design"]
-        
+        if security:
+            markdown += "### 🔒 安全设计\n\n"
         # 认证
         if "authentication" in security:
             auth = security["authentication"]
@@ -1901,23 +1983,24 @@ def _generate_architecture_design_markdown(architecture_design: dict) -> str:
                     markdown += f"  - {key}: {value}\n"
                 markdown += "\n"
     
-    # 5. 实施计划
-    if "implementation_plan" in architecture_design:
-        markdown += "### 📅 实施计划\n\n"
-        impl_plan = architecture_design["implementation_plan"]
-        
-        if "phases" in impl_plan:
-            markdown += "#### 开发阶段\n\n"
-            for phase in impl_plan["phases"]:
-                phase_num = phase.get("phase", 0)
-                name = phase.get("name", "未命名阶段")
-                duration = phase.get("duration", "未知")
-                markdown += f"{phase_num}. **{name}** ({duration})\n"
+    # # 5. 实施计划
+    # if "implementation_plan" in architecture_design:
+      
+    #     impl_plan = architecture_design["implementation_plan"]
+    #     if impl_plan:
+    #         markdown += "### 🔒 实施计划\n\n"
+    #     if "phases" in impl_plan:
+    #         markdown += "#### 开发阶段\n\n"
+    #         for phase in impl_plan["phases"]:
+    #             phase_num = phase.get("phase", 0)
+    #             name = phase.get("name", "未命名阶段")
+    #             duration = phase.get("duration", "未知")
+    #             markdown += f"{phase_num}. **{name}** ({duration})\n"
             
-            total_duration = impl_plan.get("total_duration", "未知")
-            risk = impl_plan.get("risk_assessment", "未知")
-            markdown += f"\n- **总时长**: {total_duration}\n"
-            markdown += f"- **风险评估**: {risk}\n\n"
+    #         total_duration = impl_plan.get("total_duration", "未知")
+    #         risk = impl_plan.get("risk_assessment", "未知")
+    #         markdown += f"\n- **总时长**: {total_duration}\n"
+    #         markdown += f"- **风险评估**: {risk}\n\n"
     
     return markdown
 
@@ -1935,46 +2018,79 @@ def _generate_legacy_ai_analysis_markdown(ai_analysis: dict) -> str:
 
 def generate_markdown_report(result_data):
     """将JSON结果转换为Markdown格式"""
-    logger.info(f"开始生成Markdown报告，数据键: {list(result_data.keys()) if result_data else 'None'}")
-    
-    if not result_data:
-        logger.warning("结果数据为空，生成基础报告")
-        return "# 📋 开发设计方案\n\n**错误**: 没有可用的分析数据\n"
-    
-    markdown = "# 📋 开发设计方案\n\n"
-    
-  
-    # AI智能分析结果
-    if result_data.get("ai_analysis"):
-        ai_analysis = result_data["ai_analysis"]
-        markdown += "## 🤖 AI智能分析\n\n"
+    try:
+        logger.info(f"开始生成Markdown报告，数据键: {list(result_data.keys()) if result_data else 'None'}")
         
-        if isinstance(ai_analysis, str):
-            markdown += f"{ai_analysis}\n\n"
-        elif isinstance(ai_analysis, dict):
-            # 处理新的AI分析结构
-            ai_data = ai_analysis.get("data", {})
-            if "architecture_design" in ai_data:
-                markdown += _generate_architecture_design_markdown(ai_data["architecture_design"])
+        if not result_data:
+            logger.warning("结果数据为空，生成基础报告")
+            return "# 📋 开发设计方案\n\n**错误**: 没有可用的分析数据\n"
+        
+        markdown = "# 📋 开发设计方案\n\n"
+    
+        # AI智能分析结果
+        if result_data.get("ai_analysis"):
+            ai_analysis = result_data["ai_analysis"]
+            logger.info(f"AI分析数据类型: {type(ai_analysis)}")
+            
+            if isinstance(ai_analysis, str):
+                logger.info("AI分析数据为字符串格式")
+                markdown += f"{ai_analysis}\n\n"
+            elif isinstance(ai_analysis, dict):
+                # 处理新的AI分析结构
+                logger.info(f"处理字典格式的AI分析数据，键: {list(ai_analysis.keys())}")
+                ai_data = ai_analysis.get("data", {})
+                logger.info(f"AI数据中的data字段类型: {type(ai_data)}, 键: {list(ai_data.keys()) if isinstance(ai_data, dict) else 'N/A'}")
+                if "architecture_design" in ai_data:
+                    architecture_design = ai_data["architecture_design"]
+                    # 检查architecture_design是否为字典类型
+                    if isinstance(architecture_design, dict):
+                        markdown += _generate_architecture_design_markdown(architecture_design)
+                    elif isinstance(architecture_design, str):
+                        # 如果是字符串，直接输出
+                        markdown += f"## 📋 架构设计\n\n{architecture_design}\n\n"
+                    else:
+                        # 其他类型，转换为字符串
+                        markdown += f"## 📋 架构设计\n\n{str(architecture_design)}\n\n"
+                else:
+                    # 兼容旧格式
+                    logger.info("使用旧格式AI分析处理")
+                    markdown += _generate_legacy_ai_analysis_markdown(ai_analysis)
             else:
-                # 兼容旧格式
-                markdown += _generate_legacy_ai_analysis_markdown(ai_analysis)
+                # 处理其他类型的ai_analysis
+                logger.warning(f"未知的AI分析数据类型: {type(ai_analysis)}")
+                markdown += f"## 📋 AI分析结果\n\n{str(ai_analysis)}\n\n"
+            
+            markdown += "---\n\n"
         
-        markdown += "---\n\n"
-    
-    # 技术执行要求
-    markdown += "## 📝执行要求\n\n"
-    markdown += "1. 严格遵循设计文档中的架构、命名规范、代码结构\n"
-    markdown += "2. 只对指定部分进行修改\n"
-    markdown += "3. 保持其他部分完全不变\n"
-    markdown += "4. 如有疑问，先询问再执行\n"
-    
-    # 时间戳
-    from datetime import datetime
-    markdown += f"*报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n"
-    
-    logger.info(f"Markdown报告生成完成，长度: {len(markdown)} 字符")
-    return markdown
+        # 技术执行要求
+        markdown += "## 📝执行要求\n\n"
+        markdown += "1. 严格遵循设计文档中的架构、命名规范、代码结构\n"
+        markdown += "2. 只对指定部分进行修改\n"
+        markdown += "3. 保持其他部分完全不变\n"
+        markdown += "4. 如有疑问，先询问再执行\n"
+        
+        # 时间戳
+        from datetime import datetime
+        markdown += f"*报告生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*\n"
+        
+        logger.info(f"Markdown报告生成完成，长度: {len(markdown)} 字符")
+        return markdown
+        
+    except Exception as e:
+        logger.error(f"生成Markdown报告失败: {e}")
+        # 返回基础报告，包含错误信息
+        from datetime import datetime
+        error_report = f"""# 📋 开发设计方案
+
+## ⚠️ 报告生成错误
+
+生成详细报告时遇到错误: {str(e)}
+
+请检查数据格式或联系技术支持。
+
+*错误发生时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*
+"""
+        return error_report
 
 def run_full_analysis_pipeline(task: FileParsingTask):
     """运行完整的阶段分析流程"""
@@ -2087,6 +2203,117 @@ def extract_text_from_file(file_path: str) -> str:
         else:
             extracted_text = f"文件解析失败: {str(e)}"
     return extracted_text
+
+@app.route('/api/file/markdown/<task_id>', methods=['PUT'])
+def update_markdown_content(task_id):
+    """更新任务的Markdown内容"""
+    try:
+        # 记录API调用
+        logger.info(f"收到Markdown内容更新请求: 任务ID={task_id}")
+        
+        # 获取请求数据
+        data = request.get_json()
+        if not data or 'markdown_content' not in data:
+            logger.warning(f"Markdown更新请求缺少内容: {data}")
+            return jsonify({
+                "success": False,
+                "error": "缺少markdown_content参数"
+            }), 400
+        
+        markdown_content = data['markdown_content']
+        
+        # 验证内容
+        if not isinstance(markdown_content, str):
+            return jsonify({
+                "success": False,
+                "error": "markdown_content必须是字符串类型"
+            }), 400
+        
+        # 验证任务是否存在
+        task = get_task(task_id)
+        if not task:
+            logger.warning(f"尝试更新不存在的任务Markdown: {task_id}")
+            return jsonify({
+                "success": False,
+                "error": "任务不存在"
+            }), 404
+        
+        # 保存到Redis存储
+        success = markdown_storage.save_markdown(task_id, markdown_content)
+        
+        if not success:
+            return jsonify({
+                "success": False,
+                "error": "保存Markdown内容失败"
+            }), 500
+        
+        # 更新任务对象的markdown_content字段
+        task.markdown_content = markdown_content
+        
+        # 记录操作日志
+        logger.info(f"Markdown内容更新成功: 任务ID={task_id}, 内容长度={len(markdown_content)}")
+        analysis_logger.info(f"📝 用户编辑保存设计方案: {task_id} - 长度={len(markdown_content)}字符")
+        
+        return jsonify({
+            "success": True,
+            "message": "Markdown内容更新成功",
+            "task_id": task_id,
+            "content_length": len(markdown_content),
+            "updated_at": datetime.now().isoformat(),
+            "storage": "Redis存储"
+        })
+        
+    except Exception as e:
+        logger.error(f"更新Markdown内容失败: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"更新失败: {str(e)}"
+        }), 500
+
+@app.route('/api/file/markdown/<task_id>', methods=['GET'])
+def get_markdown_content(task_id):
+    """获取任务的Markdown内容"""
+    try:
+        # 记录API调用
+        logger.info(f"收到Markdown内容获取请求: 任务ID={task_id}")
+        
+        # 验证任务是否存在
+        task = get_task(task_id)
+        if not task:
+            logger.warning(f"尝试获取不存在的任务Markdown: {task_id}")
+            return jsonify({
+                "success": False,
+                "error": "任务不存在"
+            }), 404
+        
+        # 从Redis获取Markdown内容
+        markdown_content = markdown_storage.get_markdown_content_only(task_id)
+        
+        if markdown_content is None:
+            logger.info(f"任务 {task_id} 尚未生成Markdown内容")
+            return jsonify({
+                "success": False,
+                "error": "Markdown内容不存在",
+                "message": "该任务尚未生成设计方案，请先完成文档分析"
+            }), 404
+        
+        logger.info(f"Markdown内容获取成功: 任务ID={task_id}, 长度={len(markdown_content)}")
+        
+        return jsonify({
+            "success": True,
+            "task_id": task_id,
+            "markdown_content": markdown_content,
+            "content_length": len(markdown_content),
+            "storage_source": "Redis存储",
+            "retrieved_at": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"获取Markdown内容失败: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"获取失败: {str(e)}"
+        }), 500
 
 if __name__ == '__main__':
     app = create_app()

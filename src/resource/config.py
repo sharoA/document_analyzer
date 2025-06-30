@@ -92,6 +92,7 @@ class Config:
                 "api_key": "7fcb3541-9363-4bfa-90aa-19e9f691bc25",
                 "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
                 "model": "ep-20250605091804-wmw6w",
+                #"model": "ep-20250605091804-wmw6w",
                 "temperature": 0.7,
                 "max_tokens": 4000
             },

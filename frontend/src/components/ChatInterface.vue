@@ -696,41 +696,7 @@
                     </div>
                   </el-card>
                   
-                  <!-- Markdown分析报告 -->
-                  <el-card class="info-card" v-if="analysisResult.markdownContent">
-                    <template #header>
-                      <div class="markdown-header">
-                        <h5>📋 {{ getAnalysisFileName() }} - 设计报告</h5>
-                        <el-button-group size="small">
-                          <el-button @click="copyMarkdownContent">
-                            <el-icon><DocumentCopy /></el-icon>
-                            复制报告
-                          </el-button>
-                          <el-button @click="downloadMarkdownContent">
-                            <el-icon><Download /></el-icon>
-                            下载Markdown
-                          </el-button>
-                        </el-button-group>
-                      </div>
-                    </template>
-                    <div class="markdown-content">
-                      <el-scrollbar max-height="70vh" class="markdown-content-scrollbar">
-                        <div class="markdown-preview" v-html="renderMarkdown(analysisResult.markdownContent)"></div>
-                      </el-scrollbar>
-                    </div>
-                    
-                    <!-- 移动到此处的操作按钮 -->
-                    <div class="markdown-actions" style="margin-top: 16px; text-align: center; padding: 16px; border-top: 1px solid #e4e7ed;">
-                      <el-button type="primary" @click="analyzeWithAI">
-                        <el-icon><Promotion /></el-icon>
-                        智能处理
-                      </el-button>
-                      <el-button @click="clearResult">
-                        <el-icon><Delete /></el-icon>
-                        清空结果
-                      </el-button>
-                    </div>
-                  </el-card>
+
                   
                   <!-- 分析总结 -->
                   <el-card class="info-card" v-if="analysisResult.analysisSummary">
@@ -843,6 +809,151 @@
           </div>
         </el-tab-pane>
 
+        <!-- 设计方案 -->
+        <el-tab-pane label="设计方案" name="design">
+          <div class="tab-content">
+            <div v-if="!analysisResult || !analysisResult.markdownContent" class="empty-state">
+              <el-empty description="暂无设计方案">
+                <el-button v-if="!uploadedFile" type="primary" @click="activeTab = 'preview'">
+                  上传文档开始分析
+                </el-button>
+                <el-button v-else type="primary" size="large" @click="analyzeDocument" :loading="isAnalyzing">
+                  <el-icon><Promotion /></el-icon>
+                  开始分析生成设计方案
+                </el-button>
+              </el-empty>
+            </div>
+            
+            <div v-else class="design-plan-content">
+              <!-- Markdown设计报告 -->
+              <el-card class="info-card">
+                <template #header>
+                  <div class="markdown-header">
+                    <h5>📋 {{ getAnalysisFileName() }} - 设计报告</h5>
+                    <el-button-group size="small">
+                      <el-button v-if="!isEditingMarkdown" @click="toggleEditMode" type="warning">
+                        <el-icon><Edit /></el-icon>
+                        编辑报告
+                      </el-button>
+                      <el-button v-if="isEditingMarkdown" @click="saveMarkdownContent" type="success" :loading="isSavingMarkdown">
+                        <el-icon><Check /></el-icon>
+                        保存修改
+                      </el-button>
+                      <el-button v-if="isEditingMarkdown" @click="cancelEditMode" type="info">
+                        <el-icon><Close /></el-icon>
+                        取消编辑
+                      </el-button>
+                      <el-button @click="copyMarkdownContent">
+                        <el-icon><DocumentCopy /></el-icon>
+                        复制报告
+                      </el-button>
+                      <el-button @click="downloadMarkdownContent">
+                        <el-icon><Download /></el-icon>
+                        下载Markdown
+                      </el-button>
+                      <el-button @click="exportDesignPlanPDF" :icon="Download" type="primary">
+                        导出PDF
+                      </el-button>
+                    </el-button-group>
+                  </div>
+                </template>
+                
+                <!-- 编辑模式 -->
+                <div v-if="isEditingMarkdown" class="markdown-editor-container">
+                  <el-row :gutter="16" style="height: 70vh;">
+                    <!-- 编辑器 -->
+                    <el-col :span="12">
+                      <div class="editor-panel">
+                        <div class="editor-header">
+                          <h6>📝 Markdown编辑器</h6>
+                          <el-tooltip content="支持标准Markdown语法">
+                            <el-icon><QuestionFilled /></el-icon>
+                          </el-tooltip>
+                        </div>
+                        <el-input
+                          v-model="editingMarkdownContent"
+                          type="textarea"
+                          :rows="25"
+                          placeholder="请输入Markdown内容..."
+                          resize="none"
+                          class="markdown-editor"
+                          @input="onMarkdownEdit"
+                        />
+                      </div>
+                    </el-col>
+                    
+                    <!-- 预览 -->
+                    <el-col :span="12">
+                      <div class="preview-panel">
+                        <div class="editor-header">
+                          <h6>👁️ 实时预览</h6>
+                          <el-tooltip content="编辑内容的实时预览">
+                            <el-icon><View /></el-icon>
+                          </el-tooltip>
+                        </div>
+                        <el-scrollbar max-height="calc(70vh - 50px)" class="preview-scrollbar">
+                          <div class="markdown-preview-edit" v-html="renderMarkdown(editingMarkdownContent)"></div>
+                        </el-scrollbar>
+                      </div>
+                    </el-col>
+                  </el-row>
+                  
+                  <!-- 编辑工具栏 -->
+                  <div class="editor-toolbar">
+                    <el-button-group size="small">
+                      <el-button @click="insertMarkdownSyntax('**', '**')" title="加粗">
+                        <el-icon><Document /></el-icon>
+                        粗体
+                      </el-button>
+                      <el-button @click="insertMarkdownSyntax('*', '*')" title="斜体">
+                        <el-icon><Edit /></el-icon>
+                        斜体
+                      </el-button>
+                      <el-button @click="insertMarkdownSyntax('## ', '')" title="标题">
+                        <el-icon><Promotion /></el-icon>
+                        标题
+                      </el-button>
+                      <el-button @click="insertMarkdownSyntax('- ', '')" title="列表">
+                        <el-icon><List /></el-icon>
+                        列表
+                      </el-button>
+                      <el-button @click="insertMarkdownSyntax('`', '`')" title="代码">
+                        <el-icon><ScriptFilled /></el-icon>
+                        代码
+                      </el-button>
+                    </el-button-group>
+                    
+                    <div class="editor-stats">
+                      <span>字符数: {{ editingMarkdownContent.length }}</span>
+                      <span>行数: {{ editingMarkdownContent.split('\n').length }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 查看模式 -->
+                <div v-else class="markdown-content">
+                  <el-scrollbar max-height="70vh" class="markdown-content-scrollbar">
+                    <div class="markdown-preview" v-html="renderMarkdown(analysisResult.markdownContent)"></div>
+                  </el-scrollbar>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div class="markdown-actions" style="margin-top: 16px; text-align: center; padding: 16px; border-top: 1px solid #e4e7ed;">
+                  <el-button type="primary" @click="analyzeWithAI">
+                    <el-icon><Promotion /></el-icon>
+                    智能处理
+                  </el-button>
+                  <el-button @click="clearResult">
+                    <el-icon><Delete /></el-icon>
+                    清空结果
+                  </el-button>
+                </div>
+              </el-card>
+             
+            </div>
+          </div>
+        </el-tab-pane>
+
         <!-- 导出功能 -->
         <el-tab-pane label="终端" name="export">
           <div class="tab-content">
@@ -933,6 +1044,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useWebSocketStore } from '../stores/websocket'
+import axios from 'axios'
 import { 
   ChatDotRound, 
   User, 
@@ -962,6 +1074,15 @@ import DocumentPreview from './DocumentPreview.vue'
 import MarkdownIt from 'markdown-it'
 import { exportToPDF, exportAnalysisResultToPDF, exportPageScreenshotToPDF, exportSimplePageToPDF, exportDOMContentToPDF } from '../utils/pdfExport'
 
+// 创建独立的axios实例作为备用
+const apiClient = axios.create({
+  baseURL: 'http://localhost:8082',
+  timeout: 120000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+})
+
 // 响应式数据
 const currentMessage = ref('')
 const messagesContainer = ref(null)
@@ -973,6 +1094,12 @@ const isSending = ref(false)
 const showRightPanel = ref(false)
 const activeTab = ref('realtime')
 const exportOptions = ref([])
+
+// Markdown编辑相关状态
+const isEditingMarkdown = ref(false)
+const editingMarkdownContent = ref('')
+const originalMarkdownContent = ref('')
+const isSavingMarkdown = ref(false)
 
 // WebSocket store
 const wsStore = useWebSocketStore()
@@ -1755,21 +1882,186 @@ const md = new MarkdownIt({
   typographer: true
 })
 
-// Markdown渲染方法
+// 设计方案相关方法
+const isMarkdownContent = (content) => {
+  if (!content) return false
+  // 简单检测是否包含markdown语法
+  return content.includes('#') || content.includes('**') || content.includes('- ') || content.includes('1. ')
+}
+
+const getDesignPlanStats = (content) => {
+  if (!content) return null
+  
+  // 计算章节数量（以#开头的行）
+  const sections = (content.match(/^#+\s+/gm) || []).length
+  
+  return {
+    length: content.length,
+    sections: sections
+  }
+}
+
+// renderMarkdown方法
 const renderMarkdown = (content) => {
   if (!content) return ''
-  
-  // 在渲染markdown之前，先处理图片链接
-  const preprocessedContent = preprocessImageLinks(content)
-  
-  // 进行基础的Markdown渲染
-  let rendered = md.render(preprocessedContent)
-  
-  // 后处理：将图片链接转换为图片显示
-  rendered = postProcessImageLinks(rendered)
-  
-  return rendered
+  return md.render(content)
 }
+
+const exportDesignPlanPDF = async () => {
+  if (!analysisResult.value?.markdownContent) {
+    ElMessage.warning('没有可导出的设计方案')
+    return
+  }
+  
+  try {
+    const fileName = getAnalysisFileName().replace(/\.[^/.]+$/, "")
+    const pdfFileName = `${fileName}_设计方案_${new Date().toLocaleDateString().replace(/\//g, '-')}.pdf`
+    
+    // 找到设计方案的容器元素
+    const designContainer = document.querySelector('.design-plan-content')
+    
+    if (!designContainer) {
+      ElMessage.error('找不到设计方案内容，请确保您在"设计方案"页签中')
+      return
+    }
+    
+    await exportDOMContentToPDF(designContainer, pdfFileName, {
+      onProgress: (message) => {
+        ElMessage({
+          message: message,
+          type: 'info',
+          duration: 2000
+        })
+      },
+      onSuccess: () => {
+        ElMessage.success('设计方案PDF导出成功！')
+      },
+      onError: (error) => {
+        ElMessage.error('导出失败: ' + error.message)
+      }
+    })
+  } catch (error) {
+    ElMessage.error('导出设计方案PDF失败: ' + error.message)
+  }
+}
+
+// Markdown编辑功能相关方法
+const toggleEditMode = () => {
+  if (!analysisResult.value?.markdownContent) {
+    ElMessage.warning('没有可编辑的内容')
+    return
+  }
+  
+  // 保存原始内容
+  originalMarkdownContent.value = analysisResult.value.markdownContent
+  editingMarkdownContent.value = analysisResult.value.markdownContent
+  isEditingMarkdown.value = true
+  
+  ElMessage.success('已进入编辑模式')
+}
+
+const cancelEditMode = () => {
+  // 检查是否有未保存的更改
+  if (editingMarkdownContent.value !== originalMarkdownContent.value) {
+    ElMessageBox.confirm(
+      '您有未保存的更改，确定要取消编辑吗？',
+      '确认取消',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '继续编辑',
+        type: 'warning',
+      }
+    ).then(() => {
+      // 确认取消，重置状态
+      isEditingMarkdown.value = false
+      editingMarkdownContent.value = ''
+      originalMarkdownContent.value = ''
+      ElMessage.info('已取消编辑')
+    }).catch(() => {
+      // 继续编辑，不做任何操作
+    })
+  } else {
+    // 没有更改，直接取消
+    isEditingMarkdown.value = false
+    editingMarkdownContent.value = ''
+    originalMarkdownContent.value = ''
+    ElMessage.info('已取消编辑')
+  }
+}
+
+const saveMarkdownContent = async () => {
+  if (!editingMarkdownContent.value.trim()) {
+    ElMessage.warning('内容不能为空')
+    return
+  }
+  
+  try {
+    isSavingMarkdown.value = true
+    
+    // 获取当前任务ID
+    const taskId = wsStore.currentParsingTask?.id
+    if (!taskId) {
+      ElMessage.error('无法获取任务ID，请重新分析文档')
+      return
+    }
+    
+    // 直接使用独立的axios实例，避免store的api问题
+    const response = await apiClient.put(`/api/file/markdown/${taskId}`, {
+      markdown_content: editingMarkdownContent.value
+    })
+    
+    if (response.data.success) {
+      // 更新本地数据
+      analysisResult.value.markdownContent = editingMarkdownContent.value
+      
+      // 退出编辑模式
+      isEditingMarkdown.value = false
+      editingMarkdownContent.value = ''
+      originalMarkdownContent.value = ''
+      
+      ElMessage.success('设计方案保存成功！')
+    } else {
+      ElMessage.error('保存失败: ' + (response.data.error || '未知错误'))
+    }
+  } catch (error) {
+    console.error('保存markdown失败:', error)
+    ElMessage.error('保存失败: ' + (error.response?.data?.error || error.message || '网络错误'))
+  } finally {
+    isSavingMarkdown.value = false
+  }
+}
+
+const onMarkdownEdit = () => {
+  // 可以在这里添加实时保存或其他逻辑
+}
+
+const insertMarkdownSyntax = (before, after = '') => {
+  // 获取textarea元素
+  const textarea = document.querySelector('.markdown-editor textarea')
+  if (!textarea) return
+  
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const selectedText = editingMarkdownContent.value.substring(start, end)
+  
+  // 构造新文本
+  const newText = before + selectedText + after
+  
+  // 更新内容
+  editingMarkdownContent.value = 
+    editingMarkdownContent.value.substring(0, start) + 
+    newText + 
+    editingMarkdownContent.value.substring(end)
+  
+  // 重新设置光标位置
+  nextTick(() => {
+    textarea.focus()
+    const newCursorPos = start + before.length + selectedText.length + after.length
+    textarea.setSelectionRange(newCursorPos, newCursorPos)
+  })
+}
+
+// 图片链接处理方法
 
 // 后处理图片链接 - 在markdown渲染之后处理
 const postProcessImageLinks = (htmlContent) => {
@@ -2525,7 +2817,7 @@ const getTotalChangesCount = () => {
 
     .tab-content {
       padding: 16px 24px;
-      height: calc(100vh - 180px);
+      height: calc(120vh - 180px);
       overflow-y: auto;
       width: 100%;
       box-sizing: border-box;
@@ -4081,6 +4373,175 @@ const getTotalChangesCount = () => {
       content: "🖼️ ";
       margin-right: 4px;
     }
+  }
+
+  /* 设计方案页签样式 */
+  .design-plan-content {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .design-header {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #409eff;
+  }
+
+  .design-title h4 {
+    margin: 0 0 8px 0;
+    color: #303133;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .design-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .design-time {
+    color: #909399;
+    font-size: 12px;
+  }
+
+  .design-actions {
+    display: flex;
+    align-items: center;
+  }
+
+  .design-plan-body {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .design-scrollbar {
+    height: 100%;
+  }
+
+  .design-text {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #2c3e50;
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e4e7ed;
+    margin: 0;
+  }
+
+  .markdown-content {
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #e4e7ed;
+  }
+
+  .markdown-content h1,
+  .markdown-content h2,
+  .markdown-content h3,
+  .markdown-content h4,
+  .markdown-content h5,
+  .markdown-content h6 {
+    color: #2c3e50;
+    margin-top: 24px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .markdown-content h1 {
+    font-size: 2em;
+    border-bottom: 2px solid #e4e7ed;
+    padding-bottom: 8px;
+  }
+
+  .markdown-content h2 {
+    font-size: 1.5em;
+    border-bottom: 1px solid #e4e7ed;
+    padding-bottom: 6px;
+  }
+
+  .markdown-content h3 {
+    font-size: 1.25em;
+  }
+
+  .markdown-content h4 {
+    font-size: 1em;
+  }
+
+  .markdown-content p {
+    margin-bottom: 16px;
+    line-height: 1.6;
+    color: #606266;
+  }
+
+  .markdown-content ul,
+  .markdown-content ol {
+    margin-bottom: 16px;
+    padding-left: 24px;
+  }
+
+  .markdown-content li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+    color: #606266;
+  }
+
+  .markdown-content code {
+    background: #f1f2f3;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+    color: #e74c3c;
+  }
+
+  .markdown-content pre {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 6px;
+    border: 1px solid #e4e7ed;
+    overflow-x: auto;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .markdown-content blockquote {
+    margin: 16px 0;
+    padding: 0 16px;
+    border-left: 4px solid #dfe2e5;
+    color: #6a737d;
+  }
+
+  .markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 16px;
+  }
+
+  .markdown-content table th,
+  .markdown-content table td {
+    padding: 12px;
+    border: 1px solid #e4e7ed;
+    text-align: left;
+  }
+
+  .markdown-content table th {
+    background: #f8f9fa;
+    font-weight: 600;
+  }
+
+  .design-stats {
+    margin-top: 16px;
+    flex-shrink: 0;
   }
 }
 </style> 

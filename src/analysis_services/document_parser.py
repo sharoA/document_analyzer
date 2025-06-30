@@ -93,8 +93,8 @@ class DocumentParserService(BaseAnalysisService):
         
         # 提取文件扩展名
         file_extension = file_name.split('.')[-1] if '.' in file_name else 'unknown'
-         # 提取文件名
-        file_first_name = file_name.split('.')[0] if '.' in file_name else file_name
+        # 提取文件名（去掉扩展名，保留完整的主名称）
+        file_first_name = '.'.join(file_name.split('.')[:-1]) if '.' in file_name else file_name
 
         # 基础信息统计
         lines = content.split('\n')
