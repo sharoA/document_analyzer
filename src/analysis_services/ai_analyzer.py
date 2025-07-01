@@ -173,7 +173,7 @@ class AIArchitectPlanner:
 输出JSON格式：
 {
     "functional_requirements": [
-        {"id": "FR001", "name": "组织单元额度管理", "priority": "high", "complexity": "medium", "description": "新增组织单元额度列表页面，支持查询、筛选、导出功能", "change_type": "新增"}
+        {"id": "FR001", "name": "组织单元额度管理", "priority": "high", "complexity": "中等", "description": "新增组织单元额度列表页面，支持查询、筛选、导出功能", "change_type": "新增"}
     ],
     "non_functional_requirements": [
         {"type": "performance", "description": "页面响应时间<500ms", "metric": "latency", "target": "500ms"},
@@ -195,7 +195,7 @@ class AIArchitectPlanner:
         {"component": "组织单元额度列表", "change_type": "新增", "description": "新增独立的组织单元额度管理页面"}
     ],
     "complexity_assessment": {
-        "level": "medium",
+        "level": "中等",
         "estimated_effort": "2-3人月",
         "risk_factors": ["多组织权限复杂度", "接口校验逻辑调整", "前后端联调"]
     }
@@ -298,7 +298,7 @@ API列表：{json.dumps(content_summary.get("apiName", []), ensure_ascii=False)}
     "data_flow_diagram": {
         "mermaid_syntax": "graph TD; A[前端] --> B[网关]; B --> C[服务层]",
         "components": [
-            {"name": "前端层", "type": "Vue3", "responsibilities": ["用户交互", "数据展示"]},
+            {"name": "前端层", "type": "Vue2", "responsibilities": ["用户交互", "数据展示"]},
             {"name": "网关层", "type": "Spring Gateway", "responsibilities": ["路由", "认证", "限流"]},
             {"name": "服务层", "type": "Spring Boot", "responsibilities": ["业务逻辑", "数据处理"]}
         ]
@@ -341,7 +341,7 @@ API列表：{json.dumps(content_summary.get("apiName", []), ensure_ascii=False)}
 
 输出JSON格式的前端架构设计：
 {{
-    "framework": "Vue3",
+    "framework": "Vue2",
     "architecture_pattern": "组件化架构",
     "state_management": "Pinia",
     "ui_components": [

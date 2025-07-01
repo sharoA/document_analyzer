@@ -314,6 +314,27 @@ class Config:
             ],
             'max_file_size': 50 * 1024 * 1024  # 50MB
         })
+    
+    def get_coder_agent_config(self) -> Dict[str, Any]:
+        """获取编码智能体配置"""
+        return self.get('coder_agent', {
+            "ai_provider": "volcengine",
+            "project_root": "D:/new_project",
+            "backend_version": "2.7.14",
+            "backend_java_version": "8",
+            "frontend_framework": "Vue2",
+            "test_coverage_target": 0.85,
+            "git_config": {
+                "default_remote_url": "https://github.com/sharoA/testproject.git",
+                "default_branch": "main",
+                "default_branch_pattern": "D_{timestamp}_aigc"
+            },
+            "code_generation": {
+                "backend_package_prefix": "com.example",
+                "frontend_components_path": "src/components",
+                "backend_base_path": "src/main/java"
+            }
+        })
 
 # 全局配置实例
 _config = None

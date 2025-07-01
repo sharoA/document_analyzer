@@ -1,0 +1,308 @@
+{
+  "data": {
+    "created_at": "2025-06-30T19:48:20.798548",
+    "execution_plan": null,
+    "project_name": "UserManagementSystem",
+    "status": "success",
+    "task_id": "a2a3c666-14d9-4a3e-837c-05159ea31489",
+    "workflow_result": {
+      "execution_plan": {
+        "branch_name": "D_202506301948_aigc",
+        "created_at": "2025-06-30T19:48:20.807562",
+        "dependencies_graph": {
+          "task_001": [],
+          "task_002": [
+            "task_001"
+          ],
+          "task_003": [
+            "task_002"
+          ],
+          "task_004": [
+            "task_002"
+          ],
+          "task_005": [
+            "task_002"
+          ],
+          "task_006": [
+            "task_002"
+          ],
+          "task_007": [
+            "task_003",
+            "task_004",
+            "task_005"
+          ],
+          "task_008": [
+            "task_006"
+          ],
+          "task_009": [
+            "task_007",
+            "task_008"
+          ]
+        },
+        "estimated_total_hours": 14.5,
+        "execution_order": [
+          "task_001",
+          "task_002",
+          "task_003",
+          "task_004",
+          "task_005",
+          "task_006",
+          "task_007",
+          "task_008",
+          "task_009"
+        ],
+        "plan_id": "85987b00-c30e-46f1-8761-a8d26b436a33",
+        "project_name": "UserManagementSystem",
+        "project_structure": {
+          "description": "2. 实现后端API\n3. 实现前端界面\n4. 编写测试用例\n5. 部署验证"
+        },
+        "tasks": [
+          {
+            "assigned_module": "git_manager",
+            "dependencies": [],
+            "description": "创建项目目录，切换Git分支，初始化项目结构",
+            "estimated_hours": 0.5,
+            "id": "task_001",
+            "name": "环境准备与分支管理",
+            "priority": 1,
+            "status": "pending",
+            "type": "setup"
+          },
+          {
+            "assigned_module": "code_generator",
+            "dependencies": [
+              "task_001"
+            ],
+            "description": "生成backend-stack.md、frontend-stack.md等技术栈文档",
+            "estimated_hours": 0.5,
+            "id": "task_002",
+            "name": "技术栈文档生成",
+            "priority": 2,
+            "status": "pending",
+            "type": "docs"
+          },
+          {
+            "assigned_module": "code_generator",
+            "dependencies": [
+              "task_002"
+            ],
+            "description": "实现项目概述\n- **项目名称**: UserManagementSystem\n- **技术栈**: Java8 + Spring Boot + Vue2\n- **分支**: main\n- **Git仓库**: https://github.com/sharoA/testproject.git\n\n## 功能的后端逻辑",
+            "estimated_hours": 2.0,
+            "id": "task_003",
+            "name": "后端开发 - 项目概述\n- **项目名称**: UserManagementSystem\n- **技术栈**: Java8 + Spring Boot + Vue2\n- **分支**: main\n- **Git仓库**: https://github.com/sharoA/testproject.git\n\n## 功能",
+            "priority": 2,
+            "status": "pending",
+            "type": "backend"
+          },
+          {
+            "assigned_module": "code_generator",
+            "dependencies": [
+              "task_002"
+            ],
+            "description": "实现1. 用户管理\n- 用户注册\n- 用户登录\n- 用户信息查看\n- 用户信息编辑\n- 用户密码修改\n\n### 2. 数据库设计\n```sql\nCREATE TABLE users (\n    id BIGINT PRIMARY KEY AUTO_INCREMENT,\n    username VARCHAR(50) NOT NULL UNIQUE,\n    password VARCHAR(100) NOT NULL,\n    email VARCHAR(100) NOT NULL UNIQUE,\n    phone VARCHAR(20),\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);\n```\n\n### 3. API接口设计\n\n#### 用户注册\n- **URL**: POST /api/users/register\n- **参数**: username, password, email, phone\n- **返回**: 用户信息\n\n#### 用户登录\n- **URL**: POST /api/users/login\n- **参数**: username, password\n- **返回**: JWT Token\n\n#### 获取用户信息\n- **URL**: GET /api/users/profile\n- **Headers**: Authorization: Bearer {token}\n- **返回**: 用户信息\n\n#### 更新用户信息\n- **URL**: PUT /api/users/profile\n- **Headers**: Authorization: Bearer {token}\n- **参数**: email, phone\n- **返回**: 更新后的用户信息\n\n#### 修改密码\n- **URL**: PUT /api/users/password\n- **Headers**: Authorization: Bearer {token}\n- **参数**: oldPassword, newPassword\n- **返回**: 成功状态\n\n### 4. 前端页面设计\n\n#### 登录页面 (Login.vue)\n- 用户名输入框\n- 密码输入框\n- 登录按钮\n- 注册链接\n\n#### 注册页面 (Register.vue)\n- 用户名输入框\n- 密码输入框\n- 确认密码输入框\n- 邮箱输入框\n- 手机号输入框\n- 注册按钮\n\n#### 用户信息页面 (Profile.vue)\n- 显示用户信息\n- 编辑用户信息\n- 修改密码功能的后端逻辑",
+            "estimated_hours": 2.0,
+            "id": "task_004",
+            "name": "后端开发 - 1. 用户管理\n- 用户注册\n- 用户登录\n- 用户信息查看\n- 用户信息编辑\n- 用户密码修改\n\n### 2. 数据库设计\n```sql\nCREATE TABLE users (\n    id BIGINT PRIMARY KEY AUTO_INCREMENT,\n    username VARCHAR(50) NOT NULL UNIQUE,\n    password VARCHAR(100) NOT NULL,\n    email VARCHAR(100) NOT NULL UNIQUE,\n    phone VARCHAR(20),\n    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);\n```\n\n### 3. API接口设计\n\n#### 用户注册\n- **URL**: POST /api/users/register\n- **参数**: username, password, email, phone\n- **返回**: 用户信息\n\n#### 用户登录\n- **URL**: POST /api/users/login\n- **参数**: username, password\n- **返回**: JWT Token\n\n#### 获取用户信息\n- **URL**: GET /api/users/profile\n- **Headers**: Authorization: Bearer {token}\n- **返回**: 用户信息\n\n#### 更新用户信息\n- **URL**: PUT /api/users/profile\n- **Headers**: Authorization: Bearer {token}\n- **参数**: email, phone\n- **返回**: 更新后的用户信息\n\n#### 修改密码\n- **URL**: PUT /api/users/password\n- **Headers**: Authorization: Bearer {token}\n- **参数**: oldPassword, newPassword\n- **返回**: 成功状态\n\n### 4. 前端页面设计\n\n#### 登录页面 (Login.vue)\n- 用户名输入框\n- 密码输入框\n- 登录按钮\n- 注册链接\n\n#### 注册页面 (Register.vue)\n- 用户名输入框\n- 密码输入框\n- 确认密码输入框\n- 邮箱输入框\n- 手机号输入框\n- 注册按钮\n\n#### 用户信息页面 (Profile.vue)\n- 显示用户信息\n- 编辑用户信息\n- 修改密码功能",
+            "priority": 2,
+            "status": "pending",
+            "type": "backend"
+          },
+          {
+            "assigned_module": "code_generator",
+            "dependencies": [
+              "task_002"
+            ],
+            "description": "实现5个REST API接口",
+            "estimated_hours": 2.5,
+            "id": "task_005",
+            "name": "API接口实现",
+            "priority": 2,
+            "status": "pending",
+            "type": "backend"
+          },
+          {
+            "assigned_module": "code_generator",
+            "dependencies": [
+              "task_002"
+            ],
+            "description": "创建Vue2前端应用，实现路由和基础组件",
+            "estimated_hours": 3.0,
+            "id": "task_006",
+            "name": "前端应用开发",
+            "priority": 3,
+            "status": "pending",
+            "type": "frontend"
+          },
+          {
+            "assigned_module": "test_generator",
+            "dependencies": [
+              "task_003",
+              "task_004",
+              "task_005"
+            ],
+            "description": "为后端代码编写JUnit单元测试",
+            "estimated_hours": 2.0,
+            "id": "task_007",
+            "name": "后端单元测试",
+            "priority": 4,
+            "status": "pending",
+            "type": "test"
+          },
+          {
+            "assigned_module": "test_generator",
+            "dependencies": [
+              "task_006"
+            ],
+            "description": "为前端组件编写Jest单元测试",
+            "estimated_hours": 1.5,
+            "id": "task_008",
+            "name": "前端单元测试",
+            "priority": 4,
+            "status": "pending",
+            "type": "test"
+          },
+          {
+            "assigned_module": "git_manager",
+            "dependencies": [
+              "task_007",
+              "task_008"
+            ],
+            "description": "提交所有代码到Git仓库并推送到远程分支",
+            "estimated_hours": 0.5,
+            "id": "task_009",
+            "name": "代码提交与推送",
+            "priority": 5,
+            "status": "pending",
+            "type": "git"
+          }
+        ],
+        "total_tasks": 9
+      },
+      "project_path": "D:\\new_project",
+      "results": {
+        "code_generation": {
+          "completed_tasks": 5,
+          "generated_files": [
+            "D:\\new_project\\docs\\tech-stack\\backend-stack.md",
+            "D:\\new_project\\docs\\tech-stack\\frontend-stack.md",
+            "D:\\new_project\\docs\\tech-stack\\development-standards.md",
+            "D:\\new_project\\pom.xml",
+            "D:\\new_project\\src/main/resources/application.properties",
+            "D:\\new_project\\pom.xml",
+            "D:\\new_project\\src/main/resources/application.properties",
+            "D:\\new_project\\pom.xml",
+            "D:\\new_project\\src/main/resources/application.properties"
+          ],
+          "total_tasks": 5,
+          "warnings": []
+        },
+        "environment_setup": {
+          "git_setup": {
+            "branch_name": "D_202506301948_aigc",
+            "operations": [
+              "创建项目目录",
+              "初始化Git仓库",
+              "提交未保存的更改",
+              "创建并切换到分支: D_202506301948_aigc",
+              "创建基础目录结构"
+            ],
+            "project_path": "D:\\new_project",
+            "status": "success"
+          },
+          "project_path": "D:\\new_project",
+          "structure_analysis": {
+            "backend_structure": {},
+            "existing_files": [
+              "tasks\\execution_plan.md",
+              "tasks\\progress_tracker.json",
+              "tasks\\task_breakdown.json",
+              "tasks\\task_dependencies.json"
+            ],
+            "frontend_structure": {},
+            "git_info": {
+              "current_branch": "D_202506301948_aigc",
+              "has_remote": false,
+              "uncommitted_changes": true
+            },
+            "has_backend": true,
+            "has_frontend": false,
+            "is_git_repo": true,
+            "project_exists": true
+          }
+        },
+        "git_operations": {
+          "commit_id": "7bcb5897eb22820f3b5a3257d581084303ab7cdb",
+          "operations": [
+            "添加所有更改的文件",
+            "提交代码: [新功能] 实现UserManagementSystem项目代码生成 - 20250630_1948"
+          ],
+          "pushed": false,
+          "status": "success",
+          "timestamp": "2025-06-30T19:48:22.311641"
+        },
+        "planning": {
+          "branch_name": "D_202506301948_aigc",
+          "estimated_hours": 14.5,
+          "execution_plan_id": "85987b00-c30e-46f1-8761-a8d26b436a33",
+          "project_name": "UserManagementSystem",
+          "tasks_directory": "D:\\new_project\\tasks",
+          "total_tasks": 9
+        },
+        "testing": {
+          "test_results": [
+            {
+              "coverage": 85.5,
+              "success": true,
+              "task_id": "task_007",
+              "test_files_generated": 5,
+              "tests_failed": 0,
+              "tests_passed": 12
+            },
+            {
+              "coverage": 85.5,
+              "success": true,
+              "task_id": "task_008",
+              "test_files_generated": 5,
+              "tests_failed": 0,
+              "tests_passed": 12
+            }
+          ],
+          "total_test_tasks": 2,
+          "warnings": []
+        }
+      },
+      "status": "completed",
+      "summary": {
+        "completed_phases": 5,
+        "execution_time": "2025-06-30T19:48:22.312674",
+        "phases_summary": {
+          "code_generation": {
+            "completed": true,
+            "has_warnings": false
+          },
+          "environment_setup": {
+            "completed": true,
+            "has_warnings": false
+          },
+          "git_operations": {
+            "completed": true,
+            "has_warnings": false
+          },
+          "planning": {
+            "completed": true,
+            "has_warnings": false
+          },
+          "testing": {
+            "completed": true,
+            "has_warnings": false
+          }
+        },
+        "project_name": "UserManagementSystem",
+        "total_errors": 0,
+        "total_phases": 5
+      }
+    }
+  },
+  "status": "success",
+  "timestamp": "2025-06-30T19:48:22.320251"
+}

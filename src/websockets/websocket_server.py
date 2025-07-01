@@ -261,8 +261,20 @@ if __name__ == '__main__':
     try:
         # 检查werkzeug版本并选择合适的启动方式
         try:
-            import werkzeug
-            werkzeug_version = werkzeug.__version__
+            # 使用现代的方式获取包版本
+            try:
+                from importlib.metadata import version
+                werkzeug_version = version('werkzeug')
+            except ImportError:
+                # Python 3.7及以下版本的后备方案
+                try:
+                    import pkg_resources
+                    werkzeug_version = pkg_resources.get_distribution('werkzeug').version
+                except:
+                    # 如果以上都失败，尝试老的方式
+                    import werkzeug
+                    werkzeug_version = getattr(werkzeug, '__version__', 'unknown')
+            
             print(f"🔧 检测到Werkzeug版本: {werkzeug_version}")
             
             # 尝试不同的启动方式
@@ -295,7 +307,9 @@ if __name__ == '__main__':
         print("\n🛑 服务器已停止")
     except Exception as e:
         print(f"❌ 服务器启动失败: {e}")
-        print("💡 提示: 如果遇到werkzeug版本问题，请尝试:")
-        print("   pip install werkzeug==2.0.3")
-        print("   或")
-        print("   pip install --upgrade werkzeug") 
+        print("💡 提示: 如果遇到版本兼容性问题，请尝试:")
+        print("   1. 确保所有依赖版本兼容:")
+        print("      pip install flask==3.1.1 werkzeug==3.1.3 flask-socketio==5.5.1")
+        print("   2. 或使用稳定版本组合:")
+        print("      pip install flask==2.3.3 werkzeug==2.3.7 flask-socketio==5.8.0")
+        print("   3. 重启虚拟环境并重新安装依赖") 

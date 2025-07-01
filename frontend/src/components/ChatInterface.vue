@@ -148,7 +148,7 @@
       <!-- 工作空间头部 -->
       <div class="workspace-header">
         <h3>Agent 的工作空间</h3>
-        <div class="connection-status">
+        <!-- <div class="connection-status">
           <el-tag 
             :type="connectionStatusType" 
             size="small"
@@ -157,7 +157,7 @@
             <el-icon><Connection /></el-icon>
             {{ connectionStatusText }}
           </el-tag>
-        </div>
+        </div> -->
       </div>
 
       <!-- Tab 导航 -->
@@ -851,8 +851,9 @@
                         <el-icon><Download /></el-icon>
                         下载Markdown
                       </el-button>
-                      <el-button @click="exportDesignPlanPDF" :icon="Download" type="primary">
-                        导出PDF
+                      <el-button @click="generateCode" :loading="isGeneratingCode" type="success">
+                        <el-icon><Edit /></el-icon>
+                        生成代码
                       </el-button>
                     </el-button-group>
                   </div>
@@ -918,7 +919,7 @@
                         列表
                       </el-button>
                       <el-button @click="insertMarkdownSyntax('`', '`')" title="代码">
-                        <el-icon><ScriptFilled /></el-icon>
+                        <el-icon><Edit /></el-icon>
                         代码
                       </el-button>
                     </el-button-group>
@@ -954,8 +955,8 @@
           </div>
         </el-tab-pane>
 
-        <!-- 导出功能 -->
-        <el-tab-pane label="终端" name="export">
+        <!-- 终端 -->
+        <!-- <el-tab-pane label="终端" name="export">
           <div class="tab-content">
             <div class="export-options">
               <h4>导出选项</h4>
@@ -1035,7 +1036,7 @@
               </el-card>
             </div>
           </div>
-        </el-tab-pane>
+        </el-tab-pane> -->
       </el-tabs>
     </div>
   </div>
@@ -1067,7 +1068,8 @@ import {
   ZoomOut,
   DocumentCopy,
   Delete,
-  DocumentChecked
+  DocumentChecked,
+  Edit
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DocumentPreview from './DocumentPreview.vue'
@@ -1077,7 +1079,7 @@ import { exportToPDF, exportAnalysisResultToPDF, exportPageScreenshotToPDF, expo
 // 创建独立的axios实例作为备用
 const apiClient = axios.create({
   baseURL: 'http://localhost:8082',
-  timeout: 120000,
+  timeout: 900000, // 15分钟超时，适应代码生成等长时间任务
   headers: {
     'Content-Type': 'application/json',
   }
@@ -1100,6 +1102,9 @@ const isEditingMarkdown = ref(false)
 const editingMarkdownContent = ref('')
 const originalMarkdownContent = ref('')
 const isSavingMarkdown = ref(false)
+
+// 代码生成相关状态
+const isGeneratingCode = ref(false)
 
 // WebSocket store
 const wsStore = useWebSocketStore()
@@ -2430,6 +2435,43 @@ const getAnalysisFileSize = () => {
 const getAnalysisCharacterCount = () => {
   return analysisResult.value?.contentAnalysis?.statistics?.character_count || 
          analysisResult.value?.details?.length || 0
+}
+
+// 代码生成方法
+const generateCode = async () => {
+  if (!analysisResult.value?.markdownContent) {
+    ElMessage.warning('没有设计方案内容可生成代码')
+    return
+  }
+  
+  isGeneratingCode.value = true
+  
+  try {
+    const projectName = getAnalysisFileName().replace(/\.[^/.]+$/, "") // 移除文件扩展名
+    
+    const response = await apiClient.post('/api/coder-agent/process-document', {
+      document_content: analysisResult.value.markdownContent,
+      project_name: projectName
+    })
+    
+    if (response.data.status === 'success') {
+      ElMessage.success('代码生成成功！请查看后端输出目录')
+      
+      // 可以在这里添加更多成功后的处理逻辑
+      // 比如显示生成的文件列表、提供下载链接等
+      if (response.data.data) {
+        console.log('生成结果:', response.data.data)
+      }
+    } else {
+      ElMessage.error('代码生成失败: ' + (response.data.message || '未知错误'))
+    }
+  } catch (error) {
+    console.error('代码生成失败:', error)
+    const errorMsg = error.response?.data?.message || error.message || '网络错误'
+    ElMessage.error('代码生成失败: ' + errorMsg)
+  } finally {
+    isGeneratingCode.value = false
+  }
 }
 
 // 变更分析相关方法

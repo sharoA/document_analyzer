@@ -98,3 +98,48 @@ validation:
     - "text/html"
     - "application/xml"
   max_file_size: 52428800  # 50MB
+
+# 编码智能体配置
+coder_agent:
+  # 项目路径配置
+  project_root: "D:/new_project"
+  tasks_dir: "tasks"
+  test_project_dir: "test-project"
+  tech_stack_docs_dir: "docs/tech-stack"
+  
+  # Git配置
+  git_config:
+    default_remote_url: "https://github.com/sharoA/testproject.git"
+    default_branch: "main"
+    default_branch_pattern: "D_{timestamp}_aigc"
+    commit_prefix:
+      feat: "新功能"
+      fix: "修复问题"
+      test: "添加测试"
+      docs: "文档更新"
+      refactor: "重构代码"
+      style: "代码格式"
+      chore: "构建变更"
+  
+  # 代码生成配置
+  code_generation:
+    backend_framework: "spring_boot"
+    backend_version: "2.7.x"
+    backend_java_version: "8"
+    frontend_framework: "vue2"
+  
+  # 测试配置
+  test_coverage_target: 0.8
+  backend_test_framework: "junit5"
+  frontend_test_framework: "jest"
+  
+  # AI配置 - 使用火山引擎
+  ai_provider: "volcengine"  # 使用火山引擎而不是openai
+  code_generation_model: "ep-20250605091804-wmw6w"
+  review_model: "ep-20250605091804-wmw6w"
+  max_tokens: 4000
+  temperature: 0.7
+  
+  # 模板配置
+  backend_template_path: "templates/back_construct.md"
+  frontend_template_path: "templates/fronted_construct.md"

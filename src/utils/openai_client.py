@@ -28,7 +28,7 @@ except ImportError:
         OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
         DEFAULT_TEMPERATURE = 0.7
         DEFAULT_MAX_TOKENS = 2000
-        DEFAULT_TIMEOUT = 120
+        DEFAULT_TIMEOUT = 600  # 调整为10分钟，适应代码生成等复杂任务
     
     settings = MockSettings()
     
@@ -53,7 +53,7 @@ class OpenAIConfig:
     base_url: str = "https://api.openai.com/v1"
     temperature: float = 0.7
     max_tokens: int = 2000
-    timeout: int = 120
+    timeout: int = 600  # 调整为10分钟，适应代码生成等复杂任务
 
 class OpenAIClient:
     """OpenAI客户端"""

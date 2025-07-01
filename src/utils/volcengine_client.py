@@ -28,7 +28,7 @@ except ImportError:
         VOLCENGINE_BASE_URL = os.getenv("VOLCENGINE_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
         DEFAULT_TEMPERATURE = 0.7
         DEFAULT_MAX_TOKENS = 2000
-        DEFAULT_TIMEOUT = 120  # 调整为2分钟，适应大模型响应时间
+        DEFAULT_TIMEOUT = 600  # 调整为10分钟，适应代码生成等复杂任务
     
     settings = MockSettings()
     
@@ -53,7 +53,7 @@ class VolcengineConfig:
     base_url: str = "https://ark.cn-beijing.volces.com/api/v3"
     temperature: float = 0.7
     max_tokens: int = 2000
-    timeout: int = 120  # 调整为2分钟，适应大模型响应时间
+    timeout: int = 600  # 调整为10分钟，适应代码生成等复杂任务
 
 class VolcengineClient:
     """火山引擎客户端"""
@@ -402,7 +402,27 @@ def get_volcengine_client() -> VolcengineClient:
     """获取全局火山引擎客户端实例"""
     global _volcengine_client
     if _volcengine_client is None:
-        _volcengine_client = VolcengineClient()
+        # 尝试从配置文件读取配置
+        try:
+            from ..resource.config import get_config
+            config = get_config()
+            volcengine_config = config.get_volcengine_config()
+            
+            if volcengine_config and volcengine_config.get('api_key'):
+                volcano_config = VolcengineConfig(
+                    api_key=volcengine_config.get('api_key'),
+                    model_id=volcengine_config.get('model', 'ep-20250605091804-wmw6w'),
+                    base_url=volcengine_config.get('endpoint', 'https://ark.cn-beijing.volces.com/api/v3'),
+                    temperature=volcengine_config.get('temperature', 0.7),
+                    max_tokens=volcengine_config.get('max_tokens', 4000)
+                )
+                _volcengine_client = VolcengineClient(volcano_config)
+            else:
+                # 回退到环境变量
+                _volcengine_client = VolcengineClient()
+        except ImportError:
+            # 如果无法导入配置，使用环境变量
+            _volcengine_client = VolcengineClient()
     return _volcengine_client
 
 # 便捷函数

@@ -80,6 +80,8 @@ except ImportError:
         validate_file_upload,
         initialize_analysis_service_manager
     )
+    # 导入编码智能体API
+    from src.apis.coder_agent_api import coder_agent_api
     try:
         from src.utils.enhanced_analyzer import EnhancedAnalyzer
         ENHANCED_ANALYZER_AVAILABLE = True
@@ -100,6 +102,9 @@ CORS(app,
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
      allow_headers=["Content-Type", "Authorization"],
      supports_credentials=True)
+
+# 注册编码智能体API蓝图
+app.register_blueprint(coder_agent_api)
 
 # 添加请求日志中间件
 @app.before_request
@@ -647,7 +652,7 @@ def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensi
         
         # 设置状态为AI分析中
         task.status = "ai_analyzing"
-        task.update_progress(10, "开始AI智能分析", "ai_analyzing")
+        task.update_progress(10, "开始AI设计方案", "ai_analyzing")
         
         # 使用分析服务管理器进行AI分析
         if analysis_service_manager:
@@ -1570,7 +1575,7 @@ def start_analysis_v2():
             "stages": [
                 {"name": "document_parsing", "title": "文档解析", "status": "pending"},
                 {"name": "content_analysis", "title": "内容分析", "status": "pending"},
-                {"name": "ai_analysis", "title": "AI智能分析", "status": "pending"},
+                {"name": "ai_analysis", "title": "AI设计方案", "status": "pending"},
                 {"name": "document_generation", "title": "生成文档", "status": "pending"}
             ],
             "timestamp": datetime.now().isoformat()
@@ -1610,7 +1615,7 @@ def get_analysis_progress_v2(task_id):
                 "message": "等待开始"
             },
             "ai_analysis": {
-                "title": "AI智能分析",
+                "title": "设计方案",
                 "status": "pending", 
                 "progress": 0,
                 "message": "等待开始"
@@ -1956,32 +1961,32 @@ def _generate_architecture_design_markdown(architecture_design: dict) -> str:
                         markdown += f"  - {resp}\n"
                     markdown += "\n"
     
-    # 4. 安全设计
-    if "security_design" in architecture_design:
+    # # 4. 安全设计
+    # if "security_design" in architecture_design:
      
-        security = architecture_design["security_design"]
-        if security:
-            markdown += "### 🔒 安全设计\n\n"
-        # 认证
-        if "authentication" in security:
-            auth = security["authentication"]
-            method = auth.get("method", "未知")
-            markdown += f"#### 认证方式\n\n"
-            markdown += f"- **方法**: {method}\n"
-            if "token_expiry" in auth:
-                markdown += f"- **Token有效期**: {auth['token_expiry']}\n"
-            markdown += "\n"
+    #     security = architecture_design["security_design"]
+    #     if security:
+    #         markdown += "### 🔒 安全设计\n\n"
+    #     # 认证
+    #     if "authentication" in security:
+    #         auth = security["authentication"]
+    #         method = auth.get("method", "未知")
+    #         markdown += f"#### 认证方式\n\n"
+    #         markdown += f"- **方法**: {method}\n"
+    #         if "token_expiry" in auth:
+    #             markdown += f"- **Token有效期**: {auth['token_expiry']}\n"
+    #         markdown += "\n"
         
-        # 安全措施
-        if "security_measures" in security:
-            markdown += "#### 安全措施\n\n"
-            for measure in security["security_measures"]:
-                name = measure.get("name", "未命名措施")
-                config = measure.get("config", {})
-                markdown += f"- **{name}**\n"
-                for key, value in config.items():
-                    markdown += f"  - {key}: {value}\n"
-                markdown += "\n"
+    #     # 安全措施
+    #     if "security_measures" in security:
+    #         markdown += "#### 安全措施\n\n"
+    #         for measure in security["security_measures"]:
+    #             name = measure.get("name", "未命名措施")
+    #             config = measure.get("config", {})
+    #             markdown += f"- **{name}**\n"
+    #             for key, value in config.items():
+    #                 markdown += f"  - {key}: {value}\n"
+    #             markdown += "\n"
     
     # # 5. 实施计划
     # if "implementation_plan" in architecture_design:
@@ -2027,7 +2032,7 @@ def generate_markdown_report(result_data):
         
         markdown = "# 📋 开发设计方案\n\n"
     
-        # AI智能分析结果
+        # AI设计方案结果
         if result_data.get("ai_analysis"):
             ai_analysis = result_data["ai_analysis"]
             logger.info(f"AI分析数据类型: {type(ai_analysis)}")
@@ -2118,8 +2123,8 @@ def run_full_analysis_pipeline(task: FileParsingTask):
             return
         
         content_analysis = redis_task_storage.get_content_analysis(task.id)
-        # 阶段3: AI智能分析
-        task.update_progress(70, "开始AI智能分析", "ai_analyzing")
+        # 阶段3: AI设计方案
+        task.update_progress(70, "开始AI设计方案", "ai_analyzing")
         process_ai_analysis(task, "comprehensive", content_analysis, parsing_result)
         
         # 检查AI分析是否成功

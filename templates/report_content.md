@@ -22,7 +22,7 @@
     ↓
 阶段2：内容分析 ← Redis读取解析结果 → Redis存储内容分析结果  
     ↓
-阶段3：AI智能分析 ← Redis读取内容分析结果 → Redis存储AI分析结果
+阶段3：设计方案 ← Redis读取内容分析结果 → Redis存储AI分析结果
     ↓
 result接口 ← Redis读取所有分析结果 → JSON响应 → 前端展示
 
@@ -33,9 +33,9 @@ result接口 ← Redis读取所有分析结果 → JSON响应 → 前端展示
   - `task:{task_id}` - 任务基本信息
   - `result:{task_id}:parsing` - 文档解析结果
   - `result:{task_id}:content_analysis` - 内容分析结果
-  - `result:{task_id}:ai_analysis` - AI分析结果
+  - `result:{task_id}:ai_analysis` - 设计方案
 
-文件上传 → SQLite存储基本信息 → 文档解析 → Redis存储解析结果 → 内容分析 → Redis存储内容分析结果 → AI智能分析 → Redis存储AI分析结果 → Result接口从Redis读取所有结果 → 前端展示
+文件上传 → SQLite存储基本信息 → 文档解析 → Redis存储解析结果 → 内容分析 → Redis存储内容分析结果 → AI设计方案 → Redis存储AI分析结果 → Result接口从Redis读取所有结果 → 前端展示
 
 
 
