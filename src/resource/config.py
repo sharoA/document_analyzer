@@ -330,7 +330,7 @@ class Config:
                 "default_branch_pattern": "D_{timestamp}_aigc"
             },
             "code_generation": {
-                "backend_package_prefix": "com.example",
+                "backend_package_prefix": "com",
                 "frontend_components_path": "src/components",
                 "backend_base_path": "src/main/java"
             }

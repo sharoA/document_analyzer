@@ -61,15 +61,15 @@ class CodeGenerator:
             generated_files.extend(config_files)
             
             # 2. 生成实体类
-            entity_files = self._generate_entities_with_ai(design_data, project_path)
+            entity_files = self._generate_entities(design_data, project_path)
             generated_files.extend(entity_files)
             
             # 3. 生成Repository层
-            repository_files = self._generate_repositories_with_ai(design_data, project_path)
+            repository_files = self._generate_repositories(design_data, project_path)
             generated_files.extend(repository_files)
             
             # 4. 生成Service层
-            service_files = self._generate_services_with_ai(design_data, project_path)
+            service_files = self._generate_services(design_data, project_path)
             generated_files.extend(service_files)
             
             # 5. 生成Controller层
@@ -181,153 +181,88 @@ class CodeGenerator:
             logger.error(f"AI代码生成失败: {e}")
             raise e
 
-    def _generate_entities_with_ai(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """使用AI生成实体类"""
+    def _generate_entities(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
+        """生成实体类"""
         files = []
+        
         database_design = design_data.get('database_design', [])
+        package_path = self._get_package_path(design_data, "entity")
         
         for table in database_design:
-            try:
-                # 构建AI提示
-                prompt = f"""
-生成一个Spring Boot JPA实体类，要求：
-
-1. 表名: {table.get('name', 'unknown')}
-2. 表描述: {table.get('description', '数据表')}
-3. 包名: com.example.entity
-4. 使用Java 8语法
-5. 包含JPA注解(@Entity, @Table, @Id, @Column等)
-6. 包含字段的getter和setter方法
-7. 包含默认构造函数和全参构造函数
-8. 实现toString()方法
-
-表字段信息:
-{json.dumps(table.get('columns', []), ensure_ascii=False, indent=2)}
-
-请生成完整的Java类代码。
-"""
-                
-                context = f"项目信息: {design_data.get('project_info', {})}"
-                
-                # 调用AI生成代码
-                entity_code = self._call_ai_for_code_generation(prompt, context)
-                
-                # 清理AI返回的代码（移除可能的markdown标记）
-                entity_code = self._clean_ai_generated_code(entity_code)
-                
-                # 生成文件路径
-                entity_name = self._normalize_name_for_java(table.get('name', 'Unknown'))
-                entity_path = os.path.join(
-                    project_path, 
-                    f"src/main/java/com/example/entity/{entity_name}.java"
-                )
-                
-                # 写入文件
-                self._write_file(entity_path, entity_code)
-                files.append(entity_path)
-                
-                logger.info(f"生成实体类: {entity_name}")
-                
-            except Exception as e:
-                logger.error(f"生成实体类 {table.get('name')} 失败: {e}")
-                continue
+            entity_content = self._create_entity_class(table, design_data)
+            entity_name = self._normalize_name_for_java(table.get('name', 'Unknown'))
+            entity_path = os.path.join(
+                project_path, 
+                f"src/main/java/{package_path}/{entity_name}.java"
+            )
+            self._write_file(entity_path, entity_content)
+            files.append(entity_path)
         
         return files
 
-    def _generate_repositories_with_ai(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """使用AI生成Repository接口"""
+    def _generate_repositories(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
+        """生成Repository层"""
         files = []
+        
         database_design = design_data.get('database_design', [])
+        package_path = self._get_package_path(design_data, "repository")
         
         for table in database_design:
-            try:
-                entity_name = self._normalize_name_for_java(table.get('name', 'Unknown'))
-                
-                prompt = f"""
-生成一个Spring Data JPA Repository接口，要求：
-
-1. 实体类名: {entity_name}
-2. 包名: com.example.repository
-3. 继承JpaRepository<{entity_name}, Long>
-4. 包含常用的查询方法（如按用户名查找、按邮箱查找等）
-5. 使用@Repository注解
-6. 根据业务需求添加自定义查询方法
-
-实体信息:
-- 表名: {table.get('name')}
-- 描述: {table.get('description', '')}
-- 字段: {json.dumps(table.get('columns', []), ensure_ascii=False)}
-
-请生成完整的Repository接口代码。
-"""
-                
-                context = f"项目信息: {design_data.get('project_info', {})}"
-                repository_code = self._call_ai_for_code_generation(prompt, context)
-                repository_code = self._clean_ai_generated_code(repository_code)
-                
-                repository_path = os.path.join(
-                    project_path, 
-                    f"src/main/java/com/example/repository/{entity_name}Repository.java"
-                )
-                
-                self._write_file(repository_path, repository_code)
-                files.append(repository_path)
-                
-                logger.info(f"生成Repository接口: {entity_name}Repository")
-                
-            except Exception as e:
-                logger.error(f"生成Repository {entity_name} 失败: {e}")
-                continue
+            repository_content = self._create_repository_interface(table, design_data)
+            entity_name = self._normalize_name_for_java(table.get('name', 'Unknown'))
+            repo_path = os.path.join(
+                project_path, 
+                f"src/main/java/{package_path}/{entity_name}Repository.java"
+            )
+            self._write_file(repo_path, repository_content)
+            files.append(repo_path)
         
         return files
 
-    def _generate_services_with_ai(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """使用AI生成Service类"""
+    def _generate_services(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
+        """生成Service层"""
         files = []
+        
         business_logic = design_data.get('business_logic', [])
+        package_path = self._get_package_path(design_data, "service")
         
         for module in business_logic:
-            try:
-                module_name = self._normalize_name_for_java(module.get('module', 'Unknown'))
-                
-                prompt = f"""
-生成一个Spring Boot Service类，要求：
+            service_content = self._create_service_class(module, design_data)
+            module_name = self._normalize_name_for_java(module.get('module', 'Unknown'))
+            service_path = os.path.join(
+                project_path, 
+                f"src/main/java/{package_path}/{module_name}Service.java"
+            )
+            self._write_file(service_path, service_content)
+            files.append(service_path)
+        
+        return files
 
-1. 服务名: {module_name}Service
-2. 包名: com.example.service
-3. 使用@Service注解
-4. 实现业务逻辑: {module.get('description', '')}
-5. 支持的操作: {', '.join(module.get('operations', []))}
-6. 包含错误处理和日志记录
-7. 使用@Autowired注入Repository
-8. 包含事务管理(@Transactional)
-
-业务模块信息:
-{json.dumps(module, ensure_ascii=False, indent=2)}
-
-数据库设计参考:
-{json.dumps(design_data.get('database_design', []), ensure_ascii=False)}
-
-请生成完整的Service类代码。
-"""
-                
-                context = f"项目信息: {design_data.get('project_info', {})}"
-                service_code = self._call_ai_for_code_generation(prompt, context)
-                service_code = self._clean_ai_generated_code(service_code)
-                
-                service_path = os.path.join(
-                    project_path, 
-                    f"src/main/java/com/example/service/{module_name}Service.java"
-                )
-                
-                self._write_file(service_path, service_code)
-                files.append(service_path)
-                
-                logger.info(f"生成Service类: {module_name}Service")
-                
-            except Exception as e:
-                logger.error(f"生成Service {module_name} 失败: {e}")
-                continue
+    def _generate_controllers(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
+        """生成Controller层"""
+        files = []
+        
+        api_design = design_data.get('api_design', [])
+        package_path = self._get_package_path(design_data, "controller")
+        
+        # 按路径分组API
+        api_groups = {}
+        for api in api_design:
+            path_parts = api.get('path', '/').split('/')
+            if len(path_parts) > 1:
+                controller_name = self._normalize_name_for_java(path_parts[1])
+                if controller_name not in api_groups:
+                    api_groups[controller_name] = []
+                api_groups[controller_name].append(api)
+        
+        for controller_name, apis in api_groups.items():
+            controller_content = self._create_controller_class(controller_name, apis, design_data)
+            controller_path = os.path.join(
+                project_path, 
+                f"src/main/java/{package_path}/{controller_name}Controller.java"
+            )
+            self._write_file(controller_path, controller_content)
+            files.append(controller_path)
         
         return files
 
@@ -348,11 +283,12 @@ class CodeGenerator:
         
         for controller_name, apis in api_groups.items():
             try:
+                package_prefix = self._get_package_prefix(design_data)
                 prompt = f"""
 生成一个Spring Boot REST Controller类，要求：
 
 1. 控制器名: {controller_name}Controller
-2. 包名: com.example.controller
+2. 包名: {package_prefix}.controller
 3. 使用@RestController和@RequestMapping注解
 4. 包含以下API接口:
 
@@ -376,9 +312,10 @@ class CodeGenerator:
                 controller_code = self._call_ai_for_code_generation(prompt, context)
                 controller_code = self._clean_ai_generated_code(controller_code)
                 
+                package_path = self._get_package_path(design_data, "controller")
                 controller_path = os.path.join(
                     project_path, 
-                    f"src/main/java/com/example/controller/{controller_name}Controller.java"
+                    f"src/main/java/{package_path}/{controller_name}Controller.java"
                 )
                 
                 self._write_file(controller_path, controller_code)
@@ -740,6 +677,7 @@ API接口参考:
         
         try:
             project_name = design_data.get('project_info', {}).get('name', 'UserManagementSystem')
+            package_prefix = self._get_package_prefix(design_data)
             
             # 使用规范化方法生成Java类名（大驼峰命名法）
             normalized_project_name = self._normalize_name_for_java(project_name)
@@ -748,7 +686,7 @@ API接口参考:
 生成一个Spring Boot主应用类，要求：
 
 1. 类名: {normalized_project_name}Application
-2. 包名: com.example
+2. 包名: {package_prefix}
 3. 使用@SpringBootApplication注解
 4. 包含main方法
 5. 包含Swagger配置
@@ -768,7 +706,7 @@ API接口参考:
             
             main_app_path = os.path.join(
                 project_path, 
-                f"src/main/java/com/example/{normalized_project_name}Application.java"
+                f"src/main/java/{package_prefix.replace('.', '/')}/{normalized_project_name}Application.java"
             )
             
             self._write_file(main_app_path, main_app_code)
@@ -799,188 +737,10 @@ API接口参考:
         
         return files
     
-    def _generate_entities(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """生成实体类"""
-        files = []
-        
-        database_design = design_data.get('database_design', [])
-        
-        for table in database_design:
-            entity_content = self._create_entity_class(table)
-            entity_name = self._normalize_name_for_java(table.get('name', 'Unknown'))
-            entity_path = os.path.join(
-                project_path, 
-                f"src/main/java/com/example/entity/{entity_name}.java"
-            )
-            self._write_file(entity_path, entity_content)
-            files.append(entity_path)
-        
-        return files
-    
-    def _generate_repositories(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """生成Repository层"""
-        files = []
-        
-        database_design = design_data.get('database_design', [])
-        
-        for table in database_design:
-            repository_content = self._create_repository_interface(table)
-            entity_name = self._normalize_name_for_java(table.get('name', 'Unknown'))
-            repo_path = os.path.join(
-                project_path, 
-                f"src/main/java/com/example/repository/{entity_name}Repository.java"
-            )
-            self._write_file(repo_path, repository_content)
-            files.append(repo_path)
-        
-        return files
-    
-    def _generate_services(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """生成Service层"""
-        files = []
-        
-        business_logic = design_data.get('business_logic', [])
-        
-        for module in business_logic:
-            service_content = self._create_service_class(module)
-            module_name = self._normalize_name_for_java(module.get('module', 'Unknown'))
-            service_path = os.path.join(
-                project_path, 
-                f"src/main/java/com/example/service/{module_name}Service.java"
-            )
-            self._write_file(service_path, service_content)
-            files.append(service_path)
-        
-        return files
-    
-    def _generate_controllers(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """生成Controller层"""
-        files = []
-        
-        api_design = design_data.get('api_design', [])
-        
-        # 按路径分组API
-        api_groups = {}
-        for api in api_design:
-            path_parts = api.get('path', '/').split('/')
-            if len(path_parts) > 1:
-                controller_name = self._normalize_name_for_java(path_parts[1])
-                if controller_name not in api_groups:
-                    api_groups[controller_name] = []
-                api_groups[controller_name].append(api)
-        
-        for controller_name, apis in api_groups.items():
-            controller_content = self._create_controller_class(controller_name, apis)
-            controller_path = os.path.join(
-                project_path, 
-                f"src/main/java/com/example/controller/{controller_name}Controller.java"
-            )
-            self._write_file(controller_path, controller_content)
-            files.append(controller_path)
-        
-        return files
-    
-    def _generate_frontend_config(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """生成前端配置文件"""
-        files = []
-        
-        frontend_path = os.path.join(project_path, "frontend")
-        
-        # 生成package.json
-        package_json_content = self._create_package_json(design_data)
-        package_path = os.path.join(frontend_path, "package.json")
-        self._write_file(package_path, package_json_content)
-        files.append(package_path)
-        
-        # 生成index.html
-        index_html_content = self._create_index_html(design_data)
-        index_path = os.path.join(frontend_path, "index.html")
-        self._write_file(index_path, index_html_content)
-        files.append(index_path)
-        
-        # 生成main.js
-        main_js_content = self._create_main_js(design_data)
-        main_path = os.path.join(frontend_path, "src/main.js")
-        self._write_file(main_path, main_js_content)
-        files.append(main_path)
-        
-        return files
-    
-    def _generate_router_config(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """生成路由配置文件"""
-        files = []
-        
-        # 生成router/index.js
-        router_content = self._create_router_config(design_data)
-        router_path = os.path.join(project_path, "frontend/src/router/index.js")
-        self._write_file(router_path, router_content)
-        files.append(router_path)
-        
-        return files
-    
-    def _generate_api_files(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """生成API接口文件"""
-        files = []
-        
-        # 生成通用的API配置
-        api_config_content = self._create_api_config()
-        api_config_path = os.path.join(project_path, "frontend/src/utils/request.js")
-        self._write_file(api_config_path, api_config_content)
-        files.append(api_config_path)
-        
-        # 生成用户API文件
-        user_api_content = self._create_user_api(design_data)
-        user_api_path = os.path.join(project_path, "frontend/src/api/user.js")
-        self._write_file(user_api_path, user_api_content)
-        files.append(user_api_path)
-        
-        return files
-    
-    def _generate_vue_components(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """生成Vue组件"""
-        files = []
-        
-        components = design_data.get('components', [])
-        
-        for component in components:
-            component_content = self._create_vue_component(component)
-            component_name = component.get('name', 'Unknown')
-            component_path = os.path.join(
-                project_path, 
-                f"frontend/src/components/{component_name}.vue"
-            )
-            self._write_file(component_path, component_content)
-            files.append(component_path)
-        
-        return files
-    
-    def _generate_page_components(self, design_data: Dict[str, Any], project_path: str) -> List[str]:
-        """生成页面组件"""
-        files = []
-        
-        pages = design_data.get('pages', [])
-        
-        for page in pages:
-            page_content = self._create_vue_page(page)
-            page_name = page.get('name', 'Unknown')
-            page_path = os.path.join(
-                project_path, 
-                f"frontend/src/views/{page_name}.vue"
-            )
-            self._write_file(page_path, page_content)
-            files.append(page_path)
-        
-        # 生成App.vue
-        app_content = self._create_app_vue(design_data)
-        app_path = os.path.join(project_path, "frontend/src/App.vue")
-        self._write_file(app_path, app_content)
-        files.append(app_path)
-        
-        return files
-    
     def _create_pom_xml(self, design_data: Dict[str, Any]) -> str:
         """创建pom.xml内容"""
         project_name = design_data.get('project_info', {}).get('name', 'example-project')
+        package_prefix = self._get_package_prefix(design_data)
         
         return f"""<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -989,7 +749,7 @@ API接口参考:
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     
-    <groupId>com.example</groupId>
+    <groupId>{package_prefix}</groupId>
     <artifactId>{project_name.lower().replace(' ', '-')}</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
@@ -1066,6 +826,7 @@ API接口参考:
     
     def _create_application_properties(self, design_data: Dict[str, Any]) -> str:
         """创建application.properties内容"""
+        package_prefix = self._get_package_prefix(design_data)
         return f"""# Application Configuration
 spring.application.name={design_data.get('project_info', {}).get('name', 'example-app')}
 server.port=8080
@@ -1083,13 +844,13 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
 
 # MyBatis Configuration
 mybatis.mapper-locations=classpath:mapper/*.xml
-mybatis.type-aliases-package=com.example.entity
+mybatis.type-aliases-package={package_prefix}.entity
 
 # Swagger Configuration
 spring.mvc.pathmatch.matching-strategy=ant_path_matcher
 
 # Logging Configuration
-logging.level.com.example=DEBUG
+logging.level.{package_prefix}=DEBUG
 logging.pattern.console=%d{{yyyy-MM-dd HH:mm:ss}} - %msg%n
 
 # Generated by CoderAgent at {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
@@ -1106,10 +867,10 @@ logging.pattern.console=%d{{yyyy-MM-dd HH:mm:ss}} - %msg%n
         logger.debug(f"生成文件: {file_path}")
     
     # 其他辅助方法（简化实现）
-    def _create_entity_class(self, table: Dict[str, str]) -> str:
+    def _create_entity_class(self, table: Dict[str, str], design_data: Dict[str, Any]) -> str:
         """创建实体类（简化版本）"""
         entity_name = table.get('name', 'Unknown').capitalize()
-        return f"""package com.example.entity;
+        return f"""package {self._get_package_path(design_data, 'entity')};
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -1158,12 +919,13 @@ public class {entity_name} {{
     }}
 }}"""
     
-    def _create_repository_interface(self, table: Dict[str, str]) -> str:
+    def _create_repository_interface(self, table: Dict[str, str], design_data: Dict[str, Any]) -> str:
         """创建Repository接口"""
         entity_name = table.get('name', 'Unknown').capitalize()
-        return f"""package com.example.repository;
+        package_prefix = self._get_package_prefix(design_data)
+        return f"""package {package_prefix}.repository;
 
-import com.example.entity.{entity_name};
+import {package_prefix}.entity.{entity_name};
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -1176,10 +938,11 @@ public interface {entity_name}Repository extends JpaRepository<{entity_name}, Lo
     
 }}"""
     
-    def _create_service_class(self, module: Dict[str, str]) -> str:
+    def _create_service_class(self, module: Dict[str, str], design_data: Dict[str, Any]) -> str:
         """创建Service类"""
         module_name = module.get('module', 'Unknown').replace('功能', '').replace('模块', '').strip()
-        return f"""package com.example.service;
+        package_prefix = self._get_package_prefix(design_data)
+        return f"""package {package_prefix}.service;
 
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -1199,9 +962,10 @@ public class {module_name}Service {{
     
 }}"""
     
-    def _create_controller_class(self, controller_name: str, apis: List[Dict[str, str]]) -> str:
+    def _create_controller_class(self, controller_name: str, apis: List[Dict[str, str]], design_data: Dict[str, Any]) -> str:
         """创建Controller类"""
-        return f"""package com.example.controller;
+        package_prefix = self._get_package_prefix(design_data)
+        return f"""package {package_prefix}.controller;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
@@ -1281,4 +1045,15 @@ new Vue({
   router,
   components: { App },
   template: '<App/>'
-})""" 
+})"""
+    
+    def _get_package_prefix(self, design_data: Dict[str, Any]) -> str:
+        """获取包名前缀"""
+        return design_data.get('project_info', {}).get('package_prefix', 'com')
+    
+    def _get_package_path(self, design_data: Dict[str, Any], sub_package: str = None) -> str:
+        """获取包路径"""
+        package_prefix = self._get_package_prefix(design_data)
+        if sub_package:
+            return f"{package_prefix}/{sub_package}"
+        return package_prefix 

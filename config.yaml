@@ -127,6 +127,7 @@ coder_agent:
     backend_version: "2.7.x"
     backend_java_version: "8"
     frontend_framework: "vue2"
+    backend_package_prefix: "com"
   
   # 测试配置
   test_coverage_target: 0.8

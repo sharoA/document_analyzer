@@ -625,7 +625,7 @@
                                   <div class="change-details-content" v-html="renderMarkdown(change.changeDetails || '暂无')"></div>
                                 </div>
 
-                                <div v-if="change.version?.length" class="version-info">
+                                <div v-if="change.version?.length && change.changeType !== '新增'" class="version-info">
                                   <strong>参考版本：</strong>
                                   <el-tag 
                                     v-for="(version, vIdx) in change.version" 

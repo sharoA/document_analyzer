@@ -924,12 +924,15 @@ frontend/
             # 获取项目基本信息 - 确保使用Git项目名
             git_project_name = self._get_git_project_name()
             
+            # 获取包名前缀配置
+            package_prefix = self._get_package_prefix()
+            
             # 构造基于实际需求的设计数据
             design_data = {
                 "project_info": {
                     "name": git_project_name,
                     "version": "1.0.0",
-                    "package_prefix": "com.example"
+                    "package_prefix": package_prefix
                 },
                 "database_design": self._extract_database_design_from_task(task),
                 "business_logic": self._extract_business_logic_from_task(task),
@@ -942,6 +945,23 @@ frontend/
             logger.error(f"准备后端设计数据失败: {e}")
             # 如果解析失败，返回基于任务描述的最小数据
             return self._create_fallback_design_data_from_task(task)
+    
+    def _get_package_prefix(self) -> str:
+        """获取包名前缀配置"""
+        try:
+            from ..resource.config import get_config
+            
+            main_config = get_config()
+            coder_config = main_config.get_coder_agent_config()
+            code_generation_config = coder_config.get("code_generation", {})
+            package_prefix = code_generation_config.get("backend_package_prefix", "com")
+            
+            logger.info(f"使用包名前缀: {package_prefix}")
+            return package_prefix
+            
+        except Exception as e:
+            logger.error(f"获取包名前缀配置失败: {e}")
+            return "com"
     
     def _get_git_project_name(self) -> str:
         """获取Git项目名称"""
@@ -1175,12 +1195,13 @@ frontend/
     def _create_fallback_design_data_from_task(self, task: TaskItem) -> Dict[str, Any]:
         """创建基于任务的回退设计数据"""
         git_project_name = self._get_git_project_name()
+        package_prefix = self._get_package_prefix()
         
         return {
             "project_info": {
                 "name": git_project_name,
                 "version": "1.0.0",
-                "package_prefix": "com.example"
+                "package_prefix": package_prefix
             },
             "database_design": [self._create_generic_entity_from_project_name(git_project_name)],
             "business_logic": [{

@@ -29,6 +29,7 @@ class CoderAgentConfig:
     backend_version: str = "2.7.x"
     backend_java_version: str = "8"
     frontend_framework: str = "vue2"
+    backend_package_prefix: str = "com"
     
     # 测试配置
     test_coverage_target: float = 0.8
