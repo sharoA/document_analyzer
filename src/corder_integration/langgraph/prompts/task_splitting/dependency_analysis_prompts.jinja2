@@ -1,0 +1,91 @@
+{#- 依赖分析提示词模板 -#}
+
+{% macro dependency_analysis_prompt(services_summary, architecture_summary, context_window=None) %}
+你是微服务依赖分析专家。请严格基于设计文档分析服务间的真实依赖关系，确定正确的开发顺序。
+
+服务概要：
+{{ services_summary }}
+
+架构概要：
+{{ architecture_summary }}
+
+{% if context_window %}
+上下文信息：
+{{ context_window }}
+{% endif %}
+
+**重要约束：只分析设计文档中明确提到的依赖关系，确定合理的开发顺序。**
+
+请分析服务间的依赖关系，重点关注：
+1. **接口调用依赖**：哪个服务需要调用其他服务的接口
+2. **数据库依赖**：服务需要的数据库表和配置
+3. **开发顺序**：基于依赖关系确定哪个服务应该先开发
+
+请输出JSON格式的依赖分析结果：
+{
+  "service_dependencies": {
+    "服务A": {
+      "database_dependencies": [
+        {
+          "database_type": "MySQL/Redis等",
+          "config_info": "设计文档中的数据库配置信息",
+          "tables_needed": ["需要的表名列表"],
+          "description": "数据库用途说明"
+        }
+      ],
+      "api_call_dependencies": [
+        {
+          "target_service": "需要调用的目标服务",
+          "target_endpoint": "具体的接口路径",
+          "call_purpose": "调用目的",
+          "dependency_type": "强依赖/弱依赖"
+        }
+      ],
+      "provides_apis": [
+        {
+          "endpoint": "对外提供的接口路径",
+          "used_by": ["使用此接口的服务列表"]
+        }
+      ]
+    }
+  },
+  "development_order": [
+    {
+      "phase": 1,
+      "services": ["基础服务，被其他服务依赖的服务"],
+      "tasks": [
+        "创建数据库表",
+        "实现被依赖的接口"
+      ],
+      "reason": "其他服务依赖这些服务的接口"
+    },
+    {
+      "phase": 2, 
+      "services": ["依赖基础服务的业务服务"],
+      "tasks": [
+        "实现业务接口", 
+        "调用基础服务接口"
+      ],
+      "reason": "依赖第一阶段服务的接口"
+    }
+  ],
+  "critical_path": [
+    "按依赖关系排列的关键开发路径"
+  ],
+  "parallel_development": [
+    {
+      "phase": "阶段N",
+      "parallel_services": ["可以并行开发的服务列表"],
+      "reason": "这些服务之间没有直接依赖关系"
+    }
+  ],
+  "summary": "分析了X个服务的依赖关系，建议分Y个阶段开发，关键路径为Z"
+}
+
+分析要点：
+1. **基于设计文档的真实依赖**：只分析文档中明确的服务调用关系
+2. **确定开发优先级**：被依赖的服务必须先开发
+3. **识别并行开发机会**：没有依赖关系的服务可以并行开发
+4. **考虑数据库依赖**：需要数据库表的服务要考虑建表顺序
+5. **实用的执行顺序**：给出可直接执行的开发计划
+{% endmacro %} 

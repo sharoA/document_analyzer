@@ -1,0 +1,37 @@
+# LangGraph编码智能体依赖包
+
+# 核心框架
+langgraph>=0.0.60
+langchain>=0.1.0
+langchain-openai>=0.0.5
+
+# OpenAI API
+openai>=1.10.0
+
+# 数据库支持
+aiosqlite>=0.19.0  # 异步SQLite支持
+langgraph-checkpoint-sqlite>=2.0.10  # LangGraph SQLite检查点
+
+# 模板引擎
+Jinja2>=3.1.2
+
+# Web框架
+Flask>=2.3.0
+Werkzeug>=2.3.0
+
+# 异步支持
+asyncio
+aiofiles>=23.1.0
+
+# JSON处理
+orjson>=3.8.0
+
+# 日志
+structlog>=23.1.0
+
+# 类型检查
+typing-extensions>=4.5.0
+
+# 工具库
+pathlib
+subprocess32; python_version < "3.0" 

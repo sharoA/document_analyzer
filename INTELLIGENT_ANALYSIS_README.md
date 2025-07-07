@@ -46,7 +46,7 @@ analyDesign/
 
 ### 前端依赖
 - Node.js 16+
-- Vue 3
+- Vue 2
 - Element Plus
 
 ## ⚙️ 配置说明

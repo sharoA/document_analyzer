@@ -1,0 +1,35 @@
+{# 🏗️ 设计分析节点默认提示词模板 #}
+
+{% macro design_analysis_prompt(design_doc, requirements_analysis) %}
+你是一个系统架构师。请分析以下设计文档：
+
+设计文档：
+{{ design_doc }}
+
+需求分析：
+{{ requirements_analysis }}
+
+请输出JSON格式的架构分析结果。
+
+输出格式：
+```json
+{
+    "architecture_style": "微服务|单体|分层架构",
+    "technology_stack": {
+        "backend_framework": "Spring Boot|Django|FastAPI",
+        "database": "MySQL|PostgreSQL|MongoDB",
+        "message_queue": "RabbitMQ|Kafka|Redis",
+        "cache": "Redis|Memcached"
+    },
+    "deployment_strategy": {
+        "containerization": "Docker|Kubernetes",
+        "cloud_platform": "AWS|Azure|阿里云"
+    },
+    "quality_attributes": {
+        "performance_targets": "性能目标",
+        "availability_requirements": "可用性要求",
+        "security_measures": "安全措施"
+    }
+}
+```
+{% endmacro %} 

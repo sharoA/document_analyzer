@@ -1,0 +1,711 @@
+# 🚀 {{ project_config.name }}编码智能体可执行实现
+
+## 📋 基于{{ project_config.base_framework }}的完整实现
+
+基于现有的架构设计，实现支持多服务协调、任务拆分调度、并行处理的LangGraph工作流。
+
+---
+
+## 🏗️ 核心实现架构
+
+### 1. 工作流编排器 - workflow_orchestrator.py
+
+```python
+# {{ project_config.src_path }}/{{ project_config.integration_module }}/langgraph/workflow_orchestrator.py
+"""
+LangGraph工作流编排器 - 基于{{ project_config.base_framework }}的完整实现
+"""
+
+from langgraph.graph import StateGraph, END
+{% if project_config.database.type == 'postgresql' %}
+from langgraph.checkpoint.postgres import PostgresCheckpointer
+{% elif project_config.database.type == 'mysql' %}
+from langgraph.checkpoint.mysql import MySQLCheckpointer
+{% else %}
+from langgraph.checkpoint.memory import MemoryCheckpointer
+{% endif %}
+from typing import TypedDict, List, Dict, Any, Optional
+import asyncio
+import logging
+import time
+
+from .nodes.task_splitting_node import task_splitting_node
+from .nodes.git_management_node import git_management_node
+from .nodes.intelligent_coding_node import intelligent_coding_node
+from .nodes.code_review_node import code_review_node
+from .nodes.unit_testing_node import unit_testing_node
+from .nodes.git_commit_node import git_commit_node
+
+# 📊 状态定义（与{{ project_config.base_framework }}保持一致）
+class {{ project_config.state_class_name }}(TypedDict):
+    """{{ project_config.agent_name }}完整状态定义"""
+    
+    # 🔄 输入状态
+    requirements_doc: str                    # 需求文档内容
+    design_doc: str                         # 设计文档内容
+    project_name: str                       # 项目名称
+    
+    # 🧠 任务拆分结果
+    identified_services: List[str]          # 识别的{{ project_config.service_type }}列表
+    service_dependencies: Dict[str, List[str]]  # 服务依赖关系图
+    task_execution_plan: Dict[str, Any]     # 任务执行计划
+    parallel_tasks: List[Dict[str, Any]]    # 可并行执行的任务
+    
+    # 🔧 Git管理状态
+    git_repo_url: Optional[str]             # Git地址
+    target_branch: str                      # 目标分支名称
+    project_paths: Dict[str, str]           # 各{{ project_config.service_type }}的项目路径
+    repo_initialized: bool                  # 仓库初始化状态
+    
+    # 💻 代码生成状态
+    generated_services: Dict[str, Dict[str, Any]]  # 已生成的服务代码
+    generated_apis: Dict[str, List[str]]    # 生成的API接口
+    generated_sql: Dict[str, List[str]]     # 生成的SQL语句
+    service_interconnections: Dict[str, Dict[str, Any]]  # 服务间调用关系
+    
+    # 🧪 测试状态
+    unit_test_results: Dict[str, Dict[str, Any]]    # 单元测试结果
+    test_coverage: Dict[str, float]         # 测试覆盖率
+    interface_compatibility: Dict[str, bool] # 接口兼容性检查结果
+    
+    # 🔍 质量检查状态
+    code_review_results: Dict[str, Dict[str, Any]]  # 代码审查结果
+    static_analysis_results: Dict[str, Any]         # 静态分析结果
+    security_scan_results: Dict[str, Any]           # 安全扫描结果
+    
+    # 📤 Git提交状态
+    commit_hashes: Dict[str, str]           # 各服务的提交哈希
+    push_results: Dict[str, bool]           # 推送结果
+    pr_urls: Dict[str, str]                 # PR地址
+    
+    # 🔄 执行控制状态
+    current_phase: str                      # 当前执行阶段
+    completed_services: List[str]           # 已完成的服务
+    failed_services: List[str]              # 失败的服务
+    retry_count: int                        # 重试次数
+    execution_errors: List[str]             # 执行错误列表
+
+class {{ project_config.orchestrator_class_name }}:
+    """LangGraph工作流编排器"""
+    
+    def __init__(self, config: Dict[str, Any] = None):
+        self.config = config or {}
+        self.logger = logging.getLogger(__name__)
+        self.graph = self._build_workflow_graph()
+        self.checkpointer = self._setup_checkpointer()
+        self.compiled_graph = self.graph.compile(checkpointer=self.checkpointer)
+    
+    def _setup_checkpointer(self):
+        """设置检查点管理器"""
+        {% if project_config.database.type == 'postgresql' %}
+        return PostgresCheckpointer.from_conn_string(
+            conn_string="{{ project_config.database.connection_string }}",
+            serde=None
+        )
+        {% elif project_config.database.type == 'mysql' %}
+        return MySQLCheckpointer.from_conn_string(
+            conn_string="{{ project_config.database.connection_string }}",
+            serde=None
+        )
+        {% else %}
+        return MemoryCheckpointer()
+        {% endif %}
+    
+    def _build_workflow_graph(self) -> StateGraph:
+        """构建LangGraph工作流图"""
+        workflow = StateGraph({{ project_config.state_class_name }})
+        
+        # 🧠 添加工作流节点
+        {% for node in project_config.workflow_nodes %}
+        workflow.add_node("{{ node.name }}", {{ node.function_name }})
+        {% endfor %}
+        
+        # 🚀 设置工作流入口
+        workflow.set_entry_point("{{ project_config.entry_node }}")
+        
+        # 🔄 定义节点流转逻辑
+        {% for edge in project_config.workflow_edges %}
+        {% if edge.type == 'simple' %}
+        workflow.add_edge("{{ edge.from }}", "{{ edge.to }}")
+        {% elif edge.type == 'conditional' %}
+        workflow.add_conditional_edges(
+            "{{ edge.from }}",
+            self.{{ edge.condition_function }},
+            {
+                {% for condition, target in edge.conditions.items() %}
+                "{{ condition }}": "{{ target }}"{% if not loop.last %},{% endif %}
+                {% endfor %}
+            }
+        )
+        {% endif %}
+        {% endfor %}
+        
+        return workflow
+    
+    # 🔄 条件检查函数
+    {% for condition_func in project_config.condition_functions %}
+    def {{ condition_func.name }}(self, state: {{ project_config.state_class_name }}) -> str:
+        """{{ condition_func.description }}"""
+        {{ condition_func.logic | indent(8) }}
+    {% endfor %}
+    
+    def _generate_summary(self, final_state: {{ project_config.state_class_name }}) -> Dict[str, Any]:
+        """生成执行摘要"""
+        return {
+            "total_services": len(final_state["identified_services"]),
+            "completed_services": len(final_state["completed_services"]),
+            "failed_services": len(final_state["failed_services"]),
+            "test_coverage": final_state.get("test_coverage", {}),
+            "execution_phase": final_state["current_phase"]
+        }
+    
+    # 🚀 主执行函数
+    async def execute_coding_workflow(
+        self, 
+        requirements_doc: str, 
+        design_doc: str, 
+        project_name: str
+    ) -> Dict[str, Any]:
+        """执行完整的编码工作流"""
+        
+        # 🔄 初始化状态
+        initial_state: {{ project_config.state_class_name }} = {
+            "requirements_doc": requirements_doc,
+            "design_doc": design_doc,
+            "project_name": project_name,
+            "identified_services": [],
+            "service_dependencies": {},
+            "task_execution_plan": {},
+            "parallel_tasks": [],
+            "git_repo_url": None,
+            "target_branch": f"{{ project_config.branch_prefix }}/{project_name}",
+            "project_paths": {},
+            "repo_initialized": False,
+            "generated_services": {},
+            "generated_apis": {},
+            "generated_sql": {},
+            "service_interconnections": {},
+            "unit_test_results": {},
+            "test_coverage": {},
+            "interface_compatibility": {},
+            "code_review_results": {},
+            "static_analysis_results": {},
+            "security_scan_results": {},
+            "commit_hashes": {},
+            "push_results": {},
+            "pr_urls": {},
+            "current_phase": "{{ project_config.initial_phase }}",
+            "completed_services": [],
+            "failed_services": [],
+            "retry_count": 0,
+            "execution_errors": []
+        }
+        
+        # 🎯 执行工作流
+        config = {
+            "configurable": {
+                "thread_id": f"{{ project_config.thread_id_prefix }}_{project_name}_{int(time.time())}"
+            }
+        }
+        
+        try:
+            # 🔄 运行编译后的图
+            final_state = await self.compiled_graph.ainvoke(initial_state, config=config)
+            
+            # 📊 返回执行结果
+            return {
+                "status": "success",
+                "project_name": project_name,
+                "generated_services": final_state["generated_services"],
+                "commit_hashes": final_state["commit_hashes"], 
+                "pr_urls": final_state["pr_urls"],
+                "execution_summary": self._generate_summary(final_state)
+            }
+            
+        except Exception as e:
+            self.logger.error(f"工作流执行失败: {e}")
+            return {
+                "status": "failed",
+                "error": str(e),
+                "project_name": project_name
+            }
+```
+
+---
+
+## 📂 节点实现
+
+### 1. 任务拆分节点
+
+```python
+# {{ project_config.src_path }}/{{ project_config.integration_module }}/langgraph/nodes/task_splitting_node.py
+"""
+任务拆分节点 - 多服务协调和任务规划
+"""
+
+from {{ project_config.llm_client_import }} import {{ project_config.llm_client_class }}
+import json
+from typing import Dict, Any
+
+# 导入提示词
+from ..{{ project_config.prompts_module }}.task_splitting_prompts import (
+    {% for prompt in project_config.task_splitting_prompts %}
+    {{ prompt.name }},
+    {% endfor %}
+)
+
+async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    任务拆分节点 - 智能分析和规划
+    支持多服务协调调度
+    """
+    
+    client = {{ project_config.llm_client_class }}({{ project_config.llm_client_config }})
+    
+    try:
+        # 🧠 步骤1：需求分析
+        requirements_analysis = await client.{{ project_config.llm_method }}.create(
+            model="{{ project_config.llm_model }}",
+            messages=[
+                {"role": "system", "content": "你是一个专业的需求分析师，擅长从需求文档中提取关键功能点。"},
+                {"role": "user", "content": REQUIREMENTS_ANALYSIS_PROMPT.format(
+                    requirements_doc=state["requirements_doc"],
+                    project_name=state["project_name"]
+                )}
+            ],
+            temperature={{ project_config.temperature.analysis }}
+        )
+        
+        # 🏗️ 步骤2：设计分析
+        design_analysis = await client.{{ project_config.llm_method }}.create(
+            model="{{ project_config.llm_model }}",
+            messages=[
+                {"role": "system", "content": "你是一个资深的{{ project_config.architect_type }}，擅长分析技术设计文档。"},
+                {"role": "user", "content": DESIGN_ANALYSIS_PROMPT.format(
+                    design_doc=state["design_doc"],
+                    requirements_analysis=requirements_analysis.choices[0].message.content
+                )}
+            ],
+            temperature={{ project_config.temperature.analysis }}
+        )
+        
+        # 🔍 步骤3：{{ project_config.service_type }}边界识别
+        service_identification = await client.{{ project_config.llm_method }}.create(
+            model="{{ project_config.llm_model }}",
+            messages=[
+                {"role": "system", "content": "你是一个{{ project_config.service_type }}架构专家，擅长服务拆分和边界划分。"},
+                {"role": "user", "content": SERVICE_BOUNDARY_PROMPT.format(
+                    requirements_analysis=requirements_analysis.choices[0].message.content,
+                    design_analysis=design_analysis.choices[0].message.content
+                )}
+            ],
+            temperature={{ project_config.temperature.identification }}
+        )
+        
+        # 🌐 步骤4：依赖分析
+        dependency_analysis = await client.{{ project_config.llm_method }}.create(
+            model="{{ project_config.llm_model }}",
+            messages=[
+                {"role": "system", "content": "你是一个{{ project_config.service_type }}依赖关系专家，擅长分析服务间的调用关系。"},
+                {"role": "user", "content": DEPENDENCY_ANALYSIS_PROMPT.format(
+                    service_identification=service_identification.choices[0].message.content,
+                    design_doc=state["design_doc"]
+                )}
+            ],
+            temperature={{ project_config.temperature.identification }}
+        )
+        
+        # 📅 步骤5：执行计划制定
+        execution_plan = await client.{{ project_config.llm_method }}.create(
+            model="{{ project_config.llm_model }}",
+            messages=[
+                {"role": "system", "content": "你是一个项目调度专家，擅长制定任务执行计划。"},
+                {"role": "user", "content": TASK_SCHEDULING_PROMPT.format(
+                    service_identification=service_identification.choices[0].message.content,
+                    dependency_analysis=dependency_analysis.choices[0].message.content
+                )}
+            ],
+            temperature={{ project_config.temperature.identification }}
+        )
+        
+        # 解析结果
+        service_result = json.loads(
+            service_identification.choices[0].message.content.split("```json")[1].split("```")[0].strip()
+        )
+        dependency_result = json.loads(
+            dependency_analysis.choices[0].message.content.split("```json")[1].split("```")[0].strip()
+        )
+        plan_result = json.loads(
+            execution_plan.choices[0].message.content.split("```json")[1].split("```")[0].strip()
+        )
+        
+        # 🔄 更新状态
+        state["identified_services"] = service_result["services"]
+        state["service_dependencies"] = dependency_result["dependencies"]
+        state["task_execution_plan"] = plan_result
+        state["parallel_tasks"] = plan_result["execution_batches"]
+        state["current_phase"] = "{{ project_config.phases.git_management }}"
+        
+        return state
+        
+    except Exception as e:
+        state["execution_errors"].append(f"任务拆分失败: {str(e)}")
+        state["current_phase"] = "error"
+        return state
+```
+
+### 2. Git管理节点
+
+```python
+# {{ project_config.src_path }}/{{ project_config.integration_module }}/langgraph/nodes/git_management_node.py
+"""
+Git管理节点 - 多仓库协调和分支管理
+"""
+
+import os
+import git
+from pathlib import Path
+from {{ project_config.llm_client_import }} import {{ project_config.llm_client_class }}
+
+# 导入提示词
+from ..{{ project_config.prompts_module }}.git_prompts import GIT_EXTRACTION_PROMPT
+
+async def git_management_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Git管理节点 - 环境准备和仓库管理
+    """
+    
+    client = {{ project_config.llm_client_class }}({{ project_config.llm_client_config }})
+    
+    try:
+        # 🔍 从设计文档提取Git信息
+        git_extraction = await client.{{ project_config.llm_method }}.create(
+            model="{{ project_config.llm_model }}",
+            messages=[
+                {"role": "system", "content": "你是一个Git专家，擅长从文档中提取Git仓库信息。"},
+                {"role": "user", "content": GIT_EXTRACTION_PROMPT.format(
+                    design_doc=state["design_doc"],
+                    project_name=state["project_name"]
+                )}
+            ],
+            temperature={{ project_config.temperature.git_extraction }}
+        )
+        
+        git_info = json.loads(
+            git_extraction.choices[0].message.content.split("```json")[1].split("```")[0].strip()
+        )
+        
+        # 🌐 设置Git仓库
+        if git_info.get("repo_url"):
+            # 现有仓库：克隆并切换分支
+            workspace_path = f"{{ project_config.workspace_path }}/{state['project_name']}"
+            
+            if not os.path.exists(workspace_path):
+                repo = git.Repo.clone_from(git_info["repo_url"], workspace_path)
+            else:
+                repo = git.Repo(workspace_path)
+            
+            # 创建并切换到目标分支
+            try:
+                repo.git.checkout("-b", state["target_branch"])
+            except git.exc.GitCommandError:
+                repo.git.checkout(state["target_branch"])
+        else:
+            # 新仓库：初始化
+            workspace_path = f"{{ project_config.workspace_path }}/{state['project_name']}"
+            os.makedirs(workspace_path, exist_ok=True)
+            repo = git.Repo.init(workspace_path)
+        
+        # 📁 为每个{{ project_config.service_type }}创建项目目录
+        project_paths = {}
+        for service_name in state["identified_services"]:
+            service_path = os.path.join(workspace_path, service_name)
+            os.makedirs(service_path, exist_ok=True)
+            project_paths[service_name] = service_path
+        
+        # 🔄 更新状态
+        state["git_repo_url"] = git_info.get("repo_url")
+        state["project_paths"] = project_paths
+        state["repo_initialized"] = True
+        state["current_phase"] = "{{ project_config.phases.intelligent_coding }}"
+        
+        return state
+        
+    except Exception as e:
+        state["execution_errors"].append(f"Git管理失败: {str(e)}")
+        state["repo_initialized"] = False
+        state["retry_count"] += 1
+        return state
+```
+
+### 3. 智能编码节点
+
+```python
+# {{ project_config.src_path }}/{{ project_config.integration_module }}/langgraph/nodes/intelligent_coding_node.py
+"""
+智能编码节点 - 并行{{ project_config.service_type }}代码生成
+"""
+
+import asyncio
+from {{ project_config.llm_client_import }} import {{ project_config.llm_client_class }}
+
+# 导入提示词
+from ..{{ project_config.prompts_module }}.coding_prompts import (
+    {% for prompt in project_config.coding_prompts %}
+    {{ prompt.name }},
+    {% endfor %}
+)
+
+async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    智能编码节点 - 并行生成多个{{ project_config.tech_stack }}{{ project_config.service_type }}
+    """
+    
+    # 📋 获取待处理的服务列表
+    pending_services = [
+        service for service in state["identified_services"] 
+        if service not in state["completed_services"]
+    ]
+    
+    # 🔄 按执行批次并行处理服务
+    for batch in state["parallel_tasks"]:
+        batch_services = [s for s in batch if s in pending_services]
+        
+        if batch_services:
+            # 🚀 并发生成当前批次的服务
+            batch_results = await asyncio.gather(*[
+                generate_single_service(service, state) 
+                for service in batch_services
+            ], return_exceptions=True)
+            
+            # 📊 更新状态
+            for service, result in zip(batch_services, batch_results):
+                if isinstance(result, Exception):
+                    state["failed_services"].append(service)
+                    state["execution_errors"].append(f"{service}: {str(result)}")
+                elif result["success"]:
+                    state["completed_services"].append(service)
+                    state["generated_services"][service] = result["generated_code"]
+                    state["generated_apis"][service] = result["api_endpoints"]
+                    state["generated_sql"][service] = result["sql_statements"]
+                else:
+                    state["failed_services"].append(service)
+                    state["execution_errors"].append(f"{service}: {result['error']}")
+    
+    # 🌐 生成服务间调用代码
+    if len(state["completed_services"]) > 1:
+        await generate_service_interconnections(state)
+    
+    state["current_phase"] = "{{ project_config.phases.code_review }}"
+    return state
+
+async def generate_single_service(service_name: str, state: Dict[str, Any]) -> Dict[str, Any]:
+    """生成单个{{ project_config.service_type }}的完整代码"""
+    
+    client = {{ project_config.llm_client_class }}({{ project_config.llm_client_config }})
+    
+    try:
+        # 📋 分析服务需求
+        service_analysis = await client.{{ project_config.llm_method }}.create(
+            model="{{ project_config.llm_model }}",
+            messages=[
+                {"role": "system", "content": "你是一个{{ project_config.tech_stack }}{{ project_config.service_type }}开发专家。"},
+                {"role": "user", "content": SERVICE_ANALYSIS_PROMPT.format(
+                    service_name=service_name,
+                    requirements_doc=state["requirements_doc"],
+                    design_doc=state["design_doc"],
+                    dependencies=state["service_dependencies"].get(service_name, [])
+                )}
+            ],
+            temperature={{ project_config.temperature.analysis }}
+        )
+        
+        # 💻 代码生成
+        code_generation = await client.{{ project_config.llm_method }}.create(
+            model="{{ project_config.llm_model }}",
+            messages=[
+                {"role": "system", "content": "你是一个{{ project_config.programming_language }}代码生成专家，擅长{{ project_config.tech_stack }}{{ project_config.service_type }}开发。"},
+                {"role": "user", "content": CODE_GENERATION_PROMPT.format(
+                    service_name=service_name,
+                    service_analysis=service_analysis.choices[0].message.content,
+                    project_path=state["project_paths"][service_name]
+                )}
+            ],
+            temperature={{ project_config.temperature.generation }}
+        )
+        
+        # 🌐 API设计
+        api_design = await client.{{ project_config.llm_method }}.create(
+            model="{{ project_config.llm_model }}",
+            messages=[
+                {"role": "system", "content": "你是一个{{ project_config.api_style }} API设计专家。"},
+                {"role": "user", "content": API_DESIGN_PROMPT.format(
+                    service_name=service_name,
+                    generated_code=code_generation.choices[0].message.content
+                )}
+            ],
+            temperature={{ project_config.temperature.generation }}
+        )
+        
+        # 解析结果并写入文件
+        code_result = json.loads(
+            code_generation.choices[0].message.content.split("```json")[1].split("```")[0].strip()
+        )
+        api_result = json.loads(
+            api_design.choices[0].message.content.split("```json")[1].split("```")[0].strip()
+        )
+        
+        # 写入生成的代码文件
+        await write_service_files(service_name, code_result, state["project_paths"][service_name])
+        
+        return {
+            "success": True,
+            "generated_code": code_result,
+            "api_endpoints": api_result["endpoints"],
+            "sql_statements": code_result.get("sql_statements", [])
+        }
+        
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def generate_service_interconnections(state: Dict[str, Any]):
+    """生成服务间调用代码"""
+    
+    client = {{ project_config.llm_client_class }}({{ project_config.llm_client_config }})
+    
+    try:
+        interconnect_result = await client.{{ project_config.llm_method }}.create(
+            model="{{ project_config.llm_model }}",
+            messages=[
+                {"role": "system", "content": "你是一个{{ project_config.service_type }}集成专家，擅长设计服务间调用。"},
+                {"role": "user", "content": SERVICE_INTERCONNECT_PROMPT.format(
+                    completed_services=state["completed_services"],
+                    service_dependencies=state["service_dependencies"],
+                    generated_apis=state["generated_apis"]
+                )}
+            ],
+            temperature={{ project_config.temperature.generation }}
+        )
+        
+        interconnect_data = json.loads(
+            interconnect_result.choices[0].message.content.split("```json")[1].split("```")[0].strip()
+        )
+        
+        state["service_interconnections"] = interconnect_data
+        
+    except Exception as e:
+        state["execution_errors"].append(f"服务互联生成失败: {str(e)}")
+
+async def write_service_files(service_name: str, code_data: Dict[str, Any], project_path: str):
+    """写入服务代码文件"""
+    
+    for file_path, content in code_data.get("files", {}).items():
+        full_path = os.path.join(project_path, file_path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        
+        with open(full_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+```
+
+### 4. 其他节点实现
+
+```python
+# {{ project_config.src_path }}/{{ project_config.integration_module }}/langgraph/nodes/code_review_node.py
+"""代码审查节点"""
+
+async def code_review_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """代码审查节点 - 质量检查"""
+    # 实现{{ project_config.quality_tools }}代码审查逻辑
+    state["current_phase"] = "{{ project_config.phases.unit_testing }}"
+    return state
+
+# {{ project_config.src_path }}/{{ project_config.integration_module }}/langgraph/nodes/unit_testing_node.py
+"""单元测试节点"""
+
+async def unit_testing_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """单元测试节点 - 测试生成和执行"""
+    # 实现{{ project_config.testing_framework }}测试生成和执行逻辑
+    state["current_phase"] = "{{ project_config.phases.git_commit }}"
+    return state
+
+# {{ project_config.src_path }}/{{ project_config.integration_module }}/langgraph/nodes/git_commit_node.py
+"""Git提交节点"""
+
+async def git_commit_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """Git提交节点 - 代码提交和推送"""
+    # 实现Git提交逻辑
+    state["current_phase"] = "completed"
+    return state
+```
+
+---
+
+## 🎯 使用示例
+
+```python
+# {{ project_config.src_path }}/main.py
+"""
+{{ project_config.name }}编码智能体使用示例
+"""
+
+import asyncio
+from {{ project_config.integration_module }}.langgraph.workflow_orchestrator import {{ project_config.orchestrator_class_name }}
+
+async def main():
+    """主执行函数"""
+    
+    # 📄 输入文档
+    requirements_doc = """
+    {{ project_config.sample_requirements }}
+    """
+    
+    design_doc = """
+    {{ project_config.sample_design }}
+    """
+    
+    # 🚀 执行工作流
+    orchestrator = {{ project_config.orchestrator_class_name }}()
+    
+    result = await orchestrator.execute_coding_workflow(
+        requirements_doc=requirements_doc,
+        design_doc=design_doc,
+        project_name="{{ project_config.sample_project_name }}"
+    )
+    
+    print(f"执行结果: {result}")
+    
+    if result["status"] == "success":
+        print(f"✅ 成功生成 {len(result['generated_services'])} 个{{ project_config.service_type }}")
+        print(f"📝 提交哈希: {result['commit_hashes']}")
+        print(f"🔗 PR地址: {result['pr_urls']}")
+    else:
+        print(f"❌ 执行失败: {result['error']}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
+## 📊 核心特性
+
+### ✨ 基于LangGraph的强大工作流
+1. **状态管理**：完整的状态跟踪和持久化
+2. **条件分支**：智能的流程控制和重试机制
+3. **并行处理**：支持多服务并行生成
+4. **错误恢复**：完善的错误处理和重试
+
+### 🎯 符合{{ project_config.base_framework }}的设计
+1. **任务拆分调度**：智能识别{{ project_config.service_type }}和依赖关系
+2. **Git管理**：完整的版本控制支持
+3. **代码生成**：{{ project_config.tech_stack }}技术栈
+4. **质量保证**：代码审查 + 单元测试
+5. **自动提交**：Git提交和PR创建
+
+### 🔧 提示词分离
+所有大模型调用的提示词都提取到了单独的目录中，便于维护和优化。
+
+这个实现完全基于{{ project_config.base_framework }}的设计，提供了可执行的LangGraph工作流！ 

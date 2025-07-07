@@ -1,0 +1,231 @@
+# 🚀 编码智能体项目配置文件
+# 用于Jinja2模版渲染的变量配置
+
+# 🎯 项目基本信息
+name: "LangGraph"
+agent_name: "编码智能体"
+base_framework: "核心功能生成.md"
+version: "1.0.0"
+description: "基于LangGraph的多服务协调编码智能体"
+
+# 🏗️ 架构配置
+service_type: "微服务"
+tech_stack: "Spring Boot"
+programming_language: "Java"
+api_style: "RESTful"
+architect_type: "系统架构师"
+
+# 📁 项目结构
+src_path: "src/corder_integration"
+integration_module: "corder_integration"
+workspace_path: "./workspace"
+prompts_module: "prompts"
+
+# 🎨 类名配置
+state_class_name: "CodingAgentState"
+orchestrator_class_name: "LangGraphWorkflowOrchestrator"
+
+# 🔧 Git配置
+branch_prefix: "feature"
+thread_id_prefix: "coding_session"
+
+# 🧠 大模型配置
+llm_client_import: "openai"
+llm_client_class: "AsyncOpenAI"
+llm_client_config: ""
+llm_method: "chat.completions"
+llm_model: "gpt-4"
+
+# 🌡️ 温度配置
+temperature:
+  analysis: 0.3
+  identification: 0.2
+  generation: 0.2
+  git_extraction: 0.1
+
+# 🗄️ 数据库配置
+database:
+  type: "postgresql"  # postgresql | mysql | memory
+  connection_string: "postgresql://user:pass@localhost/coding_agent_db"
+
+# 🔧 工具配置
+quality_tools: "SonarQube"
+testing_framework: "JUnit"
+
+# 📋 工作流节点配置
+workflow_nodes:
+  - name: "task_splitting"
+    function_name: "task_splitting_node"
+    description: "任务拆分节点"
+  - name: "git_management"
+    function_name: "git_management_node"
+    description: "Git管理节点"
+  - name: "intelligent_coding"
+    function_name: "intelligent_coding_node"
+    description: "智能编码节点"
+  - name: "code_review"
+    function_name: "code_review_node"
+    description: "代码审查节点"
+  - name: "unit_testing"
+    function_name: "unit_testing_node"
+    description: "单元测试节点"
+  - name: "git_commit"
+    function_name: "git_commit_node"
+    description: "Git提交节点"
+
+# 🔄 工作流边配置
+workflow_edges:
+  - type: "simple"
+    from: "task_splitting"
+    to: "git_management"
+  - type: "conditional"
+    from: "git_management"
+    condition_function: "check_git_setup_success"
+    conditions:
+      success: "intelligent_coding"
+      retry: "git_management"
+      fail: "END"
+  - type: "conditional"
+    from: "intelligent_coding"
+    condition_function: "check_coding_completion"
+    conditions:
+      all_completed: "code_review"
+      partial_completed: "intelligent_coding"
+      dependencies_waiting: "intelligent_coding"
+      critical_error: "END"
+  - type: "conditional"
+    from: "code_review"
+    condition_function: "check_review_quality"
+    conditions:
+      quality_passed: "unit_testing"
+      quality_failed: "intelligent_coding"
+      security_risk: "END"
+  - type: "conditional"
+    from: "unit_testing"
+    condition_function: "check_test_results"
+    conditions:
+      tests_passed: "git_commit"
+      tests_failed: "intelligent_coding"
+      coverage_insufficient: "unit_testing"
+  - type: "simple"
+    from: "git_commit"
+    to: "END"
+
+# 🎯 执行阶段配置
+entry_node: "task_splitting"
+initial_phase: "task_splitting"
+phases:
+  task_splitting: "task_splitting"
+  git_management: "git_management"
+  intelligent_coding: "intelligent_coding"
+  code_review: "code_review"
+  unit_testing: "unit_testing"
+  git_commit: "git_commit"
+
+# 🔄 条件检查函数配置
+condition_functions:
+  - name: "check_git_setup_success"
+    description: "检查Git环境设置是否成功"
+    logic: |
+      if state["repo_initialized"]:
+          return "success"
+      elif state["retry_count"] < 3:
+          return "retry"
+      else:
+          return "fail"
+  - name: "check_coding_completion"
+    description: "检查编码完成状态"
+    logic: |
+      total_services = len(state["identified_services"])
+      completed_services = len(state["completed_services"])
+      
+      if completed_services == total_services:
+          return "all_completed"
+      elif len(state["failed_services"]) > 0:
+          return "critical_error"
+      else:
+          # 检查是否有依赖等待
+          for service in state["identified_services"]:
+              if service not in state["completed_services"]:
+                  dependencies = state["service_dependencies"].get(service, [])
+                  if any(dep not in state["completed_services"] for dep in dependencies):
+                      return "dependencies_waiting"
+          return "partial_completed"
+  - name: "check_review_quality"
+    description: "检查代码审查质量"
+    logic: |
+      review_results = state.get("code_review_results", {})
+      if any(result.get("has_critical_issues", False) for result in review_results.values()):
+          return "quality_failed"
+      elif any(result.get("security_risk", False) for result in review_results.values()):
+          return "security_risk"
+      else:
+          return "quality_passed"
+  - name: "check_test_results"
+    description: "检查测试结果"
+    logic: |
+      test_results = state.get("unit_test_results", {})
+      coverage_results = state.get("test_coverage", {})
+      
+      # 检查测试是否通过
+      if any(not result.get("all_passed", True) for result in test_results.values()):
+          return "tests_failed"
+      
+      # 检查覆盖率
+      avg_coverage = sum(coverage_results.values()) / len(coverage_results) if coverage_results else 0
+      if avg_coverage < 0.8:  # 80%覆盖率要求
+          return "coverage_insufficient"
+      
+      return "tests_passed"
+
+# 🧪 提示词配置
+task_splitting_prompts:
+  - name: "REQUIREMENTS_ANALYSIS_PROMPT"
+    description: "需求分析提示词"
+  - name: "DESIGN_ANALYSIS_PROMPT"
+    description: "设计分析提示词"
+  - name: "SERVICE_BOUNDARY_PROMPT"
+    description: "服务边界识别提示词"
+  - name: "DEPENDENCY_ANALYSIS_PROMPT"
+    description: "依赖分析提示词"
+  - name: "TASK_SCHEDULING_PROMPT"
+    description: "任务调度提示词"
+
+coding_prompts:
+  - name: "SERVICE_ANALYSIS_PROMPT"
+    description: "服务分析提示词"
+  - name: "CODE_GENERATION_PROMPT"
+    description: "代码生成提示词"
+  - name: "API_DESIGN_PROMPT"
+    description: "API设计提示词"
+  - name: "SERVICE_INTERCONNECT_PROMPT"
+    description: "服务互联提示词"
+
+# 📝 示例配置
+sample_project_name: "ecommerce-system"
+sample_requirements: |
+  电商订单系统需求：
+  1. 用户服务：用户注册、登录、用户信息管理
+  2. 产品服务：产品展示、库存管理、价格管理
+  3. 订单服务：订单创建、支付处理、订单状态管理
+  4. 通知服务：订单状态变更通知、用户消息推送
+  
+  主要功能：
+  - 用户可以注册登录
+  - 用户可以浏览产品并下单
+  - 系统处理订单支付
+  - 订单状态变更时发送通知
+
+sample_design: |
+  技术设计：
+  - 架构：Spring Boot微服务架构
+  - 注册中心：Nacos
+  - 数据库：MySQL + MyBatis
+  - 服务间调用：Feign + RestTemplate
+  
+  服务依赖关系：
+  - 订单服务依赖用户服务（获取用户信息）
+  - 订单服务依赖产品服务（检查库存和价格）
+  - 通知服务依赖订单服务（监听订单状态变更）
+  
+  Git仓库：https://github.com/company/ecommerce-system.git 

@@ -1,0 +1,162 @@
+{#
+架构一致性检查提示词模板
+负责评估微服务系统的整体架构一致性和规范性
+#}
+
+{% macro architecture_review_prompt(project_name, completed_services, service_dependencies, generated_apis) %}
+请对以下微服务系统进行全面的架构一致性评估：
+
+## 📋 系统基本信息
+**项目名称**: {{ project_name }}
+**微服务数量**: {{ completed_services | length }}
+
+## 🏗️ 架构评估维度
+
+### 1. 服务间接口设计一致性
+评估所有微服务的API接口是否遵循统一的设计规范：
+- **RESTful规范**: HTTP方法使用是否规范（GET/POST/PUT/DELETE）
+- **URL命名**: 路径命名是否一致，是否使用复数名词
+- **请求响应格式**: JSON结构是否统一，字段命名规范是否一致
+- **HTTP状态码**: 状态码使用是否标准和一致
+- **API版本管理**: 版本策略是否统一
+
+### 2. 数据模型一致性
+检查跨服务的数据模型设计是否协调：
+- **实体关系**: 服务间共享实体的定义是否一致
+- **数据类型**: 相同业务概念的数据类型是否统一
+- **字段命名**: 相同含义的字段命名是否一致
+- **数据格式**: 日期、时间、金额等格式是否标准化
+- **数据校验**: 校验规则是否在相关服务间保持一致
+
+### 3. 错误处理标准化
+评估异常和错误处理的统一性：
+- **异常类型**: 业务异常分类是否统一
+- **错误码规范**: 错误代码编码规则是否一致
+- **错误信息**: 错误消息格式是否标准化
+- **全局异常处理**: 异常处理机制是否统一
+- **降级策略**: 服务降级和熔断策略是否一致
+
+### 4. 认证授权方案统一性
+检查安全机制的一致性：
+- **认证方式**: JWT、OAuth2等认证方式是否统一
+- **权限模型**: RBAC权限控制是否标准化
+- **Token处理**: Token传递和验证机制是否一致
+- **安全策略**: 跨域、加密等安全策略是否统一
+- **审计日志**: 安全审计机制是否完善
+
+### 5. 监控和日志规范一致性
+评估可观测性的标准化程度：
+- **日志格式**: 日志输出格式是否统一
+- **日志级别**: 日志级别使用是否规范
+- **追踪机制**: 分布式追踪实现是否一致
+- **监控指标**: 业务和技术指标定义是否标准
+- **健康检查**: 健康检查接口是否统一
+
+### 6. 配置管理一致性
+检查配置管理的规范性：
+- **配置结构**: 配置文件结构是否标准化
+- **环境隔离**: 开发、测试、生产环境配置管理是否规范
+- **配置中心**: 是否使用统一的配置管理方案
+- **敏感信息**: 密钥、密码等敏感配置处理是否安全
+- **动态配置**: 配置热更新机制是否一致
+
+## 📊 输出格式要求
+请以JSON格式输出详细的架构评估结果：
+
+```json
+{
+    "project_name": "{{ project_name }}",
+    "evaluation_date": "评估时间",
+    "consistency_score": 90,
+    "overall_health": "excellent|good|fair|poor",
+    "architecture_summary": "整体架构健康度总结",
+    "consistency_issues": [
+        {
+            "area": "接口设计|数据模型|错误处理|认证授权|监控日志|配置管理",
+            "issue": "具体的不一致性问题描述",
+            "affected_services": ["服务1", "服务2"],
+            "severity": "high|medium|low",
+            "current_state": "当前实现状况",
+            "expected_standard": "期望的标准化方案",
+            "suggestion": "统一化改进建议",
+            "priority": "优先级",
+            "effort": "预估改进工作量"
+        }
+    ],
+    "architecture_violations": [
+        {
+            "violation": "违反的架构原则名称",
+            "principle": "具体的架构原则",
+            "description": "违反情况的详细描述",
+            "impact": "对系统的影响分析",
+            "risk_level": "high|medium|low",
+            "affected_components": ["组件1", "组件2"],
+            "fix": "修复建议和实施方案",
+            "timeline": "建议修复时间线"
+        }
+    ],
+    "best_practices_compliance": {
+        "microservices_patterns": {
+            "score": 85,
+            "compliant_patterns": ["已遵循的模式"],
+            "missing_patterns": ["缺失的模式"],
+            "recommendations": ["改进建议"]
+        },
+        "domain_driven_design": {
+            "score": 80,
+            "bounded_contexts": "边界上下文划分评估",
+            "domain_modeling": "领域建模质量",
+            "recommendations": ["DDD改进建议"]
+        },
+        "cloud_native": {
+            "score": 75,
+            "twelve_factor_compliance": "12要素应用合规性",
+            "containerization": "容器化实施情况",
+            "recommendations": ["云原生改进建议"]
+        }
+    },
+    "service_mesh_readiness": {
+        "score": 70,
+        "current_state": "当前服务网格准备度",
+        "missing_features": ["缺失功能"],
+        "recommendations": ["服务网格迁移建议"]
+    },
+    "scalability_assessment": {
+        "horizontal_scaling": "水平扩展能力评估",
+        "performance_bottlenecks": ["性能瓶颈"],
+        "load_balancing": "负载均衡策略评估",
+        "caching_strategy": "缓存策略评估"
+    },
+    "maintainability_index": {
+        "score": 85,
+        "code_organization": "代码组织结构",
+        "dependency_management": "依赖管理",
+        "documentation": "文档完整性",
+        "testing_strategy": "测试策略"
+    },
+    "recommendations": [
+        {
+            "category": "架构优化|性能提升|安全加固|运维改进",
+            "priority": "high|medium|low",
+            "description": "具体改进建议",
+            "implementation": "实施方案",
+            "benefits": "预期收益"
+        }
+    ],
+    "next_architecture_review": "下次架构评审建议时间"
+}
+```
+
+## 📋 系统架构信息
+
+### 服务列表
+{{ completed_services | tojson }}
+
+### 服务依赖关系
+{{ service_dependencies | tojson }}
+
+### API接口定义
+{{ generated_apis | tojson }}
+
+请基于上述架构信息进行全面的一致性评估，确保输出的JSON格式正确且评估详尽。
+{% endmacro %} 

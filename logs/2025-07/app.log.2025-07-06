@@ -1,0 +1,195 @@
+2025-07-06 19:34:17 - system - INFO - ==================================================
+2025-07-06 19:34:17 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-06 19:34:17 - system - INFO - 📁 日志根目录: D:\ai_project\document_analyzer\logs
+2025-07-06 19:34:17 - system - INFO - 📊 日志级别: INFO
+2025-07-06 19:34:17 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-06 19:34:17 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-06 19:34:17 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-06 19:34:17 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-06 19:34:17 - system - INFO - 🧪 分析日志: logs/2025-07/analysis_service.log
+2025-07-06 19:34:17 - system - INFO - ❌ 错误日志: logs/2025-07/error.log
+2025-07-06 19:34:17 - system - INFO - 🗂️ 保留天数: 5 天
+2025-07-06 19:34:17 - system - INFO - ==================================================
+2025-07-06 19:34:26 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-06 19:34:26 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-06 19:34:26 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-06 19:34:26 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-06 19:34:26 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-06 19:34:27 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-06 19:34:27 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-06 19:34:27 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-06 19:34:27 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-06 19:34:28 - httpx - INFO - HTTP Request: GET https://pypi.org/pypi/weaviate-client/json "HTTP/1.1 200 OK"
+2025-07-06 19:34:29 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-06 19:34:29 - WeaviateVectorDatabase - INFO - ✅ Weaviate连接成功: http://localhost:8080 (gRPC: 50051)
+2025-07-06 19:34:29 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/AnalyDesignDocuments "HTTP/1.1 200 OK"
+2025-07-06 19:34:29 - WeaviateVectorDatabase - INFO - ✅ Weaviate集合已存在: AnalyDesignDocuments
+2025-07-06 19:34:29 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-06 19:34:29 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-07-06 19:34:29 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-06 19:34:40 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-06 19:34:41 - httpx - INFO - HTTP Request: GET https://pypi.org/pypi/weaviate-client/json "HTTP/1.1 200 OK"
+2025-07-06 19:34:42 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-06 19:34:42 - src.utils.weaviate_helper - INFO - 成功连接到 Weaviate: localhost:8080
+2025-07-06 19:34:42 - AnalysisServiceManager - INFO - 分析服务管理器初始化完成
+2025-07-06 19:34:42 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-06 19:34:42 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-06 19:34:42 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-06 19:34:42 - api_server - INFO - 增强分析器初始化成功
+2025-07-06 19:34:42 - api_server - INFO - 初始化任务存储数据库...
+2025-07-06 19:34:42 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-06 19:34:42 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8082
+ * Running on http://26.26.26.1:8082
+2025-07-06 19:34:42 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-07-06 19:34:42 - werkzeug - INFO -  * Restarting with stat
+2025-07-06 19:34:43 - system - INFO - ==================================================
+2025-07-06 19:34:43 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-06 19:34:43 - system - INFO - 📁 日志根目录: D:\ai_project\document_analyzer\logs
+2025-07-06 19:34:43 - system - INFO - 📊 日志级别: INFO
+2025-07-06 19:34:43 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-06 19:34:43 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-06 19:34:43 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-06 19:34:43 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-06 19:34:43 - system - INFO - 🧪 分析日志: logs/2025-07/analysis_service.log
+2025-07-06 19:34:43 - system - INFO - ❌ 错误日志: logs/2025-07/error.log
+2025-07-06 19:34:43 - system - INFO - 🗂️ 保留天数: 5 天
+2025-07-06 19:34:43 - system - INFO - ==================================================
+2025-07-06 19:34:48 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-06 19:34:48 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-06 19:34:48 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-06 19:34:48 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-06 19:34:48 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-06 19:34:49 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-06 19:34:49 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-06 19:34:49 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-06 19:34:49 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-06 19:34:50 - httpx - INFO - HTTP Request: GET https://pypi.org/pypi/weaviate-client/json "HTTP/1.1 200 OK"
+2025-07-06 19:34:51 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-06 19:34:51 - WeaviateVectorDatabase - INFO - ✅ Weaviate连接成功: http://localhost:8080 (gRPC: 50051)
+2025-07-06 19:34:51 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/AnalyDesignDocuments "HTTP/1.1 200 OK"
+2025-07-06 19:34:51 - WeaviateVectorDatabase - INFO - ✅ Weaviate集合已存在: AnalyDesignDocuments
+2025-07-06 19:34:51 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-06 19:34:51 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-07-06 19:34:51 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-06 19:34:59 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-06 19:35:01 - httpx - INFO - HTTP Request: GET https://pypi.org/pypi/weaviate-client/json "HTTP/1.1 200 OK"
+2025-07-06 19:35:03 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-06 19:35:03 - src.utils.weaviate_helper - INFO - 成功连接到 Weaviate: localhost:8080
+2025-07-06 19:35:03 - AnalysisServiceManager - INFO - 分析服务管理器初始化完成
+2025-07-06 19:35:03 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-06 19:35:03 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-06 19:35:03 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-06 19:35:03 - api_server - INFO - 增强分析器初始化成功
+2025-07-06 19:35:03 - api_server - INFO - 初始化任务存储数据库...
+2025-07-06 19:35:03 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-06 19:35:03 - werkzeug - WARNING -  * Debugger is active!
+2025-07-06 19:35:03 - werkzeug - INFO -  * Debugger PIN: 887-537-592
+2025-07-06 19:41:23 - werkzeug - INFO -  * Detected change in 'D:\\ai_project\\document_analyzer\\enhanced_project_analyzer.py', reloading
+2025-07-06 19:41:25 - werkzeug - INFO -  * Restarting with stat
+2025-07-06 19:41:26 - system - INFO - ==================================================
+2025-07-06 19:41:26 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-06 19:41:26 - system - INFO - 📁 日志根目录: D:\ai_project\document_analyzer\logs
+2025-07-06 19:41:26 - system - INFO - 📊 日志级别: INFO
+2025-07-06 19:41:26 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-06 19:41:26 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-06 19:41:26 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-06 19:41:26 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-06 19:41:26 - system - INFO - 🧪 分析日志: logs/2025-07/analysis_service.log
+2025-07-06 19:41:26 - system - INFO - ❌ 错误日志: logs/2025-07/error.log
+2025-07-06 19:41:26 - system - INFO - 🗂️ 保留天数: 5 天
+2025-07-06 19:41:26 - system - INFO - ==================================================
+2025-07-06 19:41:35 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-06 19:41:36 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-06 19:41:36 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-06 19:41:36 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-06 19:41:36 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-06 19:41:37 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-06 19:41:37 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-06 19:41:37 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-06 19:41:37 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-06 19:41:38 - httpx - INFO - HTTP Request: GET https://pypi.org/pypi/weaviate-client/json "HTTP/1.1 200 OK"
+2025-07-06 19:41:39 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-06 19:41:39 - WeaviateVectorDatabase - INFO - ✅ Weaviate连接成功: http://localhost:8080 (gRPC: 50051)
+2025-07-06 19:41:39 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/AnalyDesignDocuments "HTTP/1.1 200 OK"
+2025-07-06 19:41:39 - WeaviateVectorDatabase - INFO - ✅ Weaviate集合已存在: AnalyDesignDocuments
+2025-07-06 19:41:39 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-06 19:41:39 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-07-06 19:41:39 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-06 19:42:02 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-06 19:42:03 - httpx - INFO - HTTP Request: GET https://pypi.org/pypi/weaviate-client/json "HTTP/1.1 200 OK"
+2025-07-06 19:42:04 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-06 19:42:04 - src.utils.weaviate_helper - INFO - 成功连接到 Weaviate: localhost:8080
+2025-07-06 19:42:04 - AnalysisServiceManager - INFO - 分析服务管理器初始化完成
+2025-07-06 19:42:04 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-06 19:42:04 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-06 19:42:04 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-06 19:42:04 - api_server - INFO - 增强分析器初始化成功
+2025-07-06 19:42:04 - api_server - INFO - 初始化任务存储数据库...
+2025-07-06 19:42:04 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-06 19:42:04 - werkzeug - WARNING -  * Debugger is active!
+2025-07-06 19:42:04 - werkzeug - INFO -  * Debugger PIN: 887-537-592
+2025-07-06 19:45:08 - src.apis.coder_agent_api - INFO - 开始处理文档: 链数优化项目_测试_1751802308
+2025-07-06 19:45:08 - src.apis.coder_agent_api - INFO - 文档长度: 5731 字符
+2025-07-06 19:45:08 - src.apis.coder_agent_api - INFO - 使用LangGraph: True
+2025-07-06 19:45:08 - src.apis.coder_agent_api - INFO - 代码输出路径: D:\gitlab
+2025-07-06 19:45:08 - src.apis.coder_agent_api - INFO - 使用LangGraph工作流处理项目: 链数优化项目_测试_1751802308
+2025-07-06 19:45:08 - src.corder_integration.langgraph.workflow_orchestrator - INFO - 使用异步SQLite检查点: coding_agent_workflow.db
+2025-07-06 19:45:08 - src.corder_integration.langgraph.workflow_orchestrator - INFO - 开始执行编码工作流: 链数优化项目_测试_1751802308 -> D:\gitlab
+2025-07-06 19:45:08 - src.corder_integration.langgraph.workflow_orchestrator - ERROR - 工作流执行失败: '_AsyncGeneratorContextManager' object has no attribute 'get_next_version'
+2025-07-06 19:45:09 - api_server - INFO - ✅ POST coder_agent_api.process_design_document [200] (1.37s)
+2025-07-06 19:45:09 - werkzeug - INFO - 127.0.0.1 - - [06/Jul/2025 19:45:09] "POST /api/coder-agent/process-document HTTP/1.1" 200 -
+2025-07-06 19:45:09 - src.apis.coder_agent_api - INFO - 开始处理文档: 链数优化项目_测试_1751802309
+2025-07-06 19:45:09 - src.apis.coder_agent_api - INFO - 文档长度: 224 字符
+2025-07-06 19:45:09 - src.apis.coder_agent_api - INFO - 使用LangGraph: True
+2025-07-06 19:45:09 - src.apis.coder_agent_api - INFO - 代码输出路径: D:\gitlab
+2025-07-06 19:45:09 - src.apis.coder_agent_api - INFO - 使用LangGraph工作流处理项目: 链数优化项目_测试_1751802309
+2025-07-06 19:45:09 - src.corder_integration.langgraph.workflow_orchestrator - INFO - 开始执行编码工作流: 链数优化项目_测试_1751802309 -> D:\gitlab
+2025-07-06 19:45:09 - src.corder_integration.langgraph.workflow_orchestrator - ERROR - 工作流执行失败: '_AsyncGeneratorContextManager' object has no attribute 'get_next_version'
+2025-07-06 19:45:11 - api_server - INFO - ✅ POST coder_agent_api.process_design_document [200] (1.31s)
+2025-07-06 19:45:11 - werkzeug - INFO - 127.0.0.1 - - [06/Jul/2025 19:45:11] "POST /api/coder-agent/process-document HTTP/1.1" 200 -
+2025-07-06 19:48:28 - werkzeug - INFO -  * Detected change in 'D:\\ai_project\\document_analyzer\\simple_api_test.py', reloading
+2025-07-06 19:48:29 - werkzeug - INFO -  * Restarting with stat
+2025-07-06 19:48:30 - system - INFO - ==================================================
+2025-07-06 19:48:30 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-06 19:48:30 - system - INFO - 📁 日志根目录: D:\ai_project\document_analyzer\logs
+2025-07-06 19:48:30 - system - INFO - 📊 日志级别: INFO
+2025-07-06 19:48:30 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-06 19:48:30 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-06 19:48:30 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-06 19:48:30 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-06 19:48:30 - system - INFO - 🧪 分析日志: logs/2025-07/analysis_service.log
+2025-07-06 19:48:30 - system - INFO - ❌ 错误日志: logs/2025-07/error.log
+2025-07-06 19:48:30 - system - INFO - 🗂️ 保留天数: 5 天
+2025-07-06 19:48:30 - system - INFO - ==================================================
+2025-07-06 19:48:39 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-06 19:48:40 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-06 19:48:40 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-06 19:48:40 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-06 19:48:40 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-06 19:48:40 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-06 19:48:40 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-06 19:48:40 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-06 19:48:41 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-06 19:48:42 - httpx - INFO - HTTP Request: GET https://pypi.org/pypi/weaviate-client/json "HTTP/1.1 200 OK"
+2025-07-06 19:48:42 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-06 19:48:42 - WeaviateVectorDatabase - INFO - ✅ Weaviate连接成功: http://localhost:8080 (gRPC: 50051)
+2025-07-06 19:48:42 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/AnalyDesignDocuments "HTTP/1.1 200 OK"
+2025-07-06 19:48:42 - WeaviateVectorDatabase - INFO - ✅ Weaviate集合已存在: AnalyDesignDocuments
+2025-07-06 19:48:42 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-06 19:48:42 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: cpu
+2025-07-06 19:48:42 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-06 19:48:53 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-06 19:48:54 - httpx - INFO - HTTP Request: GET https://pypi.org/pypi/weaviate-client/json "HTTP/1.1 200 OK"
+2025-07-06 19:48:55 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-06 19:48:55 - src.utils.weaviate_helper - INFO - 成功连接到 Weaviate: localhost:8080
+2025-07-06 19:48:55 - AnalysisServiceManager - INFO - 分析服务管理器初始化完成
+2025-07-06 19:48:55 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-06 19:48:55 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-06 19:48:55 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-06 19:48:55 - api_server - INFO - 增强分析器初始化成功
+2025-07-06 19:48:55 - api_server - INFO - 初始化任务存储数据库...
+2025-07-06 19:48:55 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-06 19:48:55 - werkzeug - WARNING -  * Debugger is active!
+2025-07-06 19:48:55 - werkzeug - INFO -  * Debugger PIN: 887-537-592

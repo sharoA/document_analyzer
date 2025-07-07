@@ -1,0 +1,75 @@
+# 🚀 LangGraph编码智能体Jinja2模版系统依赖包清单
+
+# 核心依赖
+jinja2>=3.1.2                      # Jinja2模版引擎
+PyYAML>=6.0                        # YAML配置文件解析
+click>=8.0.0                       # 命令行界面工具
+
+# LangGraph相关依赖
+langgraph>=0.0.40                  # LangGraph核心库
+langchain>=0.1.0                   # LangChain基础库
+langchain-openai>=0.0.8            # OpenAI集成
+langchain-community>=0.0.20        # 社区扩展
+
+# 数据库依赖
+psycopg2-binary>=2.9.5             # PostgreSQL数据库连接器
+PyMySQL>=1.0.2                     # MySQL数据库连接器
+SQLAlchemy>=2.0.0                  # SQL工具包
+
+# 开发和测试依赖
+pytest>=7.0.0                      # 单元测试框架
+pytest-asyncio>=0.21.0             # 异步测试支持
+pytest-cov>=4.0.0                  # 测试覆盖率
+black>=23.0.0                      # 代码格式化工具
+flake8>=6.0.0                      # 代码风格检查
+mypy>=1.0.0                        # 类型检查工具
+
+# 工具和实用库
+pathlib2>=2.3.7                    # 路径操作（Python < 3.6兼容）
+typing-extensions>=4.0.0           # 类型提示扩展
+pydantic>=2.0.0                    # 数据验证
+rich>=13.0.0                       # 终端输出美化
+tabulate>=0.9.0                    # 表格输出格式化
+
+# 日志和监控
+structlog>=23.0.0                  # 结构化日志
+colorlog>=6.7.0                    # 彩色日志输出
+
+# 异步支持
+aiofiles>=23.1.0                   # 异步文件操作
+asyncio-mqtt>=0.13.0               # 异步MQTT客户端（如需要）
+
+# Web服务支持（可选）
+fastapi>=0.100.0                   # 快速API框架
+uvicorn>=0.22.0                    # ASGI服务器
+httpx>=0.24.0                      # HTTP客户端
+
+# 配置和环境管理
+python-dotenv>=1.0.0               # 环境变量管理
+configparser>=5.3.0                # 配置文件解析
+
+# 文件和数据处理
+toml>=0.10.2                       # TOML配置文件支持
+jsonschema>=4.17.0                 # JSON模式验证
+python-dateutil>=2.8.2             # 日期时间处理
+
+# 性能和优化
+cachetools>=5.3.0                  # 缓存工具
+memory-profiler>=0.60.0            # 内存性能分析
+
+# 可选：Git集成
+GitPython>=3.1.31                  # Git仓库操作
+
+# 可选：加密和安全
+cryptography>=41.0.0               # 加密功能
+python-jose[cryptography]>=3.3.0   # JWT支持
+
+# 可选：机器学习和AI
+numpy>=1.24.0                      # 数值计算
+pandas>=2.0.0                      # 数据分析
+scikit-learn>=1.3.0                # 机器学习库
+
+# 开发环境支持
+jupyter>=1.0.0                     # Jupyter notebook
+ipython>=8.0.0                     # 交互式Python shell
+pre-commit>=3.3.0                  # Git预提交钩子 

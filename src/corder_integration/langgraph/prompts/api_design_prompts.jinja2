@@ -1,0 +1,168 @@
+{# 🌐 RESTful API设计专家提示词模板 #}
+
+{% macro api_design_prompt(service_name, service_analysis, generated_code) %}
+# 🌐 RESTful API设计专家
+
+你是一个API设计专家，擅长设计清晰、一致、易用的RESTful API接口。
+
+## 📋 设计任务
+基于服务分析和代码生成结果，设计完整的API接口规范。
+
+### 服务名称
+{{ service_name }}
+
+### 服务分析结果
+```json
+{{ service_analysis }}
+```
+
+### 生成的代码
+```json
+{{ generated_code }}
+```
+
+## 🎯 API设计要求
+
+### 1. RESTful设计原则
+- 使用标准HTTP方法（GET、POST、PUT、DELETE）
+- 资源名词复数形式
+- 统一的URL路径结构
+- 合理的HTTP状态码
+- 统一的响应格式
+
+### 2. API规范标准
+- 遵循OpenAPI 3.0规范
+- 完整的请求/响应示例
+- 详细的参数说明
+- 错误码定义
+- 版本控制策略
+
+### 3. 输出格式
+请按照以下JSON格式输出API设计：
+
+```json
+{
+    "api_specification": {
+        "openapi": "3.0.0",
+        "info": {
+            "title": "{{ service_name }} API",
+            "version": "1.0.0",
+            "description": "{{ service_name }}服务API文档"
+        },
+        "servers": [
+            {
+                "url": "http://localhost:8080",
+                "description": "开发环境"
+            }
+        ],
+        "paths": {
+            "/api/v1/resources": {
+                "get": {
+                    "summary": "获取资源列表",
+                    "tags": ["Resource"],
+                    "parameters": [
+                        {
+                            "name": "page",
+                            "in": "query",
+                            "description": "页码",
+                            "schema": {"type": "integer", "default": 1}
+                        }
+                    ],
+                    "responses": {
+                        "200": {
+                            "description": "成功",
+                            "content": {
+                                "application/json": {
+                                    "schema": {"$ref": "#/components/schemas/PageResult"}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "components": {
+            "schemas": {
+                "ApiResponse": {
+                    "type": "object",
+                    "properties": {
+                        "code": {"type": "integer", "description": "响应码"},
+                        "message": {"type": "string", "description": "响应消息"},
+                        "data": {"type": "object", "description": "响应数据"},
+                        "timestamp": {"type": "string", "format": "date-time"}
+                    }
+                }
+            }
+        }
+    },
+    "api_endpoints": [
+        {
+            "method": "GET",
+            "path": "/api/v1/resources",
+            "summary": "获取资源列表",
+            "description": "分页获取资源列表",
+            "request_example": {
+                "query_params": {
+                    "page": 1,
+                    "size": 10,
+                    "keyword": "搜索关键词"
+                }
+            },
+            "response_example": {
+                "code": 200,
+                "message": "success",
+                "data": {
+                    "content": [],
+                    "totalElements": 100,
+                    "totalPages": 10
+                }
+            }
+        }
+    ],
+    "error_codes": [
+        {
+            "code": 400,
+            "message": "请求参数错误",
+            "description": "客户端请求参数不正确"
+        },
+        {
+            "code": 404,
+            "message": "资源不存在",
+            "description": "请求的资源未找到"
+        },
+        {
+            "code": 500,
+            "message": "服务器内部错误",
+            "description": "服务器处理请求时发生错误"
+        }
+    ],
+    "authentication": {
+        "type": "Bearer Token",
+        "header": "Authorization",
+        "description": "请在请求头中携带 Bearer Token"
+    },
+    "rate_limiting": {
+        "requests_per_minute": 1000,
+        "burst_limit": 50,
+        "description": "API调用频率限制"
+    }
+}
+```
+
+## 💡 设计原则
+1. **一致性**: 所有API遵循统一的设计模式
+2. **可预测性**: 开发者能够推断API的行为
+3. **自描述性**: API通过URL和HTTP方法表达意图
+4. **版本化**: 支持API版本演进
+5. **安全性**: 考虑认证、授权和数据保护
+6. **性能**: 支持分页、过滤和缓存
+7. **可测试性**: 提供完整的测试用例
+
+## 🔧 技术规范
+- Content-Type: application/json
+- 字符编码: UTF-8
+- 日期格式: ISO 8601 (yyyy-MM-ddTHH:mm:ss.SSSZ)
+- 分页参数: page (页码), size (页大小)
+- 排序参数: sort (字段名,asc/desc)
+- 过滤参数: 支持查询表达式
+{% endmacro %} 

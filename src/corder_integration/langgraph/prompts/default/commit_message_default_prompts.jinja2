@@ -1,0 +1,34 @@
+{#
+Git提交信息生成默认提示词模板（简化版）
+提供基础的提交信息生成功能
+#}
+
+{% macro commit_message_prompt(project_name, completed_services, generated_apis, generated_sql, code_review_results, test_coverage) %}
+请为以下代码变更生成Git提交信息：
+
+项目名称：{{ project_name }}
+完成的服务：{{ completed_services | join(', ') }}
+
+生成的功能：
+- {{ completed_services | length }}个微服务
+- API接口总数：{{ (generated_apis.values() | list | sum(attribute='__len__') | default(0)) }}
+- 数据库表数：{{ (generated_sql.values() | list | sum(attribute='__len__') | default(0)) }}
+
+代码审查结果：
+{{ (code_review_results.items() | list | map(attribute='1.overall_score') | list | join(', ')) }}
+
+测试覆盖率：
+{{ (test_coverage.values() | list | map('multiply', 100) | map('round', 1) | list | join('%, ')) }}%
+
+请生成符合Conventional Commits规范的提交信息，格式如下：
+
+feat: 实现电商系统核心微服务架构
+
+- 新增用户服务：用户注册、登录、信息管理
+- 新增产品服务：产品展示、库存管理
+- 新增订单服务：订单创建、支付处理
+- 实现服务间Feign调用
+- 添加完整的单元测试，覆盖率85%+
+
+只返回commit message文本，不要其他内容。
+{% endmacro %} 

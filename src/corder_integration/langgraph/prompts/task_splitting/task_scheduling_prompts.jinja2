@@ -1,0 +1,233 @@
+{#- 任务调度提示词模板 -#}
+
+{% macro task_scheduling_prompt(services_summary, dependencies_summary, context_window=None) %}
+你是项目调度专家。请制定详细的开发执行计划，按照合理的优先级进行任务排序。
+
+服务概要：
+{{ services_summary }}
+
+依赖概要：
+{{ dependencies_summary }}
+
+{% if context_window %}
+上下文信息：
+{{ context_window }}
+{% endif %}
+
+请制定详细的开发执行计划，按照以下优先级进行任务排序：
+1. **基础设施任务**：数据库创建、配置管理、环境搭建
+2. **核心服务开发**：按依赖关系排序的服务实现
+3. **接口对接和联调**：服务间API集成和测试
+4. **系统测试和部署**：集成测试、性能测试、生产部署
+
+每个阶段应包含：
+- 数据库相关任务（表结构、索引、迁移）
+- API开发任务（接口实现、文档、测试）
+- 业务逻辑实现任务（核心业务逻辑、数据处理）
+- 配置管理任务（环境配置、服务配置、监控配置）
+- 测试任务（单元测试、集成测试、端到端测试）
+
+请输出JSON格式的详细执行计划：
+{
+  "execution_phases": [
+    {
+      "phase_name": "基础设施搭建阶段",
+      "phase_order": 1,
+      "description": "搭建项目基础设施，包括数据库、配置服务等",
+      "estimated_duration": "2天",
+      "services_involved": ["全部服务"],
+      "task_categories": [
+        {
+          "category": "database",
+          "description": "数据库基础设施",
+          "tasks": [
+            {
+              "task_name": "创建数据库实例",
+              "service": "基础设施",
+              "deliverable": "MySQL数据库实例",
+              "estimated_hours": 2,
+              "prerequisites": ["环境准备"],
+              "assignee_role": "DBA"
+            },
+            {
+              "task_name": "设计数据库表结构",
+              "service": "用户服务",
+              "deliverable": "用户表SQL脚本",
+              "estimated_hours": 4,
+              "prerequisites": ["数据库实例"],
+              "assignee_role": "后端开发"
+            }
+          ]
+        },
+        {
+          "category": "config",
+          "description": "配置管理服务",
+          "tasks": [
+            {
+              "task_name": "搭建配置中心",
+              "service": "基础设施",
+              "deliverable": "Nacos配置中心",
+              "estimated_hours": 3,
+              "prerequisites": [],
+              "assignee_role": "运维工程师"
+            }
+          ]
+        }
+      ],
+      "success_criteria": ["数据库正常连接", "配置中心可用", "基础环境就绪"],
+      "parallel_execution": true
+    },
+    {
+      "phase_name": "核心服务开发阶段",
+      "phase_order": 2,
+      "description": "开发核心业务服务，包括用户服务、权限服务等",
+      "estimated_duration": "5天",
+      "services_involved": ["用户服务", "权限服务"],
+      "task_categories": [
+        {
+          "category": "api",
+          "description": "API接口开发",
+          "tasks": [
+            {
+              "task_name": "实现用户注册接口",
+              "service": "用户服务",
+              "deliverable": "POST /api/users/register",
+              "estimated_hours": 6,
+              "prerequisites": ["用户表创建"],
+              "assignee_role": "后端开发"
+            },
+            {
+              "task_name": "实现权限验证接口",
+              "service": "权限服务",
+              "deliverable": "POST /api/permissions/check",
+              "estimated_hours": 4,
+              "prerequisites": ["权限表创建"],
+              "assignee_role": "后端开发"
+            }
+          ]
+        },
+        {
+          "category": "service",
+          "description": "业务逻辑实现",
+          "tasks": [
+            {
+              "task_name": "用户注册业务逻辑",
+              "service": "用户服务",
+              "deliverable": "UserService类",
+              "estimated_hours": 8,
+              "prerequisites": ["用户接口"],
+              "assignee_role": "后端开发"
+            }
+          ]
+        }
+      ],
+      "success_criteria": ["核心API正常工作", "业务逻辑测试通过"],
+      "parallel_execution": true
+    },
+    {
+      "phase_name": "服务集成阶段",
+      "phase_order": 3,
+      "description": "服务间集成、联调测试",
+      "estimated_duration": "3天",
+      "services_involved": ["用户服务", "权限服务", "业务服务"],
+      "task_categories": [
+        {
+          "category": "test",
+          "description": "集成测试",
+          "tasks": [
+            {
+              "task_name": "用户权限集成测试",
+              "service": "集成测试",
+              "deliverable": "集成测试用例",
+              "estimated_hours": 6,
+              "prerequisites": ["核心服务开发完成"],
+              "assignee_role": "测试工程师"
+            }
+          ]
+        }
+      ],
+      "success_criteria": ["服务间调用正常", "数据一致性验证通过"],
+      "parallel_execution": false
+    },
+    {
+      "phase_name": "部署上线阶段",
+      "phase_order": 4,
+      "description": "生产环境部署、监控配置",
+      "estimated_duration": "2天",
+      "services_involved": ["全部服务"],
+      "task_categories": [
+        {
+          "category": "deployment",
+          "description": "部署配置",
+          "tasks": [
+            {
+              "task_name": "容器化部署配置",
+              "service": "基础设施",
+              "deliverable": "Docker配置文件",
+              "estimated_hours": 4,
+              "prerequisites": ["集成测试通过"],
+              "assignee_role": "运维工程师"
+            }
+          ]
+        }
+      ],
+      "success_criteria": ["生产环境稳定运行", "监控告警正常"],
+      "parallel_execution": false
+    }
+  ],
+  "parallel_groups": [
+    {
+      "group_name": "基础服务并行组",
+      "group_order": 1,
+      "services": ["用户服务", "权限服务"],
+      "estimated_duration": "5天",
+      "description": "核心基础服务可以并行开发",
+      "coordination_points": ["API接口设计统一", "数据模型确认"]
+    },
+    {
+      "group_name": "业务服务并行组",
+      "group_order": 2,
+      "services": ["订单服务", "商品服务"],
+      "estimated_duration": "4天",
+      "description": "业务服务依赖基础服务，可并行开发",
+      "coordination_points": ["基础服务API稳定"]
+    }
+  ],
+  "execution_order": [
+    "配置中心",
+    "数据库设置",
+    "用户服务(并行)",
+    "权限服务(并行)",
+    "订单服务(并行)",
+    "商品服务(并行)",
+    "集成测试",
+    "部署上线"
+  ],
+  "resource_allocation": {
+    "backend_developers": 3,
+    "frontend_developers": 2,
+    "test_engineers": 1,
+    "devops_engineers": 1,
+    "total_estimated_time": "12天"
+  },
+  "risk_management": {
+    "critical_dependencies": [
+      {
+        "task": "数据库设计",
+        "risk": "设计变更影响后续开发",
+        "mitigation": "提前确认数据模型，版本化管理"
+      }
+    ],
+    "buffer_time": "20%",
+    "contingency_plans": ["关键人员备份", "技术方案备选"]
+  },
+  "summary": "整体项目分为4个阶段，预估12天完成，涉及X个服务的开发和部署"
+}
+
+## 调度原则：
+1. **依赖优先**：有依赖关系的任务按顺序执行
+2. **并行最大化**：无依赖的任务尽量并行执行
+3. **风险控制**：关键路径预留缓冲时间
+4. **资源平衡**：合理分配人力资源
+5. **里程碑清晰**：每个阶段有明确的完成标准
+{% endmacro %} 

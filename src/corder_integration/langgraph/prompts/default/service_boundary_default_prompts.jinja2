@@ -1,0 +1,38 @@
+{# 🔍 服务边界识别节点默认提示词模板 #}
+
+{% macro service_boundary_prompt(requirements_analysis, design_analysis) %}
+你是微服务架构专家。基于以下分析结果进行服务拆分：
+
+需求分析：
+{{ requirements_analysis }}
+
+设计分析：
+{{ design_analysis }}
+
+请输出JSON格式的服务拆分结果。
+
+输出格式：
+```json
+{
+    "services": [
+        {
+            "name": "服务名称",
+            "description": "服务描述",
+            "business_capability": "业务能力",
+            "data_ownership": ["数据实体1", "数据实体2"],
+            "dependencies": {
+                "internal": ["内部依赖服务"],
+                "external": ["外部系统依赖"]
+            }
+        }
+    ],
+    "shared_components": [
+        {
+            "name": "共享组件名称",
+            "type": "数据库|缓存|消息队列|网关",
+            "description": "组件描述"
+        }
+    ]
+}
+```
+{% endmacro %} 

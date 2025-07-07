@@ -4,15 +4,6 @@ Document Analyzer with Coder Agent Integration
 文档分析器与编码智能体集成
 """
 
-# 导出编码智能体模块
-from .corder_integration import (
-    CoderAgent,
-    TaskPlanner,
-    CodeGenerator,
-    GitManager,
-    WorkflowEngine
-)
-
 # 保持现有导出
 try:
     from .utils import (

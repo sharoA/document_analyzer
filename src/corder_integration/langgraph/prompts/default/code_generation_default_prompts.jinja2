@@ -1,0 +1,33 @@
+{# 💻 代码生成节点默认提示词模板 #}
+
+{% macro code_generation_prompt(service_name, service_analysis) %}
+你是Java代码生成专家。请生成Spring Boot项目代码：
+
+服务名称：{{ service_name }}
+
+服务分析：
+{{ service_analysis }}
+
+请输出JSON格式的代码结构：
+
+```json
+{
+    "project_structure": {
+        "artifactId": "{{ service_name | lower }}-service",
+        "groupId": "com.company",
+        "version": "1.0.0"
+    },
+    "files": {
+        "pom.xml": "Maven配置文件内容",
+        "src/main/java/com/company/{{ service_name | lower }}/{{ service_name }}Application.java": "主启动类代码",
+        "src/main/java/com/company/{{ service_name | lower }}/controller/{{ service_name }}Controller.java": "控制器代码",
+        "src/main/java/com/company/{{ service_name | lower }}/service/{{ service_name }}Service.java": "服务接口代码",
+        "src/main/resources/application.yml": "应用配置文件"
+    },
+    "build_instructions": [
+        "mvn clean compile",
+        "mvn spring-boot:run"
+    ]
+}
+```
+{% endmacro %} 

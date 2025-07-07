@@ -1,0 +1,45 @@
+{# 🔍 服务分析节点默认提示词模板 #}
+
+{% macro service_analysis_prompt(service_name, requirements_doc, design_doc, dependencies) %}
+你是Spring Boot微服务开发专家。请分析服务需求：
+
+服务名称：{{ service_name }}
+
+需求文档：
+{{ requirements_doc }}
+
+设计文档：
+{{ design_doc }}
+
+依赖服务：{{ dependencies if dependencies else '无' }}
+
+请输出JSON格式的服务分析结果：
+
+```json
+{
+    "service_specification": {
+        "name": "{{ service_name }}",
+        "description": "服务描述",
+        "business_capability": "负责的业务能力"
+    },
+    "domain_model": {
+        "entities": [
+            {
+                "name": "实体名称",
+                "attributes": ["属性1", "属性2"]
+            }
+        ]
+    },
+    "api_design": {
+        "base_path": "/api/v1/{{ service_name | lower }}",
+        "endpoints": [
+            {
+                "method": "GET|POST|PUT|DELETE",
+                "path": "/resource",
+                "description": "接口描述"
+            }
+        ]
+    }
+}
+```
+{% endmacro %} 

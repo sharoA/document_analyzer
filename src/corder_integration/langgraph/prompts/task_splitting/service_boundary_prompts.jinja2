@@ -1,0 +1,77 @@
+{#- 服务边界识别提示词模板 -#}
+
+{% macro service_boundary_prompt(design_summary, architecture_summary, context_window=None) %}
+你是微服务架构专家。请严格基于设计文档进行服务分析，不要添加设计文档中没有的服务或功能。
+
+设计概要：
+{{ design_summary }}
+
+架构概要：  
+{{ architecture_summary }}
+
+{% if context_window %}
+上下文信息：
+{{ context_window }}
+{% endif %}
+
+**重要约束：严格按照设计文档执行，不要添加新的服务、新的接口或新的功能。**
+
+请基于设计文档，识别和整理已定义的服务信息：
+
+请输出JSON格式的服务分析结果：
+{
+  "identified_services": [
+    {
+      "name": "设计文档中明确定义的服务名称",
+      "description": "基于设计文档的服务描述",
+      "git_repository": "设计文档中提供的git地址",
+      "responsibilities": ["设计文档中明确的职责"],
+      "api_endpoints": [
+        {
+          "method": "GET/POST等，严格按设计文档",
+          "path": "设计文档中定义的完整路径",
+          "description": "设计文档中的接口说明",
+          "request_params": "设计文档中定义的入参字段",
+          "response_fields": "设计文档中定义的返参字段",
+          "special_requirements": "设计文档中的特殊要求（如分页、调用其他服务等）"
+        }
+      ],
+      "database_tables": [
+        {
+          "table_name": "设计文档中定义的表名",
+          "create_sql": "设计文档中提供的建表语句",
+          "description": "表的用途说明"
+        }
+      ],
+      "external_service_calls": [
+        {
+          "target_service": "需要调用的目标服务名",
+          "endpoint": "调用的具体接口路径",
+          "purpose": "调用目的"
+        }
+      ],
+      "config_requirements": [
+        "设计文档中明确的配置需求（数据库连接、Redis等）"
+      ]
+    }
+  ],
+  "service_call_relationships": {
+    "dependencies": [
+      {
+        "caller": "调用方服务",
+        "called": "被调用方服务", 
+        "interface": "具体接口",
+        "purpose": "调用目的"
+      }
+    ]
+  },
+  "summary": "基于设计文档的服务分析概要，确认涉及X个服务，Y个新增接口，Z个数据库表"
+}
+
+分析要点：
+1. **严格按照设计文档**：只分析文档中明确提到的服务
+2. **不要添加新内容**：不要创造设计文档中没有的服务、接口或功能  
+3. **使用文档中的具体信息**：API路径、参数、SQL语句等都要使用文档原文
+4. **识别真实依赖关系**：基于文档中明确的服务调用关系
+5. **保持原有架构**：不要修改或优化设计文档中的架构设计
+{% endmacro %} 

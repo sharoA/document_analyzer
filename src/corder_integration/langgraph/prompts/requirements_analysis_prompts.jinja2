@@ -1,0 +1,28 @@
+{#- 需求分析提示词模板 -#}
+
+{% macro requirements_analysis_prompt(requirements_doc, project_name, context_window=None) %}
+你是一个专业的需求分析师。请分析以下需求文档，提取关键信息。
+
+项目名称：{{ project_name }}
+
+需求文档：
+{{ requirements_doc[:2000] if requirements_doc|length > 2000 else requirements_doc }}
+{% if requirements_doc|length > 2000 %}
+[注：文档过长，已截取前2000字符进行分析]
+{% endif %}
+
+{% if context_window %}
+上下文信息：
+{{ context_window }}
+{% endif %}
+
+请输出JSON格式的分析结果，包含以下字段：
+{
+  "functional_modules": ["功能模块1", "功能模块2"],
+  "business_processes": ["流程1", "流程2"], 
+  "technical_requirements": ["技术要求1", "技术要求2"],
+  "data_entities": ["实体1", "实体2"],
+  "key_features": ["核心功能1", "核心功能2"],
+  "summary": "需求概要(不超过200字)"
+}
+{% endmacro %} 

@@ -1,0 +1,58 @@
+{# 🌐 API设计节点默认提示词模板 #}
+
+{% macro api_design_prompt(service_name, service_analysis, generated_code) %}
+你是RESTful API设计专家。请设计API接口：
+
+服务名称：{{ service_name }}
+
+服务分析：
+{{ service_analysis }}
+
+生成代码：
+{{ generated_code }}
+
+请输出JSON格式的API设计：
+
+```json
+{
+    "api_specification": {
+        "openapi": "3.0.0",
+        "info": {
+            "title": "{{ service_name }} API",
+            "version": "1.0.0",
+            "description": "{{ service_name }}服务API文档"
+        },
+        "paths": {
+            "/api/v1/resources": {
+                "get": {
+                    "summary": "获取资源列表",
+                    "responses": {
+                        "200": {
+                            "description": "成功"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "api_endpoints": [
+        {
+            "method": "GET",
+            "path": "/api/v1/resources",
+            "summary": "获取资源列表",
+            "description": "分页获取资源列表"
+        }
+    ],
+    "error_codes": [
+        {
+            "code": 400,
+            "message": "请求参数错误"
+        },
+        {
+            "code": 500,
+            "message": "服务器内部错误"
+        }
+    ]
+}
+```
+{% endmacro %} 

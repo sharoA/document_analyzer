@@ -1,0 +1,48 @@
+{#
+代码质量审查默认提示词模板（简化版）
+提供基础的代码审查功能
+#}
+
+{% macro quality_review_prompt(service_name, service_code) %}
+请审查以下Spring Boot服务的代码质量：
+
+服务名称：{{ service_name }}
+生成的代码：
+{{ service_code | tojson }}
+
+请从以下维度进行评估：
+1. 代码质量和规范性
+2. 性能优化建议
+3. 安全性检查
+4. 架构设计合理性
+5. 异常处理完善性
+
+请以JSON格式输出审查结果：
+{
+    "overall_score": 85,
+    "quality_issues": [
+        {
+            "severity": "high|medium|low",
+            "file": "文件路径",
+            "line": "行号",
+            "issue": "问题描述",
+            "suggestion": "改进建议"
+        }
+    ],
+    "security_issues": [
+        {
+            "severity": "critical|high|medium|low",
+            "type": "SQL注入|XSS|认证授权|数据泄露",
+            "description": "安全问题描述",
+            "fix": "修复建议"
+        }
+    ],
+    "performance_suggestions": [
+        "性能优化建议1",
+        "性能优化建议2"
+    ],
+    "has_critical_issues": false,
+    "security_risk": false,
+    "pass_review": true
+}
+{% endmacro %} 

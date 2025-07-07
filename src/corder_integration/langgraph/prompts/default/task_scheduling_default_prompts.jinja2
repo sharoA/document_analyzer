@@ -1,0 +1,33 @@
+{# 📅 任务调度节点默认提示词模板 #}
+
+{% macro task_scheduling_prompt(service_identification, dependency_analysis) %}
+你是项目调度专家。请制定任务执行计划：
+
+服务识别：
+{{ service_identification }}
+
+依赖分析：
+{{ dependency_analysis }}
+
+请输出JSON格式的执行计划。
+
+输出格式：
+```json
+{
+    "execution_strategy": "串行|并行|混合",
+    "execution_batches": [
+        {
+            "batch_id": 1,
+            "services": ["服务A", "服务B"],
+            "execution_mode": "parallel",
+            "estimated_duration": "30分钟"
+        }
+    ],
+    "resource_allocation": {
+        "总服务数": 5,
+        "并行度": 2,
+        "预估总时长": "2小时"
+    }
+}
+```
+{% endmacro %}

@@ -1,0 +1,274 @@
+{#- SQLite任务生成提示词模板 -#}
+
+{% macro generate_sqlite_tasks_prompt(execution_plan, services_summary, context_window=None) %}
+你是任务管理专家，擅长将设计文档转换成具体的、可执行的开发任务。
+
+服务概要：
+{{ services_summary }}
+
+执行计划：
+{{ execution_plan }}
+
+{% if context_window %}
+上下文信息：
+{{ context_window }}
+{% endif %}
+
+**重要约束：必须严格使用设计文档中的真实内容，禁止编造任何接口路径、参数名称、表名或配置信息。**
+
+**具体要求：**
+1. **接口路径**：必须使用设计文档中明确定义的完整URI路径
+2. **参数名称**：必须使用设计文档入参出参示例中的真实字段名
+3. **表名和SQL**：必须使用设计文档中提供的真实CREATE TABLE语句
+4. **配置信息**：必须使用设计文档中提供的真实数据库连接配置
+
+**设计文档中的真实接口信息：**
+- 用户服务接口：GET /general/multiorgManage/queryCompanyUnitList
+- 确权开立服务接口1：GET /crcl-open-api/lsLimit/listUnitLimitByCompanyId  
+- 确权开立服务接口2：GET /crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport
+
+**设计文档中的真实表结构：**
+- 表名：t_cust_multiorg_unit
+- 真实字段：id, company_id, mutilorg_id, unit_code, unit_name, remark, platform_type, status, create_id等
+
+**设计文档中的真实数据库配置：**
+- MySQL URL: jdbc:mysql://localhost:6446/dbwebappdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true
+- 用户名: dbwebapp
+- 密码: dbwebapp
+- Redis: localhost:6379
+
+请将设计文档中的需求转换成具体的开发任务，按照以下顺序：
+
+1. **数据库表创建**：使用设计文档中的真实CREATE TABLE语句
+2. **基础服务接口**：先开发被其他服务依赖的接口  
+3. **业务服务接口**：开发调用基础服务的业务接口
+4. **配置和部署**：使用设计文档中的真实配置信息
+
+请输出JSON格式的具体任务列表：
+{
+  "tasks": [
+    {
+      "task_id": "task_001",
+      "service_name": "用户服务 (zqyl-user-center-service)",
+      "task_type": "database",
+      "priority": 1,
+      "dependencies": [],
+      "estimated_duration": "15分钟",
+      "description": "创建多组织单元表 t_cust_multiorg_unit",
+      "deliverables": [
+        "t_cust_multiorg_unit.sql - 建表脚本"
+      ],
+      "implementation_details": "CREATE TABLE t_cust_multiorg_unit(id bigint(20) NOT NULL COMMENT '主键id', company_id bigint(20) NOT NULL COMMENT '企业id', mutilorg_id bigint(10) NOT NULL COMMENT '多组织id', unit_code varchar(50) NOT NULL COMMENT '组织单元编号', unit_name varchar(255) NOT NULL COMMENT '组织单元名称', remark varchar(500) DEFAULT NULL COMMENT '备注', platform_type tinyint(2) NOT NULL COMMENT '平台类型(1云信2云租3云保)', status tinyint(2) NOT NULL COMMENT '状态1正常0删除', create_id bigint(20) NOT NULL COMMENT '创建人id', oper_user_name varchar(255) DEFAULT NULL COMMENT '创建人用户名', create_time datetime NOT NULL COMMENT '创建时间', modify_id bigint(20) DEFAULT NULL COMMENT '修改人id', modify_user_name varchar(255) DEFAULT NULL COMMENT '最后修改用户名', modify_time datetime DEFAULT NULL COMMENT '修改时间', PRIMARY KEY(id), KEY pk_company_id(company_id) USING BTREE) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='多组织单元表';",
+      "completion_criteria": "表创建成功，包含设计文档中的所有字段和约束",
+      "parameters": {
+        "table_name": "t_cust_multiorg_unit",
+        "database_url": "jdbc:mysql://localhost:6446/dbwebappdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true",
+        "sql_file": "src/main/resources/sql/t_cust_multiorg_unit.sql"
+      }
+    },
+    {
+      "task_id": "task_002",
+      "service_name": "用户服务 (zqyl-user-center-service)",
+      "task_type": "api",
+      "priority": 2,
+      "dependencies": ["task_001"],
+      "estimated_duration": "60分钟",
+      "description": "实现组织单元查询接口 GET /general/multiorgManage/queryCompanyUnitList",
+      "deliverables": [
+        "MultiorgManageController.java - 控制器类",
+        "QueryCompanyUnitListRequest.java - 请求参数类",
+        "QueryCompanyUnitListResponse.java - 响应参数类"
+      ],
+      "implementation_details": "@GetMapping(\"/general/multiorgManage/queryCompanyUnitList\") 入参包含: unitCode(组织单元编号), openStatus(组织单元状态), unitList(组织单元id列表); 返参包含: unitId, unitTypeDicType, unitTypeId, openStatus, unitCode, unitName",
+      "completion_criteria": "接口能正确处理设计文档中定义的请求和响应格式",
+      "parameters": {
+        "api_method": "GET",
+        "api_path": "/general/multiorgManage/queryCompanyUnitList",
+        "request_params": {
+          "unitCode": "组织单元编号",
+          "openStatus": "组织单元状态 1：正常；0：禁用 默认全部", 
+          "unitList": "组织单元id 必传"
+        },
+        "response_params": {
+          "data": [
+            {
+              "unitId": "组织单元id 必传",
+              "unitTypeDicType": "组织单元类型 1：开立，2：支付",
+              "unitTypeId": "组织单元类型表id",
+              "openStatus": "组织单元状态 1：正常；0：禁用",
+              "unitCode": "组织编号",
+              "unitName": "组织单元名称"
+            }
+          ]
+        },
+        "special_requirements": "查询企业组织单元列表"
+      }
+    },
+    {
+      "task_id": "task_003", 
+      "service_name": "确权开立服务 (crcl-open)",
+      "task_type": "api",
+      "priority": 3,
+      "dependencies": ["task_002"],
+      "estimated_duration": "90分钟",
+      "description": "实现组织单元额度列表接口 GET /crcl-open-api/lsLimit/listUnitLimitByCompanyId",
+      "deliverables": [
+        "LsLimitController.java - 控制器类",
+        "ListUnitLimitRequest.java - 请求参数类", 
+        "ListUnitLimitResponse.java - 响应参数类"
+      ],
+      "implementation_details": "@GetMapping(\"/crcl-open-api/lsLimit/listUnitLimitByCompanyId\") 入参: gwCompanyId(当前登录企业id), unitName(组织单元名称模糊搜索), limitSource(额度名称模糊搜索), bizType(额度类型), page(页码), pageRow(每页记录数); 返参: totalLimitAmt, usedLimitAmt, usableLimitAmt, unitLimitListDetail数组",
+      "completion_criteria": "接口实现pagehelper分页，能调用用户服务的queryCompanyUnitList接口",
+      "parameters": {
+        "api_method": "GET", 
+        "api_path": "/crcl-open-api/lsLimit/listUnitLimitByCompanyId",
+        "request_params": {
+          "gwCompanyId": "当前登录企业id，必传",
+          "unitName": "组织单元名称（模糊搜索）",
+          "limitSource": "额度名称（模糊搜索）", 
+          "bizType": "10：云信额度，80：链数额度（默认）",
+          "page": "页码，必传",
+          "pageRow": "每页记录数，必传"
+        },
+        "response_params": {
+          "totalLimitAmt": "总额度",
+          "usedLimitAmt": "已用额度", 
+          "usableLimitAmt": "可用额度",
+          "unitLimitListDetail": [
+            {
+              "unitName": "组织单元名称",
+              "limitSource": "额度名称",
+              "bizType": "额度类型：10：云信额度 80：链数额度",
+              "usedLimitAmt": "已分配额度",
+              "usableLimitAmt": "已用额度", 
+              "totalLimitAmt": "可用额度"
+            }
+          ]
+        },
+        "special_requirements": "采用pagehelper进行分页，需要调用zqyl-user-center-service服务的/queryCompanyUnitList接口获取组织单元详细信息"
+      }
+    },
+    {
+      "task_id": "task_004",
+      "service_name": "确权开立服务 (crcl-open)", 
+      "task_type": "api",
+      "priority": 4,
+      "dependencies": ["task_003"],
+      "estimated_duration": "45分钟",
+      "description": "实现组织单元额度列表导出接口 GET /crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport",
+      "deliverables": [
+        "LsLimitController.java - 增加导出方法",
+        "ExportService.java - 导出服务类"
+      ],
+      "implementation_details": "@GetMapping(\"/crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport\") 与列表接口入参相同，返参包含flag(文件生成状态), msg(提示内容), data(文件下载地址)",
+      "completion_criteria": "能生成Excel文件到本地目录，返回本地链接路径",
+      "parameters": {
+        "api_method": "GET",
+        "api_path": "/crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport", 
+        "request_params": {
+          "gwCompanyId": "当前登录企业id，必传",
+          "unitName": "组织单元名称（模糊搜索）",
+          "limitSource": "额度名称（模糊搜索）",
+          "bizType": "10：云信额度，80：链数额度（默认）",
+          "page": "页码，必传", 
+          "pageRow": "每页记录数，必传"
+        },
+        "response_params": {
+          "flag": "0文件生成失败，1文件生成成功",
+          "msg": "flag=0 提示内容",
+          "data": "flag=1 文件下载地址"
+        },
+        "special_requirements": "文件生成在本地目录，采用本地链接形式返回路径。文件类型为Excel列表，文件类型：xlsx。列表头列内容：组织单元名称、额度名称、额度类型、已分配额度（元）、已用额度（元）、可用额度（元）。需要调用zqyl-user-center-service服务的/queryCompanyUnitList接口获取组织单元详细信息"
+      }
+    },
+    {
+      "task_id": "task_005",
+      "service_name": "用户服务 (zqyl-user-center-service)",
+      "task_type": "config", 
+      "priority": 1,
+      "dependencies": [],
+      "estimated_duration": "20分钟",
+      "description": "配置用户服务的数据库连接和缓存配置",
+      "deliverables": [
+        "application.yml - 应用配置文件"
+      ],
+      "implementation_details": "spring: datasource: url: jdbc:mysql://localhost:6446/dbwebappdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true username: dbwebapp password: dbwebapp driver-class-name: com.mysql.cj.jdbc.Driver redis: host: localhost port: 6379 db: 0 password: ''",
+      "completion_criteria": "配置文件正确，服务能正常连接到指定的数据库和Redis",
+      "parameters": {
+        "database_url": "jdbc:mysql://localhost:6446/dbwebappdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true",
+        "database_username": "dbwebapp",
+        "database_password": "dbwebapp", 
+        "redis_host": "localhost",
+        "redis_port": "6379",
+        "redis_db": "0",
+        "redis_password": ""
+      }
+    },
+    {
+      "task_id": "task_006",
+      "service_name": "确权开立服务 (crcl-open)",
+      "task_type": "config",
+      "priority": 1, 
+      "dependencies": [],
+      "estimated_duration": "20分钟",
+      "description": "配置确权开立服务的数据库连接和缓存配置",
+      "deliverables": [
+        "application.yml - 应用配置文件"
+      ],
+      "implementation_details": "spring: datasource: url: jdbc:mysql://localhost:6446/dbwebappdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true username: dbwebapp password: dbwebapp driver-class-name: com.mysql.cj.jdbc.Driver redis: host: localhost port: 6379 db: 0 password: ''",
+      "completion_criteria": "配置文件正确，服务能正常连接到指定的数据库和Redis",
+      "parameters": {
+        "database_url": "jdbc:mysql://localhost:6446/dbwebappdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true",
+        "database_username": "dbwebapp", 
+        "database_password": "dbwebapp",
+        "redis_host": "localhost",
+        "redis_port": "6379", 
+        "redis_db": "0",
+        "redis_password": ""
+      }
+    }
+  ],
+  "execution_sequence": {
+    "phase_1": {
+      "description": "基础环境和数据库准备",
+      "tasks": ["task_005", "task_006", "task_001"],
+      "services": ["用户服务配置", "确权开立服务配置", "数据库表创建"]
+    },
+    "phase_2": {
+      "description": "基础服务接口开发（被依赖方）",
+      "tasks": ["task_002"],
+      "services": ["用户服务 - 组织单元查询接口"]
+    },
+    "phase_3": {
+      "description": "业务服务接口开发（依赖方）", 
+      "tasks": ["task_003", "task_004"],
+      "services": ["确权开立服务 - 额度管理接口"]
+    }
+  },
+  "task_summary": {
+    "total_tasks": 6,
+    "by_service": {
+      "用户服务": 3,
+      "确权开立服务": 3
+    },
+    "by_phase": {
+      "阶段1": 3,
+      "阶段2": 1, 
+      "阶段3": 2
+    }
+  },
+  "summary": "基于设计文档生成了6个具体任务，按3个阶段执行：先配置环境和建表，再开发用户服务接口，最后开发确权开立服务接口，严格按照文档中的真实接口和参数实现"
+}
+
+## 重要提醒：
+- **必须使用设计文档中的真实接口路径**：如 /general/multiorgManage/queryCompanyUnitList
+- **必须使用设计文档中的真实参数名**：如 unitCode, openStatus, unitList等  
+- **必须使用设计文档中的真实表名和字段**：如 t_cust_multiorg_unit表及其字段
+- **必须使用设计文档中的真实配置信息**：如数据库URL、用户名密码等
+- **禁止编造任何不存在于设计文档中的内容**
+
+## 开发顺序原则：
+1. **先配置后开发**：先配置环境，再建表，再开发接口
+2. **先基础后业务**：被依赖的用户服务先开发
+3. **严格按依赖**：确权开立服务依赖用户服务的接口
+{% endmacro %} 

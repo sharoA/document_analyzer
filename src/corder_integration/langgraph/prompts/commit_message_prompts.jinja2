@@ -1,0 +1,138 @@
+{#
+Git提交信息生成提示词模板
+负责生成符合Conventional Commits规范的提交信息
+#}
+
+{% macro commit_message_prompt(project_name, completed_services, generated_apis, generated_sql, code_review_results, test_coverage) %}
+请为以下代码变更生成一个专业、规范的Git提交信息：
+
+## 📋 项目基本信息
+**项目名称**: {{ project_name }}
+**完成的微服务**: {{ completed_services | length }}个
+**API接口总数**: {{ (generated_apis.values() | list | sum(attribute='__len__') | default(0)) }}个
+**数据库表数**: {{ (generated_sql.values() | list | sum(attribute='__len__') | default(0)) }}个
+
+## 🎯 Conventional Commits规范要求
+严格遵循[Conventional Commits](https://www.conventionalcommits.org/)规范：
+
+### 提交类型 (Type)
+- **feat**: 新功能 (feature)
+- **fix**: 修复Bug
+- **docs**: 文档变更
+- **style**: 代码格式调整（不影响逻辑）
+- **refactor**: 重构代码
+- **test**: 添加或修改测试
+- **chore**: 构建过程或辅助工具的变动
+- **perf**: 性能优化
+- **ci**: 持续集成配置变更
+
+### 提交格式
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+### 格式要求
+1. **标题行**: 不超过72个字符
+2. **类型**: 使用小写字母
+3. **描述**: 使用动词原形，首字母小写
+4. **正文**: 详细说明变更内容
+5. **脚注**: 记录破坏性变更或关闭的Issue
+
+## 📊 变更统计信息
+
+### 完成的服务
+{{ completed_services | tojson }}
+
+### 代码质量评分
+{% for service, result in code_review_results.items() %}
+- **{{ service }}**: {{ result.get('overall_score', 'N/A') }}分
+{% endfor %}
+
+### 测试覆盖率
+{% for service, coverage in test_coverage.items() %}
+- **{{ service }}**: {{ (coverage * 100) | round(1) }}%
+{% endfor %}
+
+### API接口统计
+{% for service, apis in generated_apis.items() %}
+- **{{ service }}**: {{ apis | length }}个接口
+{% endfor %}
+
+### 数据库变更
+{% for service, sqls in generated_sql.items() %}
+- **{{ service }}**: {{ sqls | length }}个表/SQL
+{% endfor %}
+
+## 🎨 提交信息生成指导
+
+### 主要变更类型识别
+1. **新增微服务**: 使用`feat`类型
+2. **API接口实现**: 使用`feat`类型
+3. **数据库结构**: 使用`feat`类型
+4. **测试添加**: 使用`test`类型
+5. **文档更新**: 使用`docs`类型
+
+### 范围(Scope)建议
+- 使用服务名称作为范围 (如: `feat(user-service)`)
+- 多服务变更使用通用范围 (如: `feat(microservices)`)
+- 架构级变更使用 `feat(architecture)`
+
+### 描述(Description)指南
+- 使用现在时态："add user authentication"
+- 简洁明了，突出核心功能
+- 避免技术细节，关注业务价值
+
+## 📝 输出格式要求
+请生成一个完整的Git提交信息，包含以下部分：
+
+```
+提交标题 (必需)
+
+提交正文 (可选，但推荐)
+- 详细说明实现的功能
+- 列出主要的技术变更
+- 说明架构设计决策
+
+脚注 (可选)
+- Breaking changes说明
+- 相关Issue引用
+```
+
+## 🎯 输出示例参考
+```
+feat: 实现电商系统核心微服务架构
+
+新增完整的微服务体系，包含用户管理、产品管理、订单处理等核心业务模块：
+
+- 新增用户服务：用户注册、登录、个人信息管理
+- 新增产品服务：商品展示、库存管理、分类管理  
+- 新增订单服务：订单创建、支付处理、状态跟踪
+- 新增通知服务：邮件通知、短信提醒、站内消息
+- 实现服务间Feign调用和负载均衡
+- 添加Spring Cloud Gateway网关路由
+- 集成Redis缓存和MySQL数据库
+- 添加完整的单元测试，平均覆盖率87%
+- 实现统一的异常处理和日志监控
+
+技术栈：Spring Boot 3.1, Spring Cloud 2022, MySQL 8.0, Redis 6.2
+架构模式：微服务架构 + DDD领域驱动设计
+测试策略：单元测试 + 集成测试 + 契约测试
+
+Closes #123, #124, #125
+```
+
+## 🔍 特殊要求
+1. **语言风格**: 使用简洁、专业的中文表达
+2. **技术精度**: 准确反映实际的技术实现
+3. **业务价值**: 突出业务功能而非技术细节
+4. **版本兼容**: 说明对现有系统的影响
+5. **部署说明**: 如需要，提供部署相关信息
+
+## 📋 变更详细信息
+基于以上信息和统计数据，请生成一个符合Conventional Commits规范的提交信息。
+只返回提交信息文本，不要包含任何其他内容或格式标记。
+{% endmacro %} 

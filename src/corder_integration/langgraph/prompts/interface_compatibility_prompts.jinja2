@@ -1,0 +1,185 @@
+{#
+接口兼容性检查提示词模板
+负责分析微服务间API调用的兼容性和一致性
+#}
+
+{% macro interface_compatibility_prompt(service_dependencies, generated_apis, service_interconnections) %}
+请对以下微服务系统进行全面的接口兼容性检查：
+
+## 🔗 兼容性检查范围
+
+### 1. API接口签名匹配
+检查调用方期望的接口与被调用方提供的接口是否匹配：
+- **HTTP方法**: GET/POST/PUT/DELETE方法是否一致
+- **URL路径**: 请求路径格式是否匹配
+- **路径参数**: 路径变量名称和类型是否一致
+- **查询参数**: Query参数名称、类型、必选性是否匹配
+- **请求头**: 必需的Header是否提供
+
+### 2. 数据格式兼容性
+验证请求和响应数据的格式兼容性：
+- **请求体结构**: JSON结构字段是否匹配
+- **响应体结构**: 返回数据格式是否符合调用方期望
+- **数据类型**: 字段数据类型是否兼容（String、Integer、Boolean等）
+- **日期格式**: 时间戳、日期格式是否统一
+- **枚举值**: 枚举类型的值是否一致
+- **嵌套对象**: 复杂对象结构是否兼容
+
+### 3. 错误处理一致性
+检查异常和错误响应的标准化：
+- **HTTP状态码**: 错误状态码使用是否一致
+- **错误响应格式**: 错误信息JSON结构是否统一
+- **错误码定义**: 业务错误码是否在服务间保持一致
+- **错误信息**: 错误描述是否清晰和标准化
+- **异常传播**: 异常是否正确地在服务间传播
+
+### 4. 认证授权统一性
+验证安全机制的兼容性：
+- **认证方式**: JWT Token、API Key等认证方式是否一致
+- **Token格式**: Token的结构和字段是否兼容
+- **权限检查**: 权限验证逻辑是否统一
+- **会话管理**: 会话状态管理方式是否兼容
+- **跨域设置**: CORS配置是否允许服务间调用
+
+### 5. 版本兼容性
+检查API版本管理的兼容性：
+- **版本策略**: API版本控制方式是否一致
+- **向后兼容**: 新版本是否兼容旧版本调用
+- **版本协商**: 版本协商机制是否完善
+- **废弃处理**: 废弃API的处理策略是否合理
+- **迁移路径**: 版本升级路径是否清晰
+
+### 6. 性能和超时设置
+评估性能相关的兼容性：
+- **响应时间**: 接口响应时间是否满足调用方要求
+- **超时设置**: 超时配置是否合理
+- **重试机制**: 重试策略是否兼容
+- **限流策略**: 调用频率限制是否合理
+- **缓存策略**: 缓存机制是否影响兼容性
+
+## 📊 输出格式要求
+请以JSON格式输出详细的兼容性检查结果：
+
+```json
+{
+    "compatibility_check_date": "检查时间",
+    "overall_compatibility": "excellent|good|fair|poor",
+    "compatibility_score": 85,
+    "summary": "兼容性检查总体结果摘要",
+    "service_compatibility": {
+        "service1": true,
+        "service2": false,
+        "service3": true
+    },
+    "compatibility_matrix": {
+        "caller_service1": {
+            "callee_service2": {
+                "compatible": true,
+                "confidence": 0.95,
+                "issues": []
+            },
+            "callee_service3": {
+                "compatible": false,
+                "confidence": 0.8,
+                "issues": ["数据类型不匹配", "缺少必需字段"]
+            }
+        }
+    },
+    "compatibility_issues": [
+        {
+            "issue_id": "COMP-001",
+            "severity": "high|medium|low",
+            "type": "API签名|数据格式|错误处理|认证授权|版本兼容|性能超时",
+            "caller": "调用方服务名称",
+            "callee": "被调用方服务名称",
+            "api_endpoint": "具体的API端点",
+            "description": "兼容性问题的详细描述",
+            "current_state": "当前的实现状况",
+            "expected_state": "期望的兼容状态",
+            "impact": "对系统的影响分析",
+            "fix_suggestion": "修复建议和实施方案",
+            "fix_priority": "修复优先级",
+            "fix_effort": "预估修复工作量",
+            "affected_features": ["受影响的功能列表"],
+            "workaround": "临时解决方案（如有）"
+        }
+    ],
+    "api_contract_violations": [
+        {
+            "contract_type": "OpenAPI|JSON Schema|Protocol Buffer",
+            "violation": "违反的契约规则",
+            "services": ["相关服务"],
+            "description": "违反的具体内容",
+            "fix": "修复建议"
+        }
+    ],
+    "data_consistency_issues": [
+        {
+            "data_type": "用户信息|产品数据|订单状态",
+            "inconsistency": "数据不一致的具体描述",
+            "affected_services": ["受影响的服务"],
+            "resolution": "解决方案"
+        }
+    ],
+    "performance_compatibility": {
+        "average_response_time": "平均响应时间分析",
+        "timeout_configurations": "超时配置兼容性",
+        "throughput_limits": "吞吐量限制检查",
+        "bottlenecks": ["性能瓶颈识别"]
+    },
+    "security_compatibility": {
+        "authentication_alignment": "认证机制一致性",
+        "authorization_compatibility": "授权策略兼容性",
+        "data_encryption": "数据加密兼容性",
+        "audit_trail": "审计日志兼容性"
+    },
+    "testing_recommendations": [
+        {
+            "test_type": "契约测试|集成测试|端到端测试",
+            "scope": "测试范围",
+            "priority": "high|medium|low",
+            "description": "测试建议描述",
+            "tools": ["推荐测试工具"]
+        }
+    ],
+    "monitoring_setup": {
+        "api_health_checks": "API健康检查配置建议",
+        "service_discovery": "服务发现机制兼容性",
+        "load_balancing": "负载均衡配置建议",
+        "circuit_breaker": "熔断器配置建议"
+    },
+    "recommendations": [
+        {
+            "category": "立即修复|优化改进|长期规划",
+            "priority": "high|medium|low",
+            "description": "具体改进建议",
+            "implementation": "实施步骤",
+            "timeline": "建议时间线",
+            "dependencies": ["依赖项"],
+            "benefits": "预期收益"
+        }
+    ],
+    "next_check_date": "下次兼容性检查建议时间"
+}
+```
+
+## 📋 系统集成信息
+
+### 服务依赖关系
+{{ service_dependencies | tojson }}
+
+### API接口定义
+{{ generated_apis | tojson }}
+
+### 服务互联配置
+{{ service_interconnections | tojson }}
+
+## 🔍 检查重点
+1. **关键业务流程**: 重点检查核心业务流程中的服务调用兼容性
+2. **高频接口**: 优先检查调用频率高的API接口
+3. **数据一致性**: 确保相同业务概念在不同服务中的表示一致
+4. **错误处理**: 验证错误场景下的服务间交互
+5. **性能要求**: 确保接口性能满足业务需求
+
+请基于上述信息进行全面的兼容性分析，确保输出的JSON格式正确且分析详尽。
+{% endmacro %} 

@@ -1,0 +1,188 @@
+{#
+Pull Request信息生成提示词模板
+负责生成详细、专业的Pull Request描述和审查指南
+#}
+
+{% macro pull_request_prompt(project_name, target_branch, commit_hash, completed_services, code_review_results, test_coverage) %}
+请为以下代码变更生成一个专业、详细的Pull Request描述：
+
+## 📋 PR基本信息
+**项目名称**: {{ project_name }}
+**目标分支**: {{ target_branch }}
+**提交哈希**: {{ commit_hash }}
+**变更服务数**: {{ completed_services | length }}个
+
+## 📝 PR描述模板结构
+请按照以下结构生成完整的PR描述：
+
+### 1. 变更概述 (Summary)
+简要描述本次PR的主要目的和核心变更内容。
+
+### 2. 功能特性 (Features)
+详细列出新增的功能和特性。
+
+### 3. 技术实现 (Technical Details)
+说明主要的技术实现方案和架构决策。
+
+### 4. 测试情况 (Testing)
+描述测试策略、覆盖率和测试结果。
+
+### 5. 部署说明 (Deployment)
+提供部署相关的注意事项和步骤。
+
+### 6. 审查要点 (Review Focus)
+指出需要重点关注的审查点。
+
+### 7. 风险评估 (Risk Assessment)
+评估潜在的风险和影响。
+
+## 📊 变更统计数据
+
+### 实现的微服务
+{{ completed_services | tojson }}
+
+### 代码质量评估
+{% for service, result in code_review_results.items() %}
+- **{{ service }}**: 
+  - 综合评分: {{ result.get('overall_score', 'N/A') }}分
+  - 质量问题: {{ result.get('quality_issues', []) | length }}个
+  - 安全问题: {{ result.get('security_issues', []) | length }}个
+  - 通过审查: {{ result.get('pass_review', 'N/A') }}
+{% endfor %}
+
+### 测试覆盖率统计
+{% for service, coverage in test_coverage.items() %}
+- **{{ service }}**: {{ (coverage * 100) | round(1) }}%
+{% endfor %}
+
+## 🎨 PR描述生成指南
+
+### 写作风格要求
+1. **专业性**: 使用技术准确、表达清晰的语言
+2. **完整性**: 涵盖变更的所有重要方面
+3. **可读性**: 结构清晰，便于reviewer理解
+4. **可操作性**: 提供明确的测试和部署指导
+
+### 内容重点
+1. **业务价值**: 强调功能对业务的价值和意义
+2. **技术创新**: 突出技术方案的优势和特色
+3. **质量保证**: 展示代码质量和测试完备性
+4. **风险控制**: 识别并说明风险缓解措施
+
+### 格式要求
+- 使用Markdown格式
+- 适当使用表格、列表和代码块
+- 添加相关的截图或图表（如适用）
+- 包含必要的链接和参考资料
+
+## 📋 PR模板示例
+```markdown
+## 🚀 变更概述
+本PR实现了{{ project_name }}的完整微服务架构，包含核心业务模块的设计与开发。
+
+## ✨ 新增功能
+### 核心微服务
+- **用户服务**: 用户注册、登录、个人信息管理
+- **产品服务**: 商品管理、库存控制、分类体系
+- **订单服务**: 订单生命周期管理、支付集成
+- **通知服务**: 多渠道消息推送机制
+
+### API接口
+- RESTful API设计，遵循OpenAPI 3.0规范
+- 统一的请求响应格式和错误处理
+- JWT认证和RBAC权限控制
+- API版本管理和向后兼容性
+
+## 🏗️ 技术实现
+### 架构设计
+- **微服务架构**: Domain-Driven Design (DDD)
+- **通信机制**: Spring Cloud OpenFeign + 负载均衡
+- **配置管理**: Spring Cloud Config
+- **服务发现**: Eureka Service Registry
+
+### 技术栈
+- **后端框架**: Spring Boot 3.1.x
+- **数据库**: MySQL 8.0 + Redis 6.2
+- **消息队列**: RabbitMQ 3.11
+- **监控工具**: Micrometer + Prometheus
+
+## 🧪 测试情况
+### 测试策略
+- **单元测试**: JUnit 5 + Mockito，覆盖率{{ (test_coverage.values() | list | sum / test_coverage.values() | list | length * 100) | round(1) }}%
+- **集成测试**: Spring Boot Test + TestContainers
+- **契约测试**: Spring Cloud Contract
+- **端到端测试**: 关键业务流程验证
+
+### 测试结果
+| 服务 | 覆盖率 | 测试用例数 | 状态 |
+|------|--------|------------|------|
+{% for service, coverage in test_coverage.items() %}
+| {{ service }} | {{ (coverage * 100) | round(1) }}% | 估算50+ | ✅ 通过 |
+{% endfor %}
+
+## 📦 部署说明
+### 环境要求
+- Java 17+
+- MySQL 8.0+
+- Redis 6.2+
+- Docker & Docker Compose
+
+### 部署步骤
+1. 克隆代码并切换到{{ target_branch }}分支
+2. 配置数据库连接和Redis连接
+3. 执行数据库初始化脚本
+4. 使用Docker Compose启动服务栈
+5. 验证服务健康状态和API可用性
+
+## 👀 审查要点
+### 代码质量
+- [ ] 代码规范和命名约定
+- [ ] 设计模式和架构一致性
+- [ ] 异常处理和日志记录
+- [ ] 性能优化和资源管理
+
+### 安全性
+- [ ] 输入验证和SQL注入防护
+- [ ] 认证授权机制完整性
+- [ ] 敏感数据加密和脱敏
+- [ ] API安全最佳实践
+
+### 功能完整性
+- [ ] 业务逻辑正确性
+- [ ] 边界条件处理
+- [ ] 错误场景覆盖
+- [ ] 用户体验流畅性
+
+## ⚠️ 风险评估
+### 技术风险
+- **中等风险**: 新架构对现有系统的影响
+- **缓解措施**: 充分的测试和灰度发布
+
+### 业务风险
+- **低风险**: 功能增强，不影响现有业务
+- **缓解措施**: 向后兼容的API设计
+
+## 📚 相关资料
+- [系统架构文档](link-to-architecture-doc)
+- [API文档](link-to-api-doc)
+- [部署指南](link-to-deployment-guide)
+- [测试报告](link-to-test-report)
+
+## 🔗 关联Issue
+Closes #XXX, #XXX
+Related to #XXX
+
+---
+**Reviewer**: @tech-lead @senior-dev
+**Estimated Review Time**: 2-3 hours
+```
+
+## 🎯 输出要求
+请基于以上模板和数据，生成一个完整的Pull Request描述。
+- 使用Markdown格式
+- 内容详实且专业
+- 结构清晰易读
+- 包含所有必要信息
+
+只返回PR描述文本，不要包含任何其他内容或格式标记。
+{% endmacro %} 

@@ -1,0 +1,37 @@
+{#
+接口兼容性检查默认提示词模板（简化版）
+提供基础的接口兼容性检查功能
+#}
+
+{% macro interface_compatibility_prompt(service_dependencies, generated_apis, service_interconnections) %}
+请检查以下微服务间的接口兼容性：
+
+服务依赖关系：
+{{ service_dependencies | tojson }}
+
+生成的API接口：
+{{ generated_apis | tojson }}
+
+服务互联配置：
+{{ service_interconnections | tojson }}
+
+请检查：
+1. API接口签名是否匹配
+2. 数据格式是否兼容
+3. 错误处理是否一致
+4. 认证授权是否统一
+
+请以JSON格式输出兼容性检查结果：
+{
+    "service1": true,
+    "service2": false,
+    "compatibility_issues": [
+        {
+            "caller": "调用方服务",
+            "callee": "被调用服务",
+            "issue": "兼容性问题描述",
+            "severity": "high|medium|low"
+        }
+    ]
+}
+{% endmacro %} 

@@ -1,0 +1,33 @@
+{#- 设计分析提示词模板 -#}
+
+{% macro design_analysis_prompt(design_doc, project_name, context_window=None) %}
+你是一个系统架构师。请分析以下设计文档，进行技术架构分析。
+
+项目名称：
+{{ project_name }}
+
+设计文档：
+{{ design_doc }}
+
+{% if context_window %}
+上下文信息：
+{{ context_window }}
+{% endif %}
+
+请输出JSON格式的架构分析结果：
+{
+  "architecture_style": "微服务",
+  "technology_stack": ["技术栈1", "技术栈2"],
+  "functional_modules": [
+    {
+      "name": "模块名称",
+      "description": "模块描述",
+      "responsibilities": ["职责1", "职责2"]
+    }
+  ],
+  "system_components": ["组件1", "组件2"],
+  "data_flow": ["数据流1", "数据流2"],
+  "integration_points": ["集成点1", "集成点2"],
+  "summary": "设计分析概要(不超过200字)"
+}
+{% endmacro %} 

@@ -1,0 +1,129 @@
+{#
+代码质量审查提示词模板
+负责分析Java Spring Boot代码的质量、性能和最佳实践
+#}
+
+{% macro quality_review_prompt(service_name, service_code) %}
+请对以下Spring Boot服务进行全面的代码质量审查：
+
+## 📋 基本信息
+**服务名称**: {{ service_name }}
+
+## 🔍 代码审查范围
+请从以下几个维度进行深入评估：
+
+### 1. 代码质量和规范性
+- **命名规范**: 类名、方法名、变量名是否符合Java规范
+- **代码结构**: 包结构是否合理，职责是否清晰
+- **设计模式**: 是否正确使用了设计模式
+- **代码复用**: 是否存在重复代码，抽象程度是否合理
+- **注释文档**: 关键业务逻辑是否有充分的注释
+
+### 2. Spring Boot最佳实践
+- **依赖注入**: @Autowired、@Component等注解使用是否规范
+- **配置管理**: application.yml配置是否合理
+- **异常处理**: 全局异常处理器是否完善
+- **数据校验**: @Valid、@NotNull等校验注解使用情况
+- **事务管理**: @Transactional注解使用是否正确
+
+### 3. 性能优化建议
+- **数据库查询**: SQL语句是否高效，是否存在N+1问题
+- **缓存策略**: 是否在合适的地方使用了缓存
+- **异步处理**: 耗时操作是否考虑异步执行
+- **资源管理**: 连接池、线程池配置是否合理
+- **内存使用**: 是否存在内存泄漏风险
+
+### 4. 安全性检查
+- **输入验证**: 用户输入是否进行了充分的校验和过滤
+- **SQL注入**: 是否使用了参数化查询防止SQL注入
+- **XSS防护**: 输出内容是否进行了适当的转义
+- **认证授权**: 接口权限控制是否完善
+- **敏感数据**: 密码、密钥等敏感信息处理是否安全
+
+### 5. 架构设计合理性
+- **分层架构**: Controller-Service-Repository分层是否清晰
+- **依赖关系**: 模块间依赖是否合理，耦合度是否适中
+- **接口设计**: RESTful API设计是否符合规范
+- **数据模型**: Entity、DTO设计是否合理
+- **可扩展性**: 代码是否便于后续扩展和维护
+
+## 📊 输出格式要求
+请以JSON格式输出详细的审查结果：
+
+```json
+{
+    "overall_score": 85,
+    "service_name": "{{ service_name }}",
+    "review_summary": "整体代码质量良好，架构设计合理，建议优化数据库查询性能",
+    "quality_issues": [
+        {
+            "severity": "high|medium|low",
+            "category": "命名规范|代码结构|设计模式|代码复用|注释文档",
+            "file": "具体文件路径",
+            "line": "行号（如果适用）",
+            "issue": "具体问题描述",
+            "suggestion": "详细的改进建议",
+            "example": "改进代码示例（可选）"
+        }
+    ],
+    "security_issues": [
+        {
+            "severity": "critical|high|medium|low",
+            "type": "SQL注入|XSS|认证授权|数据泄露|输入验证",
+            "description": "安全问题的详细描述",
+            "location": "问题所在位置",
+            "fix": "具体的修复建议",
+            "risk_level": "风险等级评估"
+        }
+    ],
+    "performance_suggestions": [
+        {
+            "area": "数据库|缓存|异步|资源管理|算法优化",
+            "current_issue": "当前性能问题描述",
+            "suggestion": "优化建议",
+            "expected_improvement": "预期改善效果"
+        }
+    ],
+    "best_practices": [
+        {
+            "category": "Spring Boot|Java|设计模式|架构",
+            "current": "当前实现方式",
+            "recommended": "推荐的最佳实践",
+            "benefit": "采用后的好处"
+        }
+    ],
+    "technical_debt": [
+        {
+            "type": "重构|优化|升级|文档",
+            "description": "技术债务描述",
+            "priority": "high|medium|low",
+            "effort": "预估工作量"
+        }
+    ],
+    "compliance": {
+        "coding_standards": "是否符合编码规范",
+        "spring_boot_conventions": "是否遵循Spring Boot约定",
+        "security_guidelines": "是否符合安全准则",
+        "performance_requirements": "是否满足性能要求"
+    },
+    "metrics": {
+        "code_coverage": "代码覆盖率评估",
+        "complexity_score": "代码复杂度评分",
+        "maintainability_index": "可维护性指数",
+        "technical_debt_ratio": "技术债务比率"
+    },
+    "has_critical_issues": false,
+    "security_risk": false,
+    "pass_review": true,
+    "next_steps": [
+        "下一步改进建议1",
+        "下一步改进建议2"
+    ]
+}
+```
+
+## 🔍 待审查代码
+{{ service_code | tojson }}
+
+请基于上述标准进行全面审查，确保输出的JSON格式正确且信息详尽。
+{% endmacro %} 

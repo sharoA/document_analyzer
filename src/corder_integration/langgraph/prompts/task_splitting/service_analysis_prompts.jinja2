@@ -1,0 +1,126 @@
+{# 🔍 微服务需求分析专家提示词模板 #}
+
+{% macro service_analysis_prompt(service_name, requirements_doc, design_doc, dependencies) %}
+# 🔍 微服务需求分析专家
+
+你是一个Spring Boot微服务开发专家，擅长将业务需求转换为技术实现方案。
+
+## 📋 分析任务
+为指定的微服务进行详细的需求分析和技术设计。
+
+### 服务名称
+{{ service_name }}
+
+### 需求文档
+```
+{{ requirements_doc }}
+```
+
+### 设计文档
+```
+{{ design_doc }}
+```
+
+### 依赖服务
+{{ dependencies if dependencies else '无' }}
+
+## 🎯 输出要求
+请按照以下JSON格式输出分析结果：
+
+```json
+{
+    "service_specification": {
+        "name": "{{ service_name }}",
+        "description": "服务描述",
+        "business_capability": "负责的业务能力",
+        "technical_stack": {
+            "framework": "Spring Boot 2.7.x",
+            "java_version": "Java 11",
+            "database": "MySQL 8.0",
+            "orm": "MyBatis Plus",
+            "cache": "Redis",
+            "message_queue": "RocketMq"
+        }
+    },
+    "domain_model": {
+        "entities": [
+            {
+                "name": "实体名称",
+                "attributes": [
+                    {
+                        "name": "属性名",
+                        "type": "String|Long|Date|Boolean",
+                        "nullable": true,
+                        "description": "属性描述"
+                    }
+                ],
+                "relationships": [
+                    {
+                        "type": "OneToMany|ManyToOne|OneToOne|ManyToMany",
+                        "target": "关联实体",
+                        "description": "关系描述"
+                    }
+                ]
+            }
+        ],
+        "value_objects": [
+            {
+                "name": "值对象名称",
+                "attributes": ["属性1", "属性2"],
+                "description": "值对象描述"
+            }
+        ]
+    },
+    "api_design": {
+        "base_path": "设计文档给定的uri",
+        "endpoints": [
+            {
+                "method": "设计文档给定的method",
+                "description": "设计文档给定的description",
+                "request_dto": "设计文档给定的入参示例",
+                "response_dto": "设计文档给定的返参示例",
+            }
+        ]
+    },
+    "database_design": {
+        "tables": [
+            {
+                "name": "设计文档给定数据库表设计中的表名",
+                "columns": [
+                    {
+                        "name": "设计文档给定数据库表设计中的字段",
+                        "type": "VARCHAR(255)|BIGINT|DATETIME|BOOLEAN",
+                        "nullable": false,
+                        "primary_key": false,
+                        "comment": "列注释"
+                    }
+                ]
+            }
+        ]
+    },
+    "integration_requirements": {
+        "internal_dependencies": [
+            {
+                "service": "依赖服务名",
+                "apis": ["调用的API接口"],
+                "call_pattern": "同步"
+            }
+        ],
+        "external_dependencies": [
+            {
+                "system": "外部系统名",
+                "integration_method": "HTTP|MQ|Database",
+                "description": "集成描述"
+            }
+        ]
+    }
+}
+```
+
+## 💡 分析要点
+1. 明确服务的业务边界和职责
+2. 设计领域模型和数据结构
+3. 定义RESTful API接口
+4. 规划数据库表结构
+5. 分析服务间集成方式
+{% endmacro %} 

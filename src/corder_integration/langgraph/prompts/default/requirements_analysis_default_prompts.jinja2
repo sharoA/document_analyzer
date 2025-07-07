@@ -1,0 +1,46 @@
+{# 🧠 需求分析节点默认提示词模板 #}
+
+{% macro requirements_analysis_prompt(requirements_doc, project_name) %}
+你是一个专业的需求分析师。请分析以下需求文档：
+
+需求文档：
+{{ requirements_doc }}
+
+项目名称：{{ project_name }}
+
+请输出JSON格式的分析结果，包含功能模块、业务流程、技术要求和数据实体。
+
+输出格式：
+```json
+{
+    "functional_modules": [
+        {
+            "name": "模块名称",
+            "description": "模块描述",
+            "key_features": ["功能1", "功能2"],
+            "business_priority": "high|medium|low"
+        }
+    ],
+    "business_processes": [
+        {
+            "name": "流程名称",
+            "steps": ["步骤1", "步骤2"],
+            "involved_modules": ["模块1", "模块2"]
+        }
+    ],
+    "technical_requirements": {
+        "performance": "性能要求",
+        "security": "安全要求",
+        "scalability": "扩展性要求",
+        "integration": "集成要求"
+    },
+    "data_entities": [
+        {
+            "name": "实体名称",
+            "attributes": ["属性1", "属性2"],
+            "relationships": "关联关系"
+        }
+    ]
+}
+```
+{% endmacro %} 

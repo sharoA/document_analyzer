@@ -1,0 +1,42 @@
+{#
+架构一致性检查默认提示词模板（简化版）
+提供基础的架构评估功能
+#}
+
+{% macro architecture_review_prompt(project_name, completed_services, service_dependencies, generated_apis) %}
+请评估以下微服务系统的架构一致性：
+
+项目名称：{{ project_name }}
+服务列表：{{ completed_services | tojson }}
+服务依赖：{{ service_dependencies | tojson }}
+生成的API：{{ generated_apis | tojson }}
+
+请评估：
+1. 服务间接口设计一致性
+2. 数据模型一致性
+3. 错误处理标准化
+4. 认证授权方案统一性
+5. 监控和日志规范一致性
+
+请以JSON格式输出评估结果：
+{
+    "consistency_score": 90,
+    "consistency_issues": [
+        {
+            "area": "接口设计|数据模型|错误处理|认证授权|监控日志",
+            "issue": "不一致性问题描述",
+            "affected_services": ["服务1", "服务2"],
+            "suggestion": "统一化建议"
+        }
+    ],
+    "architecture_violations": [
+        {
+            "violation": "违反的架构原则",
+            "description": "具体描述",
+            "impact": "影响分析",
+            "fix": "修复建议"
+        }
+    ],
+    "overall_health": "excellent|good|fair|poor"
+}
+{% endmacro %} 

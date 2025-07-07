@@ -1,0 +1,34 @@
+{#
+Pull Request信息生成默认提示词模板（简化版）
+提供基础的PR描述生成功能
+#}
+
+{% macro pull_request_prompt(project_name, target_branch, commit_hash, completed_services, code_review_results, test_coverage) %}
+请为以下代码变更生成Pull Request描述：
+
+项目：{{ project_name }}
+分支：{{ target_branch }}
+提交哈希：{{ commit_hash }}
+
+实现的服务：
+{{ completed_services | tojson }}
+
+代码质量：
+{% for service, result in code_review_results.items() %}
+{{ service }}: {{ result.get('overall_score', 'N/A') }}分
+{% endfor %}
+
+测试覆盖率：
+{% for service, coverage in test_coverage.items() %}
+{{ service }}: {{ (coverage * 100) | round(1) }}%
+{% endfor %}
+
+请生成一个专业的PR描述，包含：
+1. 变更概述
+2. 实现的功能列表
+3. 技术栈和架构
+4. 测试情况
+5. 部署说明
+
+只返回PR描述文本。
+{% endmacro %} 

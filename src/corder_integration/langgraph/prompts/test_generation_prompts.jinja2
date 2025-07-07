@@ -1,0 +1,155 @@
+{#
+单元测试生成提示词模板
+负责为Spring Boot项目生成高质量的JUnit 5测试代码
+#}
+
+{% macro test_generation_prompt(service_name, service_code) %}
+请为以下Spring Boot服务生成完整的单元测试套件：
+
+## 📋 服务基本信息
+**服务名称**: {{ service_name }}
+
+## 🧪 测试生成要求
+
+### 1. 测试框架和工具
+- **主框架**: JUnit 5 (Jupiter)
+- **Mock框架**: Mockito 4.x
+- **Spring测试**: Spring Boot Test
+- **断言库**: AssertJ (推荐) 或 JUnit Assertions
+- **测试容器**: Testcontainers (如需要)
+
+### 2. 测试分层策略
+
+#### Controller层测试 (@WebMvcTest)
+- 使用`@WebMvcTest`注解进行切片测试
+- 使用`MockMvc`模拟HTTP请求
+- Mock Service层依赖
+- 测试HTTP状态码、响应格式、异常处理
+- 验证请求参数校验逻辑
+
+#### Service层测试 (@ExtendWith(MockitoExtension.class))
+- 使用Mockito Mock外部依赖
+- 测试业务逻辑的各种分支
+- 验证异常处理和边界条件
+- 测试事务处理逻辑
+
+#### Repository层测试 (@DataJpaTest)
+- 使用内存数据库H2进行测试
+- 测试自定义查询方法
+- 验证数据完整性约束
+- 测试级联操作和关联关系
+
+#### 集成测试 (@SpringBootTest)
+- 端到端测试主要业务流程
+- 使用TestRestTemplate或WebTestClient
+- 测试服务间交互
+- 验证完整的数据流
+
+### 3. 测试覆盖目标
+- **代码覆盖率**: 90%+
+- **分支覆盖率**: 85%+
+- **异常路径**: 覆盖所有异常场景
+- **边界条件**: 测试边界值和极端情况
+
+### 4. 测试数据管理
+- 使用`@Sql`注解加载测试数据
+- 创建Test Fixtures和Builder模式
+- 使用TestDataFactory生成测试数据
+- 确保测试间数据隔离
+
+### 5. 测试最佳实践
+- **命名规范**: 使用Given_When_Then模式
+- **测试结构**: Arrange-Act-Assert (AAA)
+- **测试独立性**: 每个测试方法独立运行
+- **性能考虑**: 避免过慢的集成测试
+- **可读性**: 清晰的测试意图和断言
+
+## 📊 输出格式要求
+请以JSON格式输出完整的测试代码结构：
+
+```json
+{
+    "service_name": "{{ service_name }}",
+    "test_framework": "JUnit 5",
+    "coverage_target": "90%",
+    "test_files": {
+        "src/test/java/com/company/{{ service_name.lower() }}/controller/{{ service_name }}ControllerTest.java": "完整的Controller测试代码",
+        "src/test/java/com/company/{{ service_name.lower() }}/service/{{ service_name }}ServiceTest.java": "完整的Service测试代码",
+        "src/test/java/com/company/{{ service_name.lower() }}/repository/{{ service_name }}RepositoryTest.java": "完整的Repository测试代码",
+        "src/test/java/com/company/{{ service_name.lower() }}/integration/{{ service_name }}IntegrationTest.java": "完整的集成测试代码",
+        "src/test/java/com/company/{{ service_name.lower() }}/util/TestDataFactory.java": "测试数据工厂类",
+        "src/test/java/com/company/{{ service_name.lower() }}/config/TestConfiguration.java": "测试配置类"
+    },
+    "test_dependencies": [
+        {
+            "groupId": "org.springframework.boot",
+            "artifactId": "spring-boot-starter-test",
+            "scope": "test",
+            "version": "3.1.0"
+        },
+        {
+            "groupId": "org.testcontainers",
+            "artifactId": "junit-jupiter",
+            "scope": "test",
+            "version": "1.18.0"
+        },
+        {
+            "groupId": "com.h2database",
+            "artifactId": "h2",
+            "scope": "test",
+            "version": "2.1.214"
+        }
+    ],
+    "test_configuration": {
+        "application-test.yml": "测试环境配置文件内容",
+        "test-data.sql": "测试数据初始化SQL脚本",
+        "logback-test.xml": "测试日志配置"
+    },
+    "test_profiles": [
+        {
+            "profile": "unit-test",
+            "description": "单元测试配置",
+            "features": ["fast", "isolated", "mocked"]
+        },
+        {
+            "profile": "integration-test", 
+            "description": "集成测试配置",
+            "features": ["database", "external-services", "end-to-end"]
+        }
+    ],
+    "test_utilities": {
+        "custom_matchers": "自定义断言匹配器",
+        "test_helpers": "测试辅助工具类",
+        "mock_configurations": "Mock配置工具"
+    },
+    "performance_tests": {
+        "load_tests": "负载测试代码",
+        "stress_tests": "压力测试代码",
+        "benchmark_tests": "性能基准测试"
+    },
+    "test_documentation": {
+        "testing_strategy": "测试策略文档",
+        "test_scenarios": "测试场景描述",
+        "coverage_reports": "覆盖率报告配置"
+    },
+    "ci_cd_integration": {
+        "maven_surefire": "Maven Surefire插件配置",
+        "jacoco_coverage": "JaCoCo代码覆盖率配置",
+        "test_reports": "测试报告配置"
+    }
+}
+```
+
+## 🔍 待测试代码
+{{ service_code | tojson }}
+
+## 📝 特殊要求
+1. 确保所有public方法都有对应的测试
+2. 重点测试异常处理和边界条件
+3. 验证数据校验注解的有效性
+4. 测试事务回滚和数据一致性
+5. 包含性能测试和并发测试
+6. 生成清晰的测试文档和注释
+
+请基于上述要求生成高质量的测试代码，确保输出的JSON格式正确且测试覆盖全面。
+{% endmacro %} 

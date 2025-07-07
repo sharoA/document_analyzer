@@ -1,0 +1,45 @@
+{#
+单元测试生成默认提示词模板（简化版）
+提供基础的测试代码生成功能
+#}
+
+{% macro test_generation_prompt(service_name, service_code) %}
+请为以下Spring Boot服务生成单元测试：
+
+服务名称：{{ service_name }}
+生成的代码：
+{{ service_code | tojson }}
+
+请生成：
+1. Controller层测试（使用@WebMvcTest）
+2. Service层测试（使用@ExtendWith(MockitoExtension.class)）
+3. Repository层测试（使用@DataJpaTest）
+4. 集成测试（使用@SpringBootTest）
+
+要求：
+- 使用JUnit 5和Mockito
+- 覆盖主要业务逻辑
+- 包含正常和异常流程测试
+- 测试覆盖率目标90%+
+
+请以JSON格式输出测试代码：
+{
+    "test_files": {
+        "src/test/java/com/company/{{ service_name.lower() }}/controller/{{ service_name }}ControllerTest.java": "控制器测试代码",
+        "src/test/java/com/company/{{ service_name.lower() }}/service/{{ service_name }}ServiceTest.java": "服务测试代码",
+        "src/test/java/com/company/{{ service_name.lower() }}/repository/{{ service_name }}RepositoryTest.java": "Repository测试代码",
+        "src/test/java/com/company/{{ service_name.lower() }}/integration/{{ service_name }}IntegrationTest.java": "集成测试代码"
+    },
+    "test_dependencies": [
+        {
+            "groupId": "org.springframework.boot",
+            "artifactId": "spring-boot-starter-test",
+            "scope": "test"
+        }
+    ],
+    "test_configuration": {
+        "application-test.yml": "测试配置文件内容",
+        "test_data.sql": "测试数据SQL"
+    }
+}
+{% endmacro %} 
