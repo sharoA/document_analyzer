@@ -11,18 +11,31 @@ import asyncio
 import logging
 import time
 import os
+from datetime import datetime
 
-# 🔧 修改：使用异步SQLite检查点替代PostgreSQL
+# 🔧 修改：使用SQLite检查点
 try:
-    # 🔧 修复：使用正确的langgraph-checkpoint-sqlite包导入路径
-    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-    SQLITE_CHECKPOINTER_AVAILABLE = True
+    # 先尝试同步版本的SqliteSaver（更简单稳定）
+    from langgraph.checkpoint.sqlite import SqliteSaver
+    SYNC_SQLITE_AVAILABLE = True
 except ImportError:
-    logging.warning("异步SQLite检查点不可用，将仅使用内存检查点")
-    AsyncSqliteSaver = None
-    SQLITE_CHECKPOINTER_AVAILABLE = False
+    SYNC_SQLITE_AVAILABLE = False
+    SqliteSaver = None
 
-from .nodes.task_splitting_node import task_splitting_node
+try:
+    # 再尝试异步版本
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+    ASYNC_SQLITE_AVAILABLE = True
+except ImportError:
+    ASYNC_SQLITE_AVAILABLE = False
+    AsyncSqliteSaver = None
+
+SQLITE_CHECKPOINTER_AVAILABLE = SYNC_SQLITE_AVAILABLE or ASYNC_SQLITE_AVAILABLE
+
+if not SQLITE_CHECKPOINTER_AVAILABLE:
+    logging.warning("SQLite检查点不可用，将仅使用内存检查点")
+
+from .nodes.task_splitting_node import task_splitting_node  # 任务拆分节点 先注释
 from .nodes.git_management_node import git_management_node
 from .nodes.intelligent_coding_node import intelligent_coding_node
 from .nodes.code_review_node import code_review_node
@@ -49,6 +62,7 @@ class CodingAgentState(TypedDict):
     git_repo_url: Optional[str]             # Git地址
     target_branch: str                      # 目标分支名称
     project_paths: Dict[str, str]           # 各微服务的项目路径
+    output_path: Optional[str]              # 输出路径
     repo_initialized: bool                  # 仓库初始化状态
     
     # 💻 代码生成状态
@@ -85,39 +99,56 @@ class LangGraphWorkflowOrchestrator:
     def __init__(self, use_sqlite: bool = True, db_path: Optional[str] = None):
         self.logger = logging.getLogger(__name__)
         self.use_sqlite = use_sqlite and SQLITE_CHECKPOINTER_AVAILABLE
-        self.db_path = db_path or "coding_agent_workflow.db"  # 默认SQLite数据库路径
+        # 🔧 修改：使用独立的检查点数据库，避免与任务存储冲突
+        self.db_path = db_path or "workflow_checkpoints.db"  # 独立的检查点数据库
         self.graph = self._build_workflow_graph()
-        self.checkpointer = self._setup_checkpointer()
-        self.compiled_graph = self.graph.compile(checkpointer=self.checkpointer)
+        # 延迟编译，在执行时使用上下文管理器
+        self.compiled_graph = None
     
-    def _setup_checkpointer(self):
-        """设置检查点管理器"""
+    def _get_checkpointer_context(self):
+        """获取检查点管理器上下文"""
         if self.use_sqlite and SQLITE_CHECKPOINTER_AVAILABLE:
-            # 异步SQLite检查点（生产/开发环境）
             try:
-                # 🔧 修复：正确使用AsyncSqliteSaver
-                # 对于内存数据库，使用 ":memory:"
-                # 对于文件数据库，直接使用文件路径
-                if self.db_path == ":memory:":
-                    checkpointer = AsyncSqliteSaver.from_conn_string(":memory:")
-                else:
-                    checkpointer = AsyncSqliteSaver.from_conn_string(self.db_path)
-                self.logger.info(f"使用异步SQLite检查点: {self.db_path}")
-                return checkpointer
+                # 🔧 优先使用异步SQLite检查点（与ainvoke兼容）
+                if ASYNC_SQLITE_AVAILABLE:
+                    if self.db_path == ":memory:":
+                        conn_string = ":memory:"
+                    else:
+                        # 确保使用绝对路径
+                        if not os.path.isabs(self.db_path):
+                            self.db_path = os.path.abspath(self.db_path)
+                        conn_string = self.db_path  # 直接使用文件路径
+                    
+                    self.logger.info(f"准备使用异步SQLite检查点: {conn_string}")
+                    return AsyncSqliteSaver.from_conn_string(conn_string)
+                
+                # 🔧 备选：同步SQLite检查点（需要同步调用）
+                elif SYNC_SQLITE_AVAILABLE:
+                    # 格式化连接字符串 - LangGraph使用简单格式，不需要sqlite://前缀
+                    if self.db_path == ":memory:":
+                        conn_string = ":memory:"
+                    else:
+                        # 确保使用绝对路径
+                        if not os.path.isabs(self.db_path):
+                            self.db_path = os.path.abspath(self.db_path)
+                        conn_string = self.db_path  # 直接使用文件路径
+                    
+                    self.logger.info(f"准备使用同步SQLite检查点: {conn_string}")
+                    return SqliteSaver.from_conn_string(conn_string)
+                
             except Exception as e:
-                self.logger.warning(f"异步SQLite检查点初始化失败，降级到内存检查点: {e}")
-                return MemorySaver()
-        else:
-            # 内存检查点（SQLite不可用时）
-            self.logger.info("使用内存检查点")
-            return MemorySaver()
+                self.logger.warning(f"SQLite检查点准备失败，降级到内存检查点: {e}")
+        
+        # 🔧 备选：内存检查点
+        self.logger.info("使用内存检查点")
+        return MemorySaver()
     
     def _build_workflow_graph(self) -> StateGraph:
         """构建LangGraph工作流图"""
         workflow = StateGraph(CodingAgentState)
         
         # 🧠 添加工作流节点
-        workflow.add_node("task_splitting", task_splitting_node)
+        workflow.add_node("task_splitting", task_splitting_node) #先注释，调试完成后面节点后再放开
         workflow.add_node("git_management", git_management_node)
         workflow.add_node("intelligent_coding", intelligent_coding_node)
         workflow.add_node("code_review", code_review_node)
@@ -125,11 +156,15 @@ class LangGraphWorkflowOrchestrator:
         workflow.add_node("git_commit", git_commit_node)
         
         # 🚀 设置工作流入口
-        workflow.set_entry_point("task_splitting")
+        workflow.set_entry_point("task_splitting") #先注释，调试完成后面节点后再放开
+        # workflow.set_entry_point("git_management")
         
         # 🔄 定义节点流转逻辑
-        workflow.add_edge("task_splitting", "git_management")
-        
+        workflow.add_edge("task_splitting", "git_management") #先注释，调试完成后面节点后再放开
+        # workflow.add_edge("git_management", "intelligent_coding")
+
+
+
         # Git管理 → 智能编码（支持条件分支）
         workflow.add_conditional_edges(
             "git_management",
@@ -260,6 +295,53 @@ class LangGraphWorkflowOrchestrator:
         if output_path is None:
             output_path = r"D:\gitlab"
         
+        # 🔄 获取检查点管理器
+        checkpointer_context = self._get_checkpointer_context()
+        
+        # 根据检查点类型使用适当的上下文管理器
+        if hasattr(checkpointer_context, '__aenter__'):
+            # 异步上下文管理器
+            async with checkpointer_context as checkpointer:
+                return await self._execute_with_checkpointer(checkpointer, design_doc, project_name, output_path)
+        elif hasattr(checkpointer_context, '__enter__'):
+            # 同步上下文管理器
+            with checkpointer_context as checkpointer:
+                return await self._execute_with_checkpointer(checkpointer, design_doc, project_name, output_path)
+        else:
+            # 直接的检查点对象（如MemorySaver）
+            return await self._execute_with_checkpointer(checkpointer_context, design_doc, project_name, output_path)
+    
+    def _generate_target_branch(self, project_name: str) -> str:
+        """生成目标分支名称 - 格式: D_日期_项目名称"""
+        # 获取当前日期 (YYYYMMDD格式)
+        current_date = datetime.now().strftime("%Y%m%d")
+        
+        # 清理项目名称，去除特殊字符
+        import re
+        clean_project_name = re.sub(r'[^\w\-_]', '_', project_name)
+        clean_project_name = re.sub(r'_+', '_', clean_project_name)  # 合并多个下划线
+        clean_project_name = clean_project_name.strip('_')  # 去除首尾下划线
+        
+        target_branch = f"D_{current_date}_{clean_project_name}"
+        
+        self.logger.info(f"生成目标分支名称: {project_name} -> {target_branch}")
+        return target_branch
+
+    async def _execute_with_checkpointer(
+        self, 
+        checkpointer, 
+        design_doc: str, 
+        project_name: str,
+        output_path: str
+    ) -> Dict[str, Any]:
+        """使用给定的检查点执行工作流"""
+        
+        # 编译图形
+        compiled_graph = self.graph.compile(checkpointer=checkpointer)
+        
+        # 🔧 生成新的分支名称格式
+        target_branch = self._generate_target_branch(project_name)
+        
         # 🔄 初始化状态
         initial_state: CodingAgentState = {
             "design_doc": design_doc,
@@ -269,7 +351,7 @@ class LangGraphWorkflowOrchestrator:
             "task_execution_plan": {},
             "parallel_tasks": [],
             "git_repo_url": None,
-            "target_branch": f"feature/{project_name}",
+            "target_branch": target_branch,
             "project_paths": {},  # 🎯 稍后根据识别的服务动态设置
             "output_path": output_path,  # 🎯 新增：保存输出路径
             "repo_initialized": False,
@@ -286,7 +368,8 @@ class LangGraphWorkflowOrchestrator:
             "commit_hashes": {},
             "push_results": {},
             "pr_urls": {},
-            "current_phase": "task_splitting",
+            "current_phase": "task_splitting", #先注释，调试完成后面节点后再放开
+            # "current_phase": "git_management",
             "completed_services": [],
             "failed_services": [],
             "retry_count": 0,
@@ -305,7 +388,7 @@ class LangGraphWorkflowOrchestrator:
             self.logger.info(f"开始执行编码工作流: {project_name} -> {output_path}")
             
             # 🔄 运行编译后的图
-            final_state = await self.compiled_graph.ainvoke(initial_state, config=config)
+            final_state = await compiled_graph.ainvoke(initial_state, config=config)
             
             # 📊 返回执行结果
             summary = self._generate_summary(final_state)

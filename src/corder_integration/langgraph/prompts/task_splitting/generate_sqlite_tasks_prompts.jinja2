@@ -13,8 +13,38 @@
 
 **重要约束：严格使用设计文档中的真实内容，禁止编造。**
 
+**API任务parameters结构严格要求：**
+对于task_type为"api"的任务，parameters字段必须严格按照以下结构：
+```json
+{
+  "project_path": "完整项目路径，如 D:/gitlab/create_project/项目名",
+  "api_path": "完整API路径，如 /api/service/method",
+  "http_method": "HTTP方法（GET/POST/PUT/DELETE）",
+  "content_type": "数据格式（application/json）",
+  "request_params": {
+    "参数名1": "参数说明(必填/可选)",
+    "参数名2": "参数说明(必填/可选)"
+  },
+  "response_params": {
+    "字段名1": "字段说明",
+    "字段名2": "字段说明"
+  },
+  "business_logic": "详细的业务逻辑描述",
+  "data_source": "数据来源和获取方式",
+  "validation_rules": {
+    "参数名1": "校验规则描述",
+    "参数名2": "校验规则描述"
+  }
+}
+```
+
+**禁止事项：**
+- 不要在parameters中添加executor字段
+- 不要改变字段名称或层级结构  
+- 必须从设计文档中提取真实的API路径和参数
+
 **设计文档关键信息：**
-- GitLab仓库：用户服务 https://gitlab.local/zqyl/zqyl-user-center-service.git，确权开立服务 http://gitlab.local/ls/crcl-open.git
+- GitLab仓库：用户服务 http://gitlab.local/ls/zqyl-user-center-service.git，确权开立服务 http://gitlab.local/ls/crcl-open.git
 - 接口路径：/general/multiorgManage/queryCompanyUnitList，/crcl-open-api/lsLimit/listUnitLimitByCompanyId，/crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport
 - 表名：t_cust_multiorg_unit
 - 数据库：jdbc:mysql://localhost:6446/dbwebappdb，用户名密码：dbwebapp/dbwebapp
@@ -34,7 +64,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
       "dependencies": [],
       "estimated_duration": "5分钟",
       "description": "从设计文档提取GitLab仓库地址",
-      "implementation_details": "解析设计文档，提取用户服务 https://gitlab.local/zqyl/zqyl-user-center-service.git 和确权开立服务 http://gitlab.local/ls/crcl-open.git 仓库地址",
+      "implementation_details": "解析设计文档，提取用户服务 http://gitlab.local/ls/zqyl-user-center-service.git 和确权开立服务 http://gitlab.local/ls/crcl-open.git 仓库地址",
       "deliverables": ["GitLab仓库地址清单", "仓库访问验证报告"],
       "completion_criteria": "成功提取并验证两个GitLab仓库地址可访问性",
       "parameters": {
@@ -155,8 +185,27 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
       "parameters": {
         "project_path": "D:/gitlab/create_project/zqyl-user-center-service",
         "api_path": "/general/multiorgManage/queryCompanyUnitList",
-        "request_params": ["unitCode", "openStatus", "unitList"],
-        "response_params": ["unitId", "unitTypeDicType", "unitTypeId", "openStatus", "unitCode", "unitName"]
+        "http_method": "GET",
+        "content_type": "application/json",
+        "request_params": {
+          "unitCode": "组织单元编码(可选)",
+          "openStatus": "开通状态(可选)",  
+          "unitList": "组织单元列表(可选)"
+        },
+        "response_params": {
+          "unitId": "组织单元ID",
+          "unitTypeDicType": "组织单元类型字典类型",
+          "unitTypeId": "组织单元类型ID", 
+          "openStatus": "开通状态",
+          "unitCode": "组织单元编码",
+          "unitName": "组织单元名称"
+        },
+        "business_logic": "根据查询条件查询组织单元信息，支持按编码、状态等条件筛选",
+        "data_source": "t_cust_multiorg_unit表",
+        "validation_rules": {
+          "unitCode": "长度不超过50字符",
+          "openStatus": "取值范围0-1"
+        }
       }
     },
     {
@@ -173,9 +222,31 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
       "parameters": {
         "project_path": "D:/gitlab/create_project/crcl-open", 
         "api_path": "/crcl-open-api/lsLimit/listUnitLimitByCompanyId",
-        "request_params": ["gwCompanyId", "unitName", "limitSource", "bizType", "page", "pageRow"],
-        "response_params": ["totalLimitAmt", "usedLimitAmt", "usableLimitAmt", "unitLimitListDetail"],
-        "external_call": "/general/multiorgManage/queryCompanyUnitList"
+        "http_method": "GET",
+        "content_type": "application/json",
+        "request_params": {
+          "gwCompanyId": "公司ID(必填)",
+          "unitName": "组织单元名称(可选)",
+          "limitSource": "额度来源(可选)",
+          "bizType": "业务类型(必填)",
+          "page": "页码(可选,默认1)",
+          "pageRow": "每页行数(可选,默认10)"
+        },
+        "response_params": {
+          "totalLimitAmt": "总额度金额",
+          "usedLimitAmt": "已用额度金额",
+          "usableLimitAmt": "可用额度金额",
+          "unitLimitListDetail": "单元额度详情列表"
+        },
+        "business_logic": "根据公司ID和筛选条件查询组织单元额度信息，调用用户服务获取组织单元基础信息",
+        "data_source": "本地额度表 + 用户服务接口",
+        "external_call": "/general/multiorgManage/queryCompanyUnitList",
+        "validation_rules": {
+          "gwCompanyId": "必填，数值类型",
+          "bizType": "必填，业务类型枚举值",
+          "page": "正整数，默认1",
+          "pageRow": "正整数，范围1-100"
+        }
       }
     },
     {
@@ -192,8 +263,27 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
       "parameters": {
         "project_path": "D:/gitlab/create_project/crcl-open",
         "api_path": "/crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport",
+        "http_method": "GET",
+        "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "request_params": {
+          "gwCompanyId": "公司ID(必填)",
+          "unitName": "组织单元名称(可选)",
+          "limitSource": "额度来源(可选)",
+          "bizType": "业务类型(必填)"
+        },
+        "response_params": {
+          "file": "Excel文件流",
+          "filename": "导出文件名",
+          "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        },
+        "business_logic": "复用listUnitLimitByCompanyId接口的查询逻辑，将结果导出为Excel格式",
+        "data_source": "调用listUnitLimitByCompanyId接口获取数据",
         "export_format": "xlsx",
-        "export_headers": ["组织单元名称", "额度名称", "额度类型", "已分配额度", "已用额度", "可用额度"]
+        "export_headers": ["组织单元名称", "额度名称", "额度类型", "已分配额度", "已用额度", "可用额度"],
+        "validation_rules": {
+          "gwCompanyId": "必填，数值类型",
+          "bizType": "必填，业务类型枚举值"
+        }
       }
     },
     {

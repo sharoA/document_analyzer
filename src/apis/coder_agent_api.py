@@ -65,7 +65,7 @@ def get_code_generator():
 
 @coder_agent_api.route('/process-document', methods=['POST'])
 def process_design_document():
-    """处理设计文档并生成代码 - 使用LangGraph工作流或降级到传统工作流"""
+    """处理设计文档并生成代码 - 使用LangGraph工作流"""
     try:
         data = request.get_json()
         

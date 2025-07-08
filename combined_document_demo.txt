@@ -150,7 +150,10 @@ description:组织单元额度列表
 2、需要调用zqyl-user-center-service服务的/queryCompanyUnitList接口获取组织单元详细信息
 
 2.2.2.2 新增接口：
-GET /crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport    #组织单元额度列表导出
+uri : /crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport   
+method: GET
+description: 组织单元额度列表导出
+
 
 入参示例：
 {
@@ -178,7 +181,7 @@ GET /crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport    #组织单元额度
 3 执行要求
 3.1 涉及服务范围
 本次没有新增服务，服务范围为：
-1. 用户服务：zqyl-user-center-service，git地址：https://gitlab.local/zqyl/zqyl-user-center-service.git
+1. 用户服务：zqyl-user-center-service，git地址：http://gitlab.local/ls/zqyl-user-center-service.git
 2. 确权开立服务：crcl-open，git地址：http://gitlab.local/ls/crcl-open.git
 
 3.2 涉及数据库范围

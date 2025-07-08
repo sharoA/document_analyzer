@@ -70,14 +70,14 @@ class DailyRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
                     self.baseFilename = str(new_log_filename)
                 
                 # 执行标准轮转（带重试机制）
-                self._safe_rollover()
+                self._safe_rollover_enhanced()
                 
             except Exception as e:
                 # 如果轮转失败，记录错误但不中断程序
                 print(f"日志轮转失败: {e}", file=sys.stderr)
                 # 尝试重新打开文件流
                 self._ensure_stream_open()
-    
+
     def _safe_close_stream(self):
         """安全地关闭文件流"""
         if self.stream:
@@ -88,62 +88,9 @@ class DailyRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
             except Exception as e:
                 print(f"关闭日志文件流失败: {e}", file=sys.stderr)
     
-    def _safe_rollover(self):
-        """安全的日志轮转，带重试机制"""
-        max_retries = 3
-        retry_delay = 0.1
-        
-        for attempt in range(max_retries):
-            try:
-                # 先关闭文件流
-                self._safe_close_stream()
-                
-                # 等待一小段时间确保文件句柄释放
-                time.sleep(retry_delay)
-                
-                # 执行标准轮转
-                super().doRollover()
-                return
-                
-            except (PermissionError, OSError) as e:
-                if attempt < max_retries - 1:
-                    # 增加重试延迟
-                    retry_delay *= 2
-                    print(f"日志轮转重试 {attempt + 1}/{max_retries}: {e}", file=sys.stderr)
-                    time.sleep(retry_delay)
-                else:
-                    # 最后一次尝试失败，使用备用策略
-                    print(f"日志轮转最终失败，使用备用策略: {e}", file=sys.stderr)
-                    self._fallback_rollover()
-            except Exception as e:
-                print(f"日志轮转异常: {e}", file=sys.stderr)
-                self._fallback_rollover()
-                break
+
     
-    def _fallback_rollover(self):
-        """备用轮转策略：创建新文件而不是重命名旧文件"""
-        try:
-            # 生成带时间戳的新文件名
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            backup_filename = self.current_month_dir / f"{self.filename_prefix}_{timestamp}.log"
-            
-            # 如果当前文件存在且较大，尝试复制到备份文件
-            current_file = Path(self.baseFilename)
-            if current_file.exists() and current_file.stat().st_size > 1024 * 1024:  # 大于1MB
-                try:
-                    shutil.copy2(current_file, backup_filename)
-                    # 清空当前文件而不是删除
-                    with open(current_file, 'w', encoding=self.encoding) as f:
-                        f.write('')
-                except Exception as e:
-                    print(f"备用轮转策略失败: {e}", file=sys.stderr)
-            
-            # 确保文件流重新打开
-            self._ensure_stream_open()
-            
-        except Exception as e:
-            print(f"备用轮转策略异常: {e}", file=sys.stderr)
-            self._ensure_stream_open()
+
     
     def _ensure_stream_open(self):
         """确保文件流是打开的"""
@@ -167,6 +114,165 @@ class DailyRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
             except:
                 # 如果连stderr都失败了，就静默忽略
                 pass
+
+    def _safe_rollover_enhanced(self):
+        """增强的安全日志轮转，特别针对Windows文件锁定问题"""
+        max_retries = 5
+        base_delay = 0.1
+        
+        # 首先尝试关闭所有可能的文件句柄
+        self._force_close_handles()
+        
+        for attempt in range(max_retries):
+            try:
+                delay = base_delay * (2 ** attempt)  # 指数退避
+                
+                if attempt > 0:
+                    print(f"日志轮转重试 {attempt}/{max_retries}", file=sys.stderr)
+                    time.sleep(delay)
+                
+                # 对于Windows，我们使用更温和的轮转策略
+                if os.name == 'nt':  # Windows
+                    self._windows_safe_rollover()
+                else:
+                    # Unix/Linux系统使用标准轮转
+                    super().doRollover()
+                
+                # 轮转成功，重新打开文件流
+                self._ensure_stream_open()
+                return
+                
+            except (PermissionError, OSError) as e:
+                if attempt == max_retries - 1:
+                    # 最终失败，使用备用策略
+                    print(f"日志轮转最终失败，使用备用策略: {e}", file=sys.stderr)
+                    self._fallback_rollover_enhanced()
+                    return
+                    
+            except Exception as e:
+                print(f"日志轮转异常: {e}", file=sys.stderr)
+                self._fallback_rollover_enhanced()
+                return
+        
+    def _force_close_handles(self):
+        """强制关闭所有可能的文件句柄"""
+        try:
+            if hasattr(self, 'stream') and self.stream:
+                self.stream.flush()
+                self.stream.close()
+                self.stream = None
+            
+            # 给系统一点时间释放文件句柄
+            time.sleep(0.05)
+            
+        except Exception as e:
+            print(f"强制关闭文件句柄失败: {e}", file=sys.stderr)
+    
+    def _windows_safe_rollover(self):
+        """Windows安全轮转策略"""
+        import tempfile
+        
+        # 获取当前日志文件路径
+        current_file = Path(self.baseFilename)
+        
+        if not current_file.exists():
+            return
+        
+        # 生成带时间戳的备份文件名
+        timestamp = datetime.now().strftime('%Y-%m-%d')
+        backup_file = current_file.parent / f"{current_file.stem}.{timestamp}"
+        
+        # 如果备份文件已存在，添加序号
+        counter = 1
+        while backup_file.exists():
+            backup_file = current_file.parent / f"{current_file.stem}.{timestamp}.{counter}"
+            counter += 1
+        
+        try:
+            # 创建临时文件
+            with tempfile.NamedTemporaryFile(
+                mode='w', 
+                prefix=f"{self.filename_prefix}_", 
+                suffix='.log',
+                dir=current_file.parent,
+                delete=False,
+                encoding=self.encoding
+            ) as temp_file:
+                temp_path = Path(temp_file.name)
+            
+            # 将当前文件重命名为备份文件
+            current_file.rename(backup_file)
+            
+            # 将临时文件重命名为当前文件
+            temp_path.rename(current_file)
+            
+            print(f"日志轮转完成: {current_file} -> {backup_file}", file=sys.stderr)
+            
+        except Exception as e:
+            print(f"Windows安全轮转失败: {e}", file=sys.stderr)
+            raise
+
+    def _fallback_rollover_enhanced(self):
+        """增强的备用轮转策略"""
+        try:
+            current_file = Path(self.baseFilename)
+            
+            # 策略1: 如果文件太大，尝试创建备份
+            if current_file.exists():
+                file_size = current_file.stat().st_size
+                
+                if file_size > 10 * 1024 * 1024:  # 大于10MB
+                    # 生成唯一的备份文件名
+                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:-3]
+                    backup_file = current_file.parent / f"{current_file.stem}_{timestamp}.log"
+                    
+                    try:
+                        # 尝试复制内容到备份文件
+                        shutil.copy2(current_file, backup_file)
+                        print(f"创建日志备份: {backup_file}", file=sys.stderr)
+                        
+                        # 清空原文件
+                        with open(current_file, 'w', encoding=self.encoding) as f:
+                            f.write(f"# 日志轮转于 {datetime.now()}\n")
+                            
+                    except Exception as e:
+                        print(f"备份策略失败: {e}", file=sys.stderr)
+                        # 如果备份失败，创建一个新文件
+                        self._create_new_log_file()
+                else:
+                    # 文件不大，直接清空
+                    try:
+                        with open(current_file, 'w', encoding=self.encoding) as f:
+                            f.write(f"# 日志轮转于 {datetime.now()}\n")
+                    except Exception as e:
+                        print(f"清空日志文件失败: {e}", file=sys.stderr)
+                        self._create_new_log_file()
+            
+            # 确保文件流重新打开
+            self._ensure_stream_open()
+            
+        except Exception as e:
+            print(f"增强备用轮转策略失败: {e}", file=sys.stderr)
+            self._create_new_log_file()
+    
+    def _create_new_log_file(self):
+        """创建新的日志文件（最后手段）"""
+        try:
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            current_file = Path(self.baseFilename)
+            new_file = current_file.parent / f"{current_file.stem}_{timestamp}.log"
+            
+            # 更新基础文件名
+            self.baseFilename = str(new_file)
+            
+            # 创建新文件
+            with open(new_file, 'w', encoding=self.encoding) as f:
+                f.write(f"# 新日志文件创建于 {datetime.now()}\n")
+            
+            print(f"创建新日志文件: {new_file}", file=sys.stderr)
+            
+        except Exception as e:
+            print(f"创建新日志文件失败: {e}", file=sys.stderr)
 
 class LoggerManager:
     """日志管理器 - 线程安全的日志系统管理"""

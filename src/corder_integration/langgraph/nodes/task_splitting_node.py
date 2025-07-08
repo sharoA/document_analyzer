@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 import os
+import time
 
 # 导入客户端
 try:
@@ -414,151 +415,250 @@ class SlidingWindowManager:
         return merged
 
 class TaskStorageManager:
-    """任务存储管理器 - SQLite数据库操作"""
+    """任务存储管理器 - 增强的SQLite数据库操作，支持Windows环境
+    
+    📝 注意：此数据库专门用于存储执行任务，与LangGraph检查点数据库(workflow_checkpoints.db)分离
+    """
     
     def __init__(self, db_path: str = "coding_agent_workflow.db"):
+        """初始化任务存储管理器
+        
+        Args:
+            db_path: 任务数据库文件路径 (默认: coding_agent_workflow.db)
+                    注意：与LangGraph检查点数据库分离，避免冲突
+        """
         self.db_path = db_path
+        self.max_retries = 3
+        self.retry_delay = 1.0
         self._init_database()
+    
+    def _get_connection(self):
+        """获取数据库连接，设置WAL模式和超时"""
+        conn = sqlite3.connect(
+            self.db_path, 
+            timeout=30.0,  # 30秒超时
+            isolation_level=None  # 自动提交模式
+        )
+        
+        # 设置WAL模式和优化参数
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL") 
+        conn.execute("PRAGMA cache_size=10000")
+        conn.execute("PRAGMA temp_store=memory")
+        conn.execute("PRAGMA mmap_size=268435456")  # 256MB
+        
+        return conn
+    
+    def _execute_with_retry(self, operation_func, *args, **kwargs):
+        """带重试机制的数据库操作"""
+        last_error = None
+        
+        for attempt in range(self.max_retries):
+            try:
+                return operation_func(*args, **kwargs)
+            except sqlite3.OperationalError as e:
+                last_error = e
+                if "database is locked" in str(e):
+                    logger.warning(f"🔄 数据库锁定，第{attempt + 1}次重试...")
+                    time.sleep(self.retry_delay * (2 ** attempt))  # 指数退避
+                    continue
+                else:
+                    raise e
+            except Exception as e:
+                logger.error(f"❌ 数据库操作失败: {e}")
+                raise e
+        
+        logger.error(f"❌ 数据库操作重试{self.max_retries}次后仍然失败: {last_error}")
+        raise last_error
+    
+    def force_unlock_database(self):
+        """强制解锁数据库（Windows环境特殊处理）"""
+        try:
+            import os
+            import time
+            
+            # 强制关闭所有WAL相关文件
+            wal_file = f"{self.db_path}-wal"
+            shm_file = f"{self.db_path}-shm"
+            
+            # 尝试删除WAL文件
+            for file_path in [wal_file, shm_file]:
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                        logger.info(f"✅ 删除WAL文件: {file_path}")
+                    except PermissionError:
+                        logger.warning(f"⚠️ 无法删除文件 {file_path}，可能被其他进程占用")
+            
+            # 执行VACUUM和优化
+            try:
+                with self._get_connection() as conn:
+                    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                    conn.execute("VACUUM")
+                logger.info("✅ 数据库WAL检查点和优化完成")
+            except Exception as e:
+                logger.warning(f"⚠️ WAL检查点操作失败: {e}")
+                
+        except Exception as e:
+            logger.error(f"❌ 强制解锁失败: {e}")
     
     def reset_database(self):
         """重置数据库表结构"""
+        def _reset_operation():
+            # 先尝试强制解锁
+            self.force_unlock_database()
+            
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 删除旧表
+                cursor.execute("DROP TABLE IF EXISTS execution_tasks")
+                
+                # 重新创建表
+                cursor.execute("""
+                    CREATE TABLE execution_tasks (
+                        task_id TEXT PRIMARY KEY,
+                        service_name TEXT NOT NULL,
+                        task_type TEXT NOT NULL,  -- database|api|service|config|test|deployment
+                        priority INTEGER DEFAULT 1,
+                        status TEXT DEFAULT 'pending',
+                        dependencies TEXT,  -- JSON array
+                        estimated_duration TEXT,
+                        description TEXT,
+                        deliverables TEXT,  -- JSON array - 具体交付物
+                        implementation_details TEXT,  -- 详细实现说明
+                        completion_criteria TEXT,  -- 完成标准
+                        parameters TEXT,     -- JSON object - 增强的参数
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                
+                logger.info("✅ 数据库表结构重置完成")
+        
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 删除旧表
-            cursor.execute("DROP TABLE IF EXISTS execution_tasks")
-            
-            # 重新创建表
-            cursor.execute("""
-                CREATE TABLE execution_tasks (
-                    task_id TEXT PRIMARY KEY,
-                    service_name TEXT NOT NULL,
-                    task_type TEXT NOT NULL,  -- database|api|service|config|test|deployment
-                    priority INTEGER DEFAULT 1,
-                    status TEXT DEFAULT 'pending',
-                    dependencies TEXT,  -- JSON array
-                    estimated_duration TEXT,
-                    description TEXT,
-                    deliverables TEXT,  -- JSON array - 具体交付物
-                    implementation_details TEXT,  -- 详细实现说明
-                    completion_criteria TEXT,  -- 完成标准
-                    parameters TEXT,     -- JSON object - 增强的参数
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            conn.commit()
-            conn.close()
-            logger.info("✅ 数据库表结构重置完成")
-            
+            self._execute_with_retry(_reset_operation)
         except Exception as e:
             logger.error(f"❌ 数据库重置失败: {e}")
+            # 尝试极端情况下的修复
+            try:
+                self.force_unlock_database()
+                time.sleep(2)  # 等待2秒
+                self._execute_with_retry(_reset_operation)
+            except Exception as final_error:
+                logger.error(f"❌ 最终数据库重置失败: {final_error}")
     
     def _init_database(self):
         """初始化数据库表"""
+        def _init_operation():
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 创建任务表 - 支持细粒度任务
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS execution_tasks (
+                        task_id TEXT PRIMARY KEY,
+                        service_name TEXT NOT NULL,
+                        task_type TEXT NOT NULL,  -- database|api|service|config|test|deployment
+                        priority INTEGER DEFAULT 1,
+                        status TEXT DEFAULT 'pending',
+                        dependencies TEXT,  -- JSON array
+                        estimated_duration TEXT,
+                        description TEXT,
+                        deliverables TEXT,  -- JSON array - 具体交付物
+                        implementation_details TEXT,  -- 详细实现说明
+                        completion_criteria TEXT,  -- 完成标准
+                        parameters TEXT,     -- JSON object - 增强的参数
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                
+                logger.info("✅ 任务数据库初始化完成")
+        
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            # 创建任务表 - 支持细粒度任务
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS execution_tasks (
-                    task_id TEXT PRIMARY KEY,
-                    service_name TEXT NOT NULL,
-                    task_type TEXT NOT NULL,  -- database|api|service|config|test|deployment
-                    priority INTEGER DEFAULT 1,
-                    status TEXT DEFAULT 'pending',
-                    dependencies TEXT,  -- JSON array
-                    estimated_duration TEXT,
-                    description TEXT,
-                    deliverables TEXT,  -- JSON array - 具体交付物
-                    implementation_details TEXT,  -- 详细实现说明
-                    completion_criteria TEXT,  -- 完成标准
-                    parameters TEXT,     -- JSON object - 增强的参数
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            conn.commit()
-            conn.close()
-            logger.info("✅ 任务数据库初始化完成")
-            
+            self._execute_with_retry(_init_operation)
         except Exception as e:
             logger.error(f"❌ 数据库初始化失败: {e}")
+            # 尝试强制解锁后重试
+            self.force_unlock_database()
+            time.sleep(1)
+            try:
+                self._execute_with_retry(_init_operation)
+            except Exception as final_error:
+                logger.error(f"❌ 最终数据库初始化失败: {final_error}")
     
     def save_tasks(self, tasks: List[Dict[str, Any]]) -> bool:
         """保存任务到数据库"""
+        def _save_operation():
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                
+                for task in tasks:
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO execution_tasks 
+                        (task_id, service_name, task_type, priority, dependencies, 
+                         estimated_duration, description, deliverables, 
+                         implementation_details, completion_criteria, parameters)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        task.get('task_id', str(uuid.uuid4())),
+                        task.get('service_name', ''),
+                        task.get('task_type', 'code_generation'),
+                        task.get('priority', 1),
+                        json.dumps(task.get('dependencies', [])),
+                        task.get('estimated_duration', '30分钟'),
+                        task.get('description', ''),
+                        json.dumps(task.get('deliverables', [])),
+                        task.get('implementation_details', ''),
+                        task.get('completion_criteria', ''),
+                        json.dumps(task.get('parameters', {}))
+                    ))
+                
+                logger.info(f"✅ 已保存 {len(tasks)} 个任务到数据库")
+                return True
+        
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            for task in tasks:
-                cursor.execute("""
-                    INSERT OR REPLACE INTO execution_tasks 
-                    (task_id, service_name, task_type, priority, dependencies, 
-                     estimated_duration, description, deliverables, 
-                     implementation_details, completion_criteria, parameters)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    task.get('task_id', str(uuid.uuid4())),
-                    task.get('service_name', ''),
-                    task.get('task_type', 'code_generation'),
-                    task.get('priority', 1),
-                    json.dumps(task.get('dependencies', [])),
-                    task.get('estimated_duration', '30分钟'),
-                    task.get('description', ''),
-                    json.dumps(task.get('deliverables', [])),
-                    task.get('implementation_details', ''),
-                    task.get('completion_criteria', ''),
-                    json.dumps(task.get('parameters', {}))
-                ))
-            
-            conn.commit()
-            conn.close()
-            logger.info(f"✅ 已保存 {len(tasks)} 个任务到数据库")
-            return True
-            
+            return self._execute_with_retry(_save_operation)
         except Exception as e:
             logger.error(f"❌ 保存任务失败: {e}")
             return False
     
     def get_pending_tasks(self) -> List[Dict[str, Any]]:
         """获取待执行的任务"""
+        def _get_operation():
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT task_id, service_name, task_type, priority, dependencies,
+                           estimated_duration, description, deliverables,
+                           implementation_details, completion_criteria, parameters
+                    FROM execution_tasks 
+                    WHERE status = 'pending'
+                    ORDER BY priority ASC, created_at ASC
+                """)
+                
+                tasks = []
+                for row in cursor.fetchall():
+                    tasks.append({
+                        'task_id': row[0],
+                        'service_name': row[1],
+                        'task_type': row[2],
+                        'priority': row[3],
+                        'dependencies': json.loads(row[4] or '[]'),
+                        'estimated_duration': row[5],
+                        'description': row[6],
+                        'deliverables': json.loads(row[7] or '[]'),
+                        'implementation_details': row[8],
+                        'completion_criteria': row[9],
+                        'parameters': json.loads(row[10] or '{}')
+                    })
+                
+                return tasks
+        
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                SELECT task_id, service_name, task_type, priority, dependencies,
-                       estimated_duration, description, deliverables,
-                       implementation_details, completion_criteria, parameters
-                FROM execution_tasks 
-                WHERE status = 'pending'
-                ORDER BY priority ASC, created_at ASC
-            """)
-            
-            tasks = []
-            for row in cursor.fetchall():
-                tasks.append({
-                    'task_id': row[0],
-                    'service_name': row[1],
-                    'task_type': row[2],
-                    'priority': row[3],
-                    'dependencies': json.loads(row[4] or '[]'),
-                    'estimated_duration': row[5],
-                    'description': row[6],
-                    'deliverables': json.loads(row[7] or '[]'),
-                    'implementation_details': row[8],
-                    'completion_criteria': row[9],
-                    'parameters': json.loads(row[10] or '{}')
-                })
-            
-            conn.close()
-            return tasks
-            
+            return self._execute_with_retry(_get_operation)
         except Exception as e:
             logger.error(f"❌ 获取任务失败: {e}")
             return []
@@ -599,7 +699,8 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
         # 对每个窗口进行分析
         window_results = []
         for window in design_windows:
-            logger.info(f"📝 分析窗口 {window['window_id']}/{window['total_windows']} (字符: {window['start_pos']}-{window['end_pos']})")
+            total_windows = window.get('total_windows', len(design_windows))
+            logger.info(f"📝 分析窗口 {window['window_id']}/{total_windows} (字符: {window['start_pos']}-{window['end_pos']})")
             
             design_analysis_prompt = prompts.get_prompt(
                 "design_analysis", 
@@ -610,7 +711,7 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
             
             design_analysis_result = client.chat(
                 messages=[
-                    {"role": "system", "content": f"你是专业的系统架构师。正在分析第 {window['window_id']}/{window['total_windows']} 个文档片段。"},
+                    {"role": "system", "content": f"你是专业的系统架构师。正在分析第 {window['window_id']}/{total_windows} 个文档片段。"},
                     {"role": "user", "content": design_analysis_prompt}
                 ],
                 temperature=0.3
@@ -661,9 +762,31 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
         logger.debug(f"🔍 服务拆分原始响应: {service_result[:500]}...")
         
         # 解析服务识别结果
-        service_data = _extract_json_from_response(service_result)
-        logger.info(f"📊 服务拆分解析结果: {service_data}")
+        try:
+            service_data = _extract_json_from_response(service_result)
+            logger.info(f"📊 服务拆分解析结果: {service_data}")
+        except Exception as e:
+            logger.error(f"❌ 服务拆分结果解析失败: {e}")
+            # 使用默认服务列表
+            service_data = {
+                'identified_services': [
+                    {'name': '用户服务', 'description': '负责用户管理'},
+                    {'name': '业务服务', 'description': '负责核心业务逻辑'}
+                ],
+                'summary': '服务拆分基于默认配置完成'
+            }
+            logger.info(f"🔧 使用默认服务配置: {service_data}")
+        
         identified_services = service_data.get('identified_services', [])
+        
+        # 如果服务列表为空，创建默认服务
+        if not identified_services:
+            logger.warning("⚠️ 未识别到任何服务，创建默认服务")
+            identified_services = [
+                {'name': '用户服务', 'description': '负责用户管理'},
+                {'name': '业务服务', 'description': '负责核心业务逻辑'}
+            ]
+            
         logger.info(f"🎯 识别的服务列表: {identified_services}")
         logger.info(f"🔢 识别的服务数量: {len(identified_services)}")
         services_summary = service_data.get('summary', '服务拆分完成')
@@ -732,7 +855,8 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
             # 对每个窗口生成任务
             all_task_results = []
             for window in plan_windows:
-                logger.info(f"📝 处理计划窗口 {window['window_id']}/{window['total_windows']}")
+                total_windows = window.get('total_windows', len(plan_windows))
+                logger.info(f"📝 处理计划窗口 {window['window_id']}/{total_windows}")
                 
                 task_generation_prompt = prompts.get_prompt(
                     "generate_sqlite_tasks",
@@ -741,10 +865,43 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
                     context_window=window_manager.get_context_window()
                 )
                 
+                # 🔧 增强提示词，确保API任务包含详细设计信息
+                enhanced_prompt = f"""
+{task_generation_prompt}
+
+**严格要求：对于api类型的任务，parameters字段必须严格按照以下结构生成：**
+{{
+  "project_path": "完整项目路径，如 D:/gitlab/create_project/项目名",
+  "api_path": "完整API路径，如 /api/service/method",
+  "http_method": "HTTP方法（GET/POST/PUT/DELETE）",
+  "content_type": "数据格式（application/json）",
+  "request_params": {{
+    "参数名1": "参数说明(必填/可选)",
+    "参数名2": "参数说明(必填/可选)"
+  }},
+  "response_params": {{
+    "字段名1": "字段说明",
+    "字段名2": "字段说明"
+  }},
+  "business_logic": "详细的业务逻辑描述",
+  "data_source": "数据来源和获取方式",
+  "validation_rules": {{
+    "参数名1": "校验规则描述",
+    "参数名2": "校验规则描述"
+  }}
+}}
+
+**注意：**
+1. project_path必须是完整的项目路径
+2. api_path必须是从设计文档中提取的真实API路径
+3. request_params和response_params必须根据设计文档的实际内容填写
+4. 不要添加executor等额外字段
+5. 结构必须与上述模板完全一致！"""
+                
                 task_result = client.chat(
                     messages=[
-                        {"role": "system", "content": f"你是任务管理专家。正在处理第 {window['window_id']}/{window['total_windows']} 个执行计划片段。"},
-                        {"role": "user", "content": task_generation_prompt}
+                        {"role": "system", "content": f"你是任务管理专家。正在处理第 {window['window_id']}/{total_windows} 个执行计划片段。对于api类型任务，必须严格按照指定的parameters结构模板生成，不能有任何偏差！所有字段名称、层级结构必须完全一致。"},
+                        {"role": "user", "content": enhanced_prompt}
                     ],
                     temperature=0.1
                 )
@@ -765,10 +922,43 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 context_window=window_manager.get_context_window()
             )
             
+            # 🔧 增强提示词，确保API任务包含详细设计信息
+            enhanced_prompt = f"""
+{task_generation_prompt}
+
+**严格要求：对于api类型的任务，parameters字段必须严格按照以下结构生成：**
+{{
+  "project_path": "完整项目路径，如 D:/gitlab/create_project/项目名",
+  "api_path": "完整API路径，如 /api/service/method",
+  "http_method": "HTTP方法（GET/POST/PUT/DELETE）",
+  "content_type": "数据格式（application/json）",
+  "request_params": {{
+    "参数名1": "参数说明(必填/可选)",
+    "参数名2": "参数说明(必填/可选)"
+  }},
+  "response_params": {{
+    "字段名1": "字段说明",
+    "字段名2": "字段说明"
+  }},
+  "business_logic": "详细的业务逻辑描述",
+  "data_source": "数据来源和获取方式",
+  "validation_rules": {{
+    "参数名1": "校验规则描述",
+    "参数名2": "校验规则描述"
+  }}
+}}
+
+**注意：**
+1. project_path必须是完整的项目路径
+2. api_path必须是从设计文档中提取的真实API路径
+3. request_params和response_params必须根据设计文档的实际内容填写
+4. 不要添加executor等额外字段
+5. 结构必须与上述模板完全一致！"""
+            
             task_result = client.chat(
                 messages=[
-                    {"role": "system", "content": "你是任务管理专家。"},
-                    {"role": "user", "content": task_generation_prompt}
+                    {"role": "system", "content": "你是任务管理专家。对于api类型任务，必须严格按照指定的parameters结构模板生成，不能有任何偏差！所有字段名称、层级结构必须完全一致。"},
+                    {"role": "user", "content": enhanced_prompt}
                 ],
                 temperature=0.1
             )

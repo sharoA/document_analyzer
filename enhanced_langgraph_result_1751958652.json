@@ -1,0 +1,17 @@
+{
+  "document_length": 4931,
+  "execute_immediately": true,
+  "execution_id": "exec_1751958652",
+  "message": "文档处理完成（使用LangGraph工作流）",
+  "output_path": "D:\\gitlab\\create_project",
+  "project_name": "链数中建一局_1751958649",
+  "status": "success",
+  "timestamp": "2025-07-08T15:10:52.591537",
+  "workflow_result": {
+    "error": "Recursion limit of 50 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.\nFor troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/GRAPH_RECURSION_LIMIT",
+    "output_path": "D:\\gitlab\\create_project",
+    "project_name": "链数中建一局_1751958649",
+    "status": "failed"
+  },
+  "workflow_type": "langgraph"
+}
