@@ -583,11 +583,6 @@ def test_langgraph_api():
 if __name__ == "__main__":
     print("选择测试模式:")
     print("1. 增强版测试 (支持本地项目分析)")
-    print("2. 简单测试 (原有功能)")
     
-    choice = input("请选择 (1/2): ").strip()
-    
-    if choice == "1":
-        test_enhanced_langgraph_api()
-    else:
-        test_langgraph_api() 
+    test_enhanced_langgraph_api()
+ 

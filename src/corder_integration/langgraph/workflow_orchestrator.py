@@ -35,7 +35,7 @@ SQLITE_CHECKPOINTER_AVAILABLE = SYNC_SQLITE_AVAILABLE or ASYNC_SQLITE_AVAILABLE
 if not SQLITE_CHECKPOINTER_AVAILABLE:
     logging.warning("SQLite检查点不可用，将仅使用内存检查点")
 
-from .nodes.task_splitting_node import task_splitting_node  # 任务拆分节点 先注释
+# from .nodes.task_splitting_node import task_splitting_node  # 任务拆分节点 先注释
 from .nodes.git_management_node import git_management_node
 from .nodes.intelligent_coding_node import intelligent_coding_node
 from .nodes.code_review_node import code_review_node
@@ -148,7 +148,7 @@ class LangGraphWorkflowOrchestrator:
         workflow = StateGraph(CodingAgentState)
         
         # 🧠 添加工作流节点
-        workflow.add_node("task_splitting", task_splitting_node) #先注释，调试完成后面节点后再放开
+        # workflow.add_node("task_splitting", task_splitting_node) #先注释，调试完成后面节点后再放开
         workflow.add_node("git_management", git_management_node)
         workflow.add_node("intelligent_coding", intelligent_coding_node)
         workflow.add_node("code_review", code_review_node)
@@ -156,12 +156,12 @@ class LangGraphWorkflowOrchestrator:
         workflow.add_node("git_commit", git_commit_node)
         
         # 🚀 设置工作流入口
-        workflow.set_entry_point("task_splitting") #先注释，调试完成后面节点后再放开
-        # workflow.set_entry_point("git_management")
+        # workflow.set_entry_point("task_splitting") #先注释，调试完成后面节点后再放开
+        workflow.set_entry_point("git_management")
         
         # 🔄 定义节点流转逻辑
-        workflow.add_edge("task_splitting", "git_management") #先注释，调试完成后面节点后再放开
-        # workflow.add_edge("git_management", "intelligent_coding")
+        # workflow.add_edge("task_splitting", "git_management") #先注释，调试完成后面节点后再放开
+        workflow.add_edge("git_management", "intelligent_coding")
 
 
 
@@ -218,6 +218,11 @@ class LangGraphWorkflowOrchestrator:
     # 🔄 条件检查函数
     def check_git_setup_success(self, state: CodingAgentState) -> str:
         """检查Git环境设置是否成功"""
+        # 🔧 修复：检查是否有识别的服务，如果没有则直接失败
+        if len(state["identified_services"]) == 0:
+            self.logger.warning("没有识别到任何服务，Git设置阶段结束")
+            return "fail"
+            
         if state["repo_initialized"]:
             return "success"
         elif state["retry_count"] < 3:
@@ -229,6 +234,11 @@ class LangGraphWorkflowOrchestrator:
         """检查编码完成状态"""
         total_services = len(state["identified_services"])
         completed_services = len(state["completed_services"])
+        
+        # 🔧 修复：如果没有识别到任何服务，直接结束流程
+        if total_services == 0:
+            self.logger.warning("没有识别到任何服务，结束编码流程")
+            return "critical_error"
         
         if completed_services == total_services:
             return "all_completed"
@@ -245,6 +255,11 @@ class LangGraphWorkflowOrchestrator:
     
     def check_review_quality(self, state: CodingAgentState) -> str:
         """检查代码审查质量"""
+        # 🔧 修复：如果没有识别到任何服务，直接通过
+        if len(state["identified_services"]) == 0:
+            self.logger.warning("没有识别到任何服务，代码审查直接通过")
+            return "quality_passed"
+            
         review_results = state.get("code_review_results", {})
         if any(result.get("has_critical_issues", False) for result in review_results.values()):
             return "quality_failed"
@@ -255,6 +270,11 @@ class LangGraphWorkflowOrchestrator:
     
     def check_test_results(self, state: CodingAgentState) -> str:
         """检查测试结果"""
+        # 🔧 修复：如果没有识别到任何服务，直接通过
+        if len(state["identified_services"]) == 0:
+            self.logger.warning("没有识别到任何服务，测试检查直接通过")
+            return "tests_passed"
+            
         test_results = state.get("unit_test_results", {})
         coverage_results = state.get("test_coverage", {})
         
@@ -368,8 +388,8 @@ class LangGraphWorkflowOrchestrator:
             "commit_hashes": {},
             "push_results": {},
             "pr_urls": {},
-            "current_phase": "task_splitting", #先注释，调试完成后面节点后再放开
-            # "current_phase": "git_management",
+            # "current_phase": "task_splitting", #先注释，调试完成后面节点后再放开
+            "current_phase": "git_management",
             "completed_services": [],
             "failed_services": [],
             "retry_count": 0,

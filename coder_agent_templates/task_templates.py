@@ -93,14 +93,12 @@ TASK_TEMPLATES = {
 
 ## 任务目标
 - 实现RESTful API接口
-- 添加Swagger文档
 - 实现统一异常处理
 
 ## 生成内容
 1. Controller类 - 接口控制器
 2. DTO类 - 数据传输对象
 3. 异常处理类
-4. Swagger配置
 
 ## 设计原则
 - RESTful设计规范

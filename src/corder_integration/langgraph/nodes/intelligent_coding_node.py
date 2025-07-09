@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-智能编码节点 - 支持从数据库领取和执行任务
+智能编码节点 - 支持从数据库领取和执行任务，基于项目分析生成企业级代码
 """
 
 import asyncio
@@ -12,84 +12,382 @@ from typing import Dict, Any, List
 from pathlib import Path
 
 # 导入任务管理工具
-from ..task_manager import NodeTaskManager
+from src.corder_integration.langgraph.task_manager import NodeTaskManager
+# 导入项目分析API
+from src.apis.project_analysis_api import ProjectAnalysisAPI
+# 导入LLM客户端
+from src.utils.volcengine_client import VolcengineClient
+from src.utils.openai_client import OpenAIClient
+# 导入模板+AI代码生成器
+from src.corder_integration.code_generator.template_ai_generator import TemplateAIGenerator
 
 logger = logging.getLogger(__name__)
 
 class IntelligentCodingAgent:
-    """智能编码智能体 - 支持任务领取和状态更新"""
+    """智能编码智能体 - 支持任务领取和基于项目分析的代码生成"""
     
     def __init__(self):
         self.task_manager = NodeTaskManager()
+        self.project_analysis_api = ProjectAnalysisAPI()
         self.node_name = "intelligent_coding_node"
         self.supported_task_types = ["code_analysis", "database", "api", "config"]
+        
+        # ReAct模式配置
+        self.react_config = {
+            'enabled': True,              # 是否启用ReAct模式
+            'max_iterations': 6,          # 最大ReAct循环次数
+            'temperature': 0.1,           # ReAct模式的温度参数
+            'max_tokens': 4000,           # 每次ReAct调用的最大token数
+            'fallback_on_failure': True,  # ReAct失败时是否使用fallback
+            'log_react_steps': True,      # 是否记录ReAct步骤
+            'use_templates': True         # 🆕 新增：是否使用模板驱动生成
+        }
+        
+        # 初始化LLM客户端 - 从配置文件读取
+        self.llm_client = None
+        self.llm_provider = None
+        
+        # 直接读取配置文件
+        import yaml
+        import os
+        config = {}
+        try:
+            if os.path.exists('config.yaml'):
+                with open('config.yaml', 'r', encoding='utf-8') as f:
+                    config = yaml.safe_load(f)
+                logger.info("✅ 成功加载配置文件")
+        except Exception as e:
+            logger.warning(f"⚠️ 加载配置文件失败: {e}")
+        
+        # 优先使用火山引擎
+        if config and config.get('volcengine', {}).get('api_key'):
+            try:
+                from src.utils.volcengine_client import VolcengineClient, VolcengineConfig
+                volcengine_config = VolcengineConfig(
+                    api_key=config['volcengine']['api_key'],
+                    model_id=config['volcengine']['model'],
+                    base_url=config['volcengine']['endpoint'],
+                    temperature=config['volcengine'].get('temperature', 0.7),
+                    max_tokens=config['volcengine'].get('max_tokens', 4000)
+                )
+                self.llm_client = VolcengineClient(volcengine_config)
+                self.llm_provider = "volcengine"
+                logger.info("✅ 使用火山引擎LLM客户端（从配置文件）")
+            except Exception as e:
+                logger.warning(f"⚠️ 火山引擎初始化失败: {e}")
+        
+        # fallback到openai
+        if not self.llm_client and config and config.get('openai', {}).get('api_key'):
+            try:
+                self.llm_client = OpenAIClient()
+                self.llm_provider = "openai"
+                logger.info("✅ 使用OpenAI LLM客户端")
+            except Exception as e2:
+                logger.error(f"❌ LLM客户端初始化失败: volcengine={e}, openai={e2}")
+                self.llm_client = None
+                self.llm_provider = None
+        
+        # 🆕 初始化模板+AI代码生成器
+        self.template_ai_generator = TemplateAIGenerator(self.llm_client)
+        logger.info("✅ 模板+AI代码生成器初始化完成")
+    
+    def configure_react_mode(self, **config_updates):
+        """配置ReAct模式参数"""
+        
+        logger.info(f"🔧 更新ReAct配置: {config_updates}")
+        
+        # 验证配置参数
+        valid_keys = {'enabled', 'max_iterations', 'temperature', 'max_tokens', 
+                     'fallback_on_failure', 'log_react_steps'}
+        
+        for key in config_updates:
+            if key not in valid_keys:
+                logger.warning(f"⚠️ 无效的ReAct配置项: {key}")
+                continue
+            
+            old_value = self.react_config.get(key)
+            self.react_config[key] = config_updates[key]
+            logger.info(f"✅ {key}: {old_value} -> {config_updates[key]}")
+        
+        logger.info(f"🎯 当前ReAct配置: {self.react_config}")
+    
+    def get_react_status(self) -> Dict[str, Any]:
+        """获取ReAct模式状态信息"""
+        
+        return {
+            'react_enabled': self.react_config.get('enabled', False),
+            'llm_provider': self.llm_provider,
+            'llm_available': self.llm_client is not None,
+            'react_config': self.react_config.copy(),
+            'supported_features': [
+                'multi_iteration_reasoning',
+                'step_by_step_generation', 
+                'automatic_validation',
+                'fallback_protection',
+                'progress_monitoring'
+            ]
+        }
+    
+    def get_available_tools(self) -> Dict[str, Any]:
+        """获取ReAct模式可用的工具列表"""
+        
+        return {
+            'analyze_java_project': {
+                'description': '分析Java项目结构、架构模式、技术栈等',
+                'parameters': {
+                    'project_path': 'Java项目根目录路径', 
+                    'service_name': '服务名称（可选）'
+                },
+                'usage': '当需要了解项目架构、包结构、命名规范时使用'
+            },
+            'get_project_context': {
+                'description': '获取项目上下文信息用于代码生成',
+                'parameters': {
+                    'project_path': 'Java项目根目录路径',
+                    'service_name': '服务名称'
+                },
+                'usage': '在生成代码前获取项目的技术栈和架构信息'
+            },
+            'analyze_code_patterns': {
+                'description': '分析项目的命名模式、分层结构等',
+                'parameters': {
+                    'project_path': 'Java项目根目录路径'
+                },
+                'usage': '当需要了解项目编码规范和模式时使用'
+            }
+        }
+    
+    def execute_tool_call(self, tool_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """执行工具调用"""
+        
+        logger.info(f"🔧 执行工具调用: {tool_name}")
+        
+        try:
+            if tool_name == 'analyze_java_project':
+                return self._tool_analyze_java_project(parameters)
+            elif tool_name == 'get_project_context':
+                return self._tool_get_project_context(parameters)
+            elif tool_name == 'analyze_code_patterns':
+                return self._tool_analyze_code_patterns(parameters)
+            else:
+                return {
+                    'success': False,
+                    'error': f'未知的工具: {tool_name}',
+                    'available_tools': list(self.get_available_tools().keys())
+                }
+                
+        except Exception as e:
+            logger.error(f"❌ 工具调用失败 {tool_name}: {e}")
+            return {
+                'success': False,
+                'error': str(e),
+                'tool_name': tool_name
+            }
+    
+    def _tool_analyze_java_project(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """工具：分析Java项目"""
+        
+        project_path = parameters.get('project_path')
+        service_name = parameters.get('service_name', 'analyzed_service')
+        
+        if not project_path:
+            return {'success': False, 'error': 'project_path参数是必需的'}
+        
+        from src.utils.java_code_analyzer import JavaCodeAnalyzer
+        
+        analyzer = JavaCodeAnalyzer()
+        analysis_result = analyzer.analyze_project(project_path, service_name)
+        
+        # 提取关键信息供大模型使用
+        summary = analysis_result.get('summary', {})
+        enterprise_arch = analysis_result.get('enterprise_architecture', {})
+        
+        return {
+            'success': True,
+            'tool_result': {
+                'project_type': summary.get('architecture_type', 'unknown'),
+                'is_spring_boot': summary.get('is_spring_boot', False),
+                'is_mybatis_plus': summary.get('is_mybatis_plus', False),
+                'total_java_files': summary.get('total_java_files', 0),
+                'business_domains': summary.get('business_domains', []),
+                'complexity_score': summary.get('complexity_score', 0),
+                'maintainability_index': summary.get('maintainability_index', 0),
+                'dto_usage_rate': summary.get('dto_usage_rate', 0),
+                'components': summary.get('components_summary', {}),
+                'layer_distribution': summary.get('layer_distribution', {}),
+                'package_compliance': summary.get('package_compliance', 0)
+            },
+            'raw_analysis': analysis_result  # 完整分析结果
+        }
+    
+    def _tool_get_project_context(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """工具：获取项目上下文用于代码生成"""
+        
+        project_path = parameters.get('project_path')
+        service_name = parameters.get('service_name', 'service')
+        
+        if not project_path:
+            return {'success': False, 'error': 'project_path参数是必需的'}
+        
+        # 使用项目分析API获取代码生成上下文
+        try:
+            context = self.project_analysis_api.analyze_project_for_code_generation(
+                project_path, service_name
+            )
+            
+            return {
+                'success': True,
+                'tool_result': {
+                    'base_package': context.get('package_patterns', {}).get('base_package', 'com.main'),
+                    'architecture_type': context.get('project_info', {}).get('architecture_type', 'unknown'),
+                    'is_spring_boot': context.get('project_info', {}).get('is_spring_boot', False),
+                    'is_mybatis_plus': context.get('project_info', {}).get('is_mybatis_plus', False),
+                    'preferred_layer_style': context.get('architecture_patterns', {}).get('preferred_layer_style', 'layered'),
+                    'dto_patterns': context.get('component_patterns', {}).get('dto_patterns', {}),
+                    'service_patterns': context.get('component_patterns', {}).get('service_patterns', {}),
+                    'technology_features': context.get('technology_stack', {}).get('mybatis_plus_features', []),
+                    'generation_guidelines': context.get('generation_guidelines', [])
+                },
+                'full_context': context
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'获取项目上下文失败: {str(e)}'
+            }
+    
+    def _tool_analyze_code_patterns(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """工具：分析代码模式"""
+        
+        project_path = parameters.get('project_path')
+        
+        if not project_path:
+            return {'success': False, 'error': 'project_path参数是必需的'}
+        
+        from src.utils.java_code_analyzer import JavaCodeAnalyzer
+        
+        analyzer = JavaCodeAnalyzer()
+        analysis_result = analyzer.analyze_project(project_path)
+        
+        patterns = {
+            'naming_patterns': analysis_result.get('naming_analysis', {}),
+            'layer_analysis': analysis_result.get('layer_analysis', {}),
+            'package_analysis': analysis_result.get('package_analysis', {}),
+            'components_detected': analysis_result.get('components_detected', {}),
+            'enterprise_architecture': analysis_result.get('enterprise_architecture', {})
+        }
+        
+        return {
+            'success': True,
+            'tool_result': patterns,
+            'summary': f"发现 {len(patterns['naming_patterns'])} 种命名模式，{len(patterns['layer_analysis'])} 个分层"
+        }
+    
+    def _make_json_serializable(self, obj: Any) -> Any:
+        """递归地将对象转换为JSON可序列化的格式"""
+        if isinstance(obj, set):
+            return list(obj)
+        elif isinstance(obj, dict):
+            return {k: self._make_json_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._make_json_serializable(item) for item in obj]
+        elif hasattr(obj, '__dict__'):
+            # 处理自定义对象
+            return self._make_json_serializable(obj.__dict__)
+        else:
+            # 基本类型（str, int, float, bool, None）直接返回
+            return obj
     
     def execute_task_from_database(self) -> List[Dict[str, Any]]:
         """从数据库领取并执行智能编码任务"""
         logger.info(f"🎯 {self.node_name} 开始执行任务...")
         
         execution_results = []
+        max_rounds = 10  # 防止无限循环的安全机制
+        current_round = 0
         
-        # 获取可执行的任务
-        available_tasks = self.task_manager.get_node_tasks(self.supported_task_types)
-        
-        if not available_tasks:
-            logger.info("ℹ️ 没有可执行的智能编码任务")
-            return []
-        
-        logger.info(f"📋 找到 {len(available_tasks)} 个可执行任务")
-        
-        for task in available_tasks:
-            task_id = task['task_id']
-            task_type = task['task_type']
+        while current_round < max_rounds:
+            current_round += 1
+            logger.info(f"🔄 第{current_round}轮任务检查...")
             
-            logger.info(f"🚀 开始执行任务: {task_id} ({task_type})")
+            # 获取可执行的任务
+            available_tasks = self.task_manager.get_node_tasks(self.supported_task_types)
             
-            # 领取任务
-            if not self.task_manager.claim_task(task_id, self.node_name):
-                logger.warning(f"⚠️ 任务 {task_id} 领取失败，跳过")
-                continue
+            if not available_tasks:
+                logger.info(f"ℹ️ 第{current_round}轮没有可执行的智能编码任务")
+                break
             
-            try:
-                # 执行任务
-                if task_type == "code_analysis":
-                    result = self._execute_code_analysis_task(task)
-                elif task_type == "database":
-                    result = self._execute_database_task(task)
-                elif task_type == "api":
-                    result = self._execute_api_task(task)
-                elif task_type == "config":
-                    result = self._execute_config_task(task)
-                else:
-                    logger.warning(f"⚠️ 未支持的任务类型: {task_type}")
-                    result = {'success': False, 'message': f'未支持的任务类型: {task_type}'}
+            logger.info(f"📋 第{current_round}轮找到 {len(available_tasks)} 个可执行任务")
+            
+            round_execution_count = 0
+            for task in available_tasks:
+                task_id = task['task_id']
+                task_type = task['task_type']
                 
-                # 更新任务状态
-                if result.get('success'):
-                    self.task_manager.update_task_status(task_id, 'completed', result)
-                    logger.info(f"✅ 任务 {task_id} 执行成功")
-                else:
-                    self.task_manager.update_task_status(task_id, 'failed', result)
-                    logger.error(f"❌ 任务 {task_id} 执行失败: {result.get('message')}")
+                logger.info(f"🚀 开始执行任务: {task_id} ({task_type})")
                 
-                execution_results.append({
-                    'task_id': task_id,
-                    'task_type': task_type,
-                    'result': result
-                })
+                # 领取任务
+                if not self.task_manager.claim_task(task_id, self.node_name):
+                    logger.warning(f"⚠️ 任务 {task_id} 领取失败，跳过")
+                    continue
                 
-            except Exception as e:
-                logger.error(f"❌ 任务 {task_id} 执行异常: {e}")
-                error_result = {'success': False, 'message': f'执行异常: {str(e)}'}
-                self.task_manager.update_task_status(task_id, 'failed', error_result)
-                
-                execution_results.append({
-                    'task_id': task_id,
-                    'task_type': task_type,
-                    'result': error_result
-                })
+                try:
+                    # 执行任务
+                    if task_type == "code_analysis":
+                        result = self._execute_code_analysis_task(task)
+                    elif task_type == "database":
+                        result = self._execute_database_task(task)
+                    elif task_type == "api":
+                        result = self._execute_interface_generation_task(task)
+                    elif task_type == "config":
+                        result = self._execute_config_task(task)
+                    else:
+                        logger.warning(f"⚠️ 未支持的任务类型: {task_type}")
+                        result = {'success': False, 'message': f'未支持的任务类型: {task_type}'}
+                    
+                    # 更新任务状态 - 使用安全的结果数据
+                    safe_result = self._make_json_serializable(result)
+                    if result.get('success'):
+                        self.task_manager.update_task_status(task_id, 'completed', safe_result)
+                        logger.info(f"✅ 任务 {task_id} 执行成功")
+                    else:
+                        self.task_manager.update_task_status(task_id, 'failed', safe_result)
+                        logger.error(f"❌ 任务 {task_id} 执行失败: {result.get('message')}")
+                    
+                    execution_results.append({
+                        'task_id': task_id,
+                        'task_type': task_type,
+                        'result': result
+                    })
+                    
+                    round_execution_count += 1
+                    
+                except Exception as e:
+                    logger.error(f"❌ 任务 {task_id} 执行异常: {e}")
+                    error_result = {'success': False, 'message': f'执行异常: {str(e)}'}
+                    safe_error_result = self._make_json_serializable(error_result)
+                    self.task_manager.update_task_status(task_id, 'failed', safe_error_result)
+                    
+                    execution_results.append({
+                        'task_id': task_id,
+                        'task_type': task_type,
+                        'result': error_result
+                    })
+                    
+                    round_execution_count += 1
+            
+            logger.info(f"✅ 第{current_round}轮执行完成，处理了 {round_execution_count} 个任务")
+            
+            # 如果本轮没有执行任何任务，退出循环
+            if round_execution_count == 0:
+                logger.info("ℹ️ 本轮没有成功执行任何任务，结束循环")
+                break
         
-        logger.info(f"✅ 智能编码任务执行完成，共处理 {len(execution_results)} 个任务")
+        if current_round >= max_rounds:
+            logger.warning(f"⚠️ 达到最大轮次限制 {max_rounds}，强制结束")
+        
+        logger.info(f"✅ 智能编码任务执行完成，共处理 {len(execution_results)} 个任务，共{current_round}轮")
         return execution_results
     
     def _execute_code_analysis_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
@@ -99,33 +397,59 @@ class IntelligentCodingAgent:
         # 获取任务参数
         parameters = task.get('parameters', {})
         service_name = task.get('service_name', 'unknown_service')
+        project_path = parameters.get('project_path')
         
-        # 模拟代码分析流程
-        analysis_result = {
-            'service_name': service_name,
-            'analysis_type': 'static_analysis',
-            'findings': [
-                {
-                    'type': 'architecture_pattern',
-                    'description': f'{service_name}服务架构分析',
-                    'recommendation': '建议使用分层架构模式'
-                },
-                {
-                    'type': 'dependencies',
-                    'description': f'{service_name}依赖分析',
-                    'dependencies': ['spring-boot-starter-web', 'spring-boot-starter-data-jpa']
+        if not project_path:
+            return {
+                'success': False,
+                'message': 'project_path参数缺失，无法执行代码分析',
+                'service_name': service_name
+            }
+        
+        try:
+            # 导入Java代码分析工具
+            from src.utils.java_code_analyzer import JavaCodeAnalyzer
+            
+            # 创建分析器实例
+            analyzer = JavaCodeAnalyzer()
+            
+            # 执行项目分析
+            analysis_result = analyzer.analyze_project(project_path, service_name)
+            
+            # 导出分析报告
+            report_path = analyzer.export_analysis_report(analysis_result)
+            
+            # 返回分析结果
+            return {
+                'success': True,
+                'message': f'{service_name}服务Java代码分析完成',
+                'analysis_result': analysis_result,
+                'report_path': report_path,
+                'service_name': service_name,
+                'summary': {
+                    'total_java_files': analysis_result['summary']['total_java_files'],
+                    'is_spring_boot': analysis_result['summary']['is_spring_boot'],
+                    'architecture_style': analysis_result['summary']['architecture_type'],  # 修复：字段名从architecture_style改为architecture_type
+                    'complexity_score': analysis_result['summary']['complexity_score'],
+                    'maintainability_index': analysis_result['summary']['maintainability_index'],
+                    'components': analysis_result['components_detected']
                 }
-            ],
-            'complexity_score': 6.5,
-            'maintainability_index': 78.2
-        }
-        
-        return {
-            'success': True,
-            'message': f'{service_name}服务代码分析完成',
-            'analysis_result': analysis_result,
-            'service_name': service_name
-        }
+            }
+            
+        except FileNotFoundError as e:
+            logger.error(f"❌ 项目路径不存在: {e}")
+            return {
+                'success': False,
+                'message': f'项目路径不存在: {project_path}',
+                'service_name': service_name
+            }
+        except Exception as e:
+            logger.error(f"❌ Java代码分析失败: {e}")
+            return {
+                'success': False,
+                'message': f'Java代码分析失败: {str(e)}',
+                'service_name': service_name
+            }
     
     def _execute_database_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """执行数据库设计任务"""
@@ -165,87 +489,8 @@ class IntelligentCodingAgent:
             'service_name': service_name
         }
     
-    def _execute_api_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """执行API设计任务"""
-        logger.info(f"🌐 执行API设计任务: {task['task_id']}")
-        
-        # 获取任务参数
-        parameters = task.get('parameters', {})
-        service_name = task.get('service_name', 'unknown_service')
-        
-        # 模拟API设计
-        api_design = {
-            'service_name': service_name,
-            'base_path': f'/api/v1/{service_name.lower()}',
-            'endpoints': [
-                {
-                    'path': f'/{service_name.lower()}',
-                    'method': 'GET',
-                    'summary': f'获取{service_name}列表',
-                    'parameters': [
-                        {'name': 'page', 'type': 'integer', 'default': 0},
-                        {'name': 'size', 'type': 'integer', 'default': 20}
-                    ],
-                    'responses': {
-                        '200': f'{service_name}列表获取成功'
-                    }
-                },
-                {
-                    'path': f'/{service_name.lower()}',
-                    'method': 'POST',
-                    'summary': f'创建{service_name}',
-                    'requestBody': f'{service_name}CreateRequest',
-                    'responses': {
-                        '201': f'{service_name}创建成功',
-                        '400': '请求参数错误'
-                    }
-                },
-                {
-                    'path': f'/{service_name.lower()}/{{id}}',
-                    'method': 'GET',
-                    'summary': f'获取{service_name}详情',
-                    'parameters': [
-                        {'name': 'id', 'type': 'integer', 'required': True}
-                    ],
-                    'responses': {
-                        '200': f'{service_name}详情获取成功',
-                        '404': f'{service_name}不存在'
-                    }
-                },
-                {
-                    'path': f'/{service_name.lower()}/{{id}}',
-                    'method': 'PUT',
-                    'summary': f'更新{service_name}',
-                    'parameters': [
-                        {'name': 'id', 'type': 'integer', 'required': True}
-                    ],
-                    'requestBody': f'{service_name}UpdateRequest',
-                    'responses': {
-                        '200': f'{service_name}更新成功',
-                        '404': f'{service_name}不存在'
-                    }
-                },
-                {
-                    'path': f'/{service_name.lower()}/{{id}}',
-                    'method': 'DELETE',
-                    'summary': f'删除{service_name}',
-                    'parameters': [
-                        {'name': 'id', 'type': 'integer', 'required': True}
-                    ],
-                    'responses': {
-                        '204': f'{service_name}删除成功',
-                        '404': f'{service_name}不存在'
-                    }
-                }
-            ]
-        }
-        
-        return {
-            'success': True,
-            'message': f'{service_name}服务API设计完成',
-            'api_design': api_design,
-            'service_name': service_name
-        }
+    # 原有的_execute_api_task方法已被_execute_interface_generation_task替换
+    # 该方法现在基于项目分析生成真实的企业级代码，而不是简单的模拟设计
     
     def _execute_config_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """执行配置生成任务"""
@@ -288,7 +533,7 @@ class IntelligentCodingAgent:
                 },
                 'logging': {
                     'level': {
-                        'com.example': 'DEBUG',
+                        'com.main': 'DEBUG',
                         'org.springframework': 'INFO'
                     }
                 }
@@ -313,6 +558,2419 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
             'config_files': config_files,
             'service_name': service_name
         }
+    
+    def _execute_interface_generation_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """执行基于项目分析和LLM的API接口生成任务"""
+        logger.info(f"🌐 执行API接口生成任务: {task['task_id']}")
+        
+        # 检查LLM客户端
+        if not self.llm_client:
+            return {
+                'success': False,
+                'message': 'LLM客户端未初始化，无法执行代码生成',
+                'service_name': task.get('service_name', 'unknown')
+            }
+        
+        # 获取任务参数
+        parameters = task.get('parameters', {})
+        service_name = task.get('service_name', 'unknown_service')
+        project_path = parameters.get('project_path')
+        
+        # 从任务参数中提取具体的接口信息
+        api_path = parameters.get('api_path', '/api/example')
+        http_method = parameters.get('http_method', 'GET')
+        request_params = parameters.get('request_params', {})
+        response_params = parameters.get('response_params', {})
+        business_logic = parameters.get('business_logic', '示例业务逻辑')
+        data_source = parameters.get('data_source', '')
+        validation_rules = parameters.get('validation_rules', {})
+        
+        # 从API路径推导接口名称
+        # 例如：/general/multiorgManage/queryCompanyUnitList -> QueryCompanyUnitList
+        path_parts = [part for part in api_path.split('/') if part]
+        if path_parts:
+            # 取最后一个路径部分作为基础接口名
+            last_part = path_parts[-1]
+            
+            # 处理驼峰命名和下划线命名
+            if '_' in last_part:
+                # 下划线命名：query_company_unit_list -> QueryCompanyUnitList
+                words = last_part.split('_')
+                interface_name = ''.join(word.capitalize() for word in words if word)
+            else:
+                # 驼峰命名：queryCompanyUnitList -> QueryCompanyUnitList
+                # 先分割驼峰，然后重新组合
+                import re
+                words = re.findall(r'[A-Z]?[a-z]+|[A-Z]+(?=[A-Z][a-z]|\b)', last_part)
+                interface_name = ''.join(word.capitalize() for word in words if word)
+            
+            # 移除常见的动词前缀，保留核心业务名词
+            original_name = interface_name
+            for prefix in ['Query', 'Get', 'List', 'Find', 'Search', 'Export', 'Import']:
+                if interface_name.startswith(prefix) and len(interface_name) > len(prefix):
+                    interface_name = interface_name[len(prefix):]
+                    break
+            
+            # 如果移除前缀后为空或太短，使用原名称
+            if not interface_name or len(interface_name) < 3:
+                interface_name = original_name
+                
+            # 确保首字母大写
+            interface_name = interface_name[0].upper() + interface_name[1:] if interface_name else 'Example'
+        else:
+            interface_name = 'Example'
+        
+        # 构建接口规格信息（转换为统一格式）
+        input_params = []
+        for param_name, param_desc in request_params.items():
+            input_params.append({
+                'name': param_name,
+                'type': 'String',  # 简化处理，后续可以根据描述推断类型
+                'description': param_desc,
+                'required': param_name not in ['unitCode', 'openStatus', 'unitList']  # 根据实际需求判断
+            })
+        
+        output_params = {}
+        for param_name, param_desc in response_params.items():
+            output_params[param_name] = {
+                'type': 'String',
+                'description': param_desc
+            }
+        
+        description = business_logic or f'{interface_name}接口'
+        
+        logger.info(f"📋 解析的接口信息:")
+        logger.info(f"   - 接口名称: {interface_name}")
+        logger.info(f"   - API路径: {api_path}")
+        logger.info(f"   - HTTP方法: {http_method}")
+        logger.info(f"   - 输入参数: {len(input_params)}个")
+        logger.info(f"   - 输出参数: {len(output_params)}个")
+        logger.info(f"   - 业务描述: {description}")
+        
+        if not project_path:
+            return {
+                'success': False,
+                'message': 'project_path参数缺失，无法执行接口生成',
+                'service_name': service_name
+            }
+        
+        try:
+            # 🎯 深度搜索最佳Java项目路径
+            optimized_project_path = self._find_deep_java_project_path(project_path, service_name)
+            
+            # 🎯 基于API路径关键字查找现有文件结构
+            api_keyword = self._extract_api_path_keyword(api_path)
+            if api_keyword:
+                existing_path = self._find_existing_path_by_keyword(optimized_project_path, api_keyword)
+                if existing_path:
+                    logger.info(f"🎯 基于API关键字 '{api_keyword}' 找到现有路径: {existing_path}")
+                    # 如果找到现有路径，使用该路径作为项目基础路径
+                    optimized_project_path = existing_path
+            
+            # 分析目标项目，获取代码生成上下文
+            logger.info(f" 分析目标项目: {optimized_project_path}")
+            project_context = self.project_analysis_api.analyze_project_for_code_generation(
+                optimized_project_path, service_name
+            )
+            
+            # 🎯 新增：将API路径添加到项目上下文，用于智能路径选择
+            project_context['current_api_path'] = api_path
+            project_context['optimized_project_path'] = optimized_project_path
+            
+            # 使用LLM生成代码
+            logger.info(f" 调用{self.llm_provider}大模型生成代码...")
+            generated_code = self._generate_code_with_llm(
+                interface_name, input_params, output_params, description, 
+                http_method, project_context, api_path=api_path, business_logic=business_logic
+            )
+            
+            # 生成输出文件路径
+            # output_path = self._prepare_output_directory(service_name, project_path)  # 不再需要
+            code_files = self._write_generated_code(generated_code, optimized_project_path, service_name, project_context)
+            
+            return {
+                'success': True,
+                'message': f'{interface_name}接口代码生成完成（使用{self.llm_provider}）',
+                'generated_files': code_files,
+                'service_name': service_name,
+                'interface_name': interface_name,
+                'api_path': api_path,
+                'llm_provider': self.llm_provider,
+                'project_context_summary': project_context.get('analysis_summary', ''),
+                'code_preview': {
+                    code_type: (content[:500] + '...' if len(content) > 500 else content)
+                    for code_type, content in generated_code.items()
+                },
+                'generation_mode': 'react' if self.react_config.get('enabled') else 'direct',
+                'react_status': self.get_react_status(),
+                'generated_components': list(generated_code.keys()),
+                'total_generated_files': len(code_files)
+            }
+            
+        except FileNotFoundError as e:
+            logger.error(f"❌ 项目路径不存在: {e}")
+            return {
+                'success': False,
+                'message': f'项目路径不存在: {project_path}',
+                'service_name': service_name
+            }
+        except Exception as e:
+            logger.error(f"❌ 接口生成失败: {e}")
+            return {
+                'success': False,
+                'message': f'接口生成失败: {str(e)}',
+                'service_name': service_name
+            }
+    
+    def _generate_code_with_llm(self, interface_name: str, input_params: List[Dict], 
+                              output_params: Dict, description: str, http_method: str,
+                              project_context: Dict[str, Any], api_path: str = '', business_logic: str = '') -> Dict[str, str]:
+        """使用LLM基于项目上下文生成企业级接口代码"""
+        
+        logger.info(f"🔍 开始代码生成...")
+        
+        # 🎨 优先使用模板+AI混合模式
+        if self.react_config.get('use_templates', True) and self.template_ai_generator:
+            logger.info("🎨 使用模板+AI混合模式生成代码")
+            try:
+                generated_code = self.template_ai_generator.generate_code(
+                    interface_name, input_params, output_params, description, 
+                    http_method, project_context, api_path=api_path, business_logic=business_logic
+                )
+                if generated_code:
+                    logger.info(f"✅ 模板+AI生成成功，生成代码类型: {list(generated_code.keys())}")
+                    return generated_code
+            except Exception as e:
+                logger.warning(f"⚠️ 模板+AI生成失败，回退到传统模式: {e}")
+        
+        # 后备方案：检查是否启用ReAct模式
+        use_react = self.react_config.get('enabled', True)
+        
+        if use_react:
+            logger.info("🧠 启用ReAct模式进行代码生成")
+            return self._generate_code_with_react(
+                interface_name, input_params, output_params, description, 
+                http_method, project_context, api_path=api_path, business_logic=business_logic
+            )
+        else:
+            logger.info("🔧 使用直接生成模式")
+            # 原有的直接生成模式作为fallback
+            return self._generate_code_direct(
+                interface_name, input_params, output_params, description, 
+                http_method, project_context, api_path=api_path, business_logic=business_logic
+            )
+    
+    def _generate_code_with_react(self, interface_name: str, input_params: List[Dict], 
+                                output_params: Dict, description: str, http_method: str,
+                                project_context: Dict[str, Any], api_path: str = '', business_logic: str = '') -> Dict[str, str]:
+        """使用ReAct模式生成代码 - 思考-行动-观察循环，支持增量式生成"""
+        
+        logger.info(f"🧠 启动ReAct模式代码生成...")
+        
+        # 获取配置
+        max_iterations = self.react_config.get('max_iterations', 6)
+        temperature = self.react_config.get('temperature', 0.1)
+        max_tokens = self.react_config.get('max_tokens', 4000)
+        log_steps = self.react_config.get('log_react_steps', True)
+        
+        # 记录ReAct步骤
+        react_steps = []
+        
+        # 构建项目上下文信息
+        context_info = self._build_project_context_prompt(project_context)
+        requirement_info = self._build_interface_requirement_prompt(
+            interface_name, input_params, output_params, description, http_method, api_path=api_path, business_logic=business_logic
+        )
+        
+        # 【新增】预检查目标文件是否存在
+        project_path = project_context.get('project_path', '')
+        service_name = project_context.get('service_name', 'unknown')
+        existing_files_info = self._check_target_files_exist(interface_name, project_path, service_name, project_context)
+        
+        # ReAct模式的完整对话
+        react_messages = [
+            {
+                "role": "system",
+                "content": """你是一个专业的Java企业级后端开发工程师，精通Spring Boot、MyBatis Plus等后端技术栈。
+ **重要说明**: 
+- 你只负责生成Java后端代码，不要生成任何前端代码（如JavaScript、React、Vue等）
+- 所有生成的代码都必须是Java语言，文件扩展名为.java或.xml
+- 专注于企业级后端架构：Controller、Service、DTO、Entity、Mapper等
+
+请根据项目上下文和需求生成高质量的企业级Java后端代码。"""
+            },
+            {
+                "role": "user",
+                "content": f"""请使用ReAct推理模式为以下需求生成完整的企业级Java后端代码：
+
+{context_info}
+
+{requirement_info}
+
+## 目标文件现状分析
+{self._format_existing_files_info(existing_files_info)}
+
+请开始你的ReAct推理循环，只生成Java后端代码："""
+            }
+        ]
+        
+        generated_code = {}
+        current_iteration = 0
+        
+        try:
+            while current_iteration < max_iterations:
+                current_iteration += 1
+                logger.info(f"🔄 ReAct循环第{current_iteration}/{max_iterations}轮...")
+                
+                # 调用LLM进行ReAct推理
+                response = self.llm_client.chat(
+                    messages=react_messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens
+                )
+                
+                # 解析ReAct响应
+                thought, action, observation, code_blocks, tool_call, tool_params = self._parse_react_response(response)
+                
+                # 记录ReAct步骤
+                step_record = {
+                    'iteration': current_iteration,
+                    'thought': thought,
+                    'action': action,
+                    'observation': observation,
+                    'code_blocks_count': len(code_blocks) if code_blocks else 0,
+                    'tool_call': tool_call,
+                    'tool_params': tool_params
+                }
+                react_steps.append(step_record)
+                
+                # 记录日志
+                if log_steps:
+                    if thought:
+                        logger.info(f"💭 思考: {thought[:150]}...")
+                    if action:
+                        logger.info(f"🎯 行动: {action[:150]}...")
+                    if observation:
+                        logger.info(f"👀 观察: {observation[:150]}...")
+                
+                # 处理工具调用
+                if tool_call and tool_params is not None:
+                    logger.info(f"🔧 执行工具调用: {tool_call}")
+                    tool_result = self.execute_tool_call(tool_call, tool_params)
+                    
+                    # 将工具结果添加到对话中
+                    tool_response = f"""**Tool Result**: {tool_call}
+**Success**: {tool_result.get('success', False)}
+**Result**: {json.dumps(tool_result.get('tool_result', {}), ensure_ascii=False, indent=2) if tool_result.get('success') else tool_result.get('error', 'Unknown error')}"""
+                    
+                    react_messages.append({"role": "user", "content": tool_response})
+                    
+                    if log_steps:
+                        logger.info(f"🔧 工具结果: {tool_result.get('success', False)}")
+                
+                # 提取代码块
+                if code_blocks:
+                    new_code = self._extract_code_from_react_response(code_blocks)
+                    
+                    # 【新增】与现有代码合并（如果目标文件存在）
+                    merged_code = self._merge_with_existing_code(new_code, existing_files_info, project_context)
+                    generated_code.update(merged_code)
+                    
+                    logger.info(f"📝 本轮生成了 {len(new_code)} 个代码块，合并后共 {len(generated_code)} 个")
+                
+                # 【新增】每轮生成后立即写入并验证文件
+                if generated_code:
+                    written_files = self._write_generated_code(generated_code, project_path, service_name, project_context)
+                    file_validation = self._validate_written_files(written_files)
+                    
+                    # 将文件验证结果添加到对话中
+                    if file_validation['success']:
+                        validation_message = f"""**文件写入验证**: ✅ 成功
+**写入文件数**: {file_validation['written_count']}
+**验证状态**: {', '.join([f"{name}: ✅" for name in file_validation['validated_files']])}"""
+                    else:
+                        validation_message = f"""**文件写入验证**: ❌ 失败
+**失败原因**: {file_validation.get('error', 'Unknown error')}
+**失败文件**: {', '.join(file_validation.get('failed_files', []))}"""
+                    
+                    react_messages.append({"role": "user", "content": validation_message})
+                
+                # 更新对话历史
+                react_messages.append({"role": "assistant", "content": response})
+                
+                # 检查是否完成
+                is_complete, completion_status = self._is_react_generation_complete_with_details(
+                    generated_code, project_context
+                )
+                
+                if is_complete:
+                    logger.info("✅ ReAct代码生成完成")
+                    if log_steps:
+                        logger.info(f"🎯 完成状态: {completion_status}")
+                    break
+                
+                # 添加下一轮指导
+                next_guidance = self._get_next_react_guidance(generated_code, project_context)
+                
+                # 增强的指导信息
+                progress_info = self._get_react_progress_info(generated_code, project_context)
+                
+                react_messages.append({
+                    "role": "user", 
+                    "content": f"""请继续ReAct循环（当前第{current_iteration}/{max_iterations}轮）：
+
+{progress_info}
+
+{next_guidance}
+
+**Thought**: [继续分析还需要生成什么]
+**Action**: [下一步要生成的代码组件]
+**Observation**: [验证当前进度和文件状态]"""
+                })
+            
+            # 验证和修正生成的代码
+            validated_code = self._validate_and_fix_generated_code(generated_code, project_context)
+            
+            # 记录最终结果
+            if log_steps:
+                logger.info(f"🎊 ReAct完成摘要: 共{len(react_steps)}轮，生成{len(validated_code)}个代码组件")
+                logger.info(f"📋 最终生成: {list(validated_code.keys())}")
+            
+            return validated_code
+            
+        except Exception as e:
+            logger.error(f"❌ ReAct代码生成失败: {e}")
+            
+            # 记录失败步骤
+            if log_steps:
+                logger.info(f"📊 失败前ReAct步骤记录: {len(react_steps)}轮")
+            
+            # fallback到直接生成模式
+            if self.react_config.get('fallback_on_failure', True):
+                logger.info("🔄 ReAct失败，fallback到直接生成模式...")
+                return self._generate_code_direct(
+                    interface_name, input_params, output_params, description, 
+                    http_method, project_context, api_path=api_path, business_logic=business_logic
+                )
+            else:
+                # 如果不允许fallback，返回已生成的代码
+                logger.warning("⚠️ ReAct失败且不允许fallback，返回已生成的代码")
+                return self._validate_and_fix_generated_code(generated_code, project_context)
+    
+    def _check_target_files_exist(self, interface_name: str, project_path: str, 
+                                 service_name: str, project_context: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+        """检查目标文件是否已存在"""
+        
+        logger.info(f"🔍 检查目标文件是否存在: {interface_name}")
+        
+        # 预测目标文件路径
+        predicted_paths = self._determine_output_paths_default({
+            'controller': '',
+            'service': '',
+            'request_dto': '',
+            'response_dto': '',
+            'entity': '',
+            'mapper': ''
+        }, project_path, service_name, project_context)
+        
+        existing_files_info = {}
+        
+        for code_type, file_path in predicted_paths.items():
+            file_info = {
+                'exists': False,
+                'path': file_path,
+                'size': 0,
+                'content_preview': '',
+                'classes_found': [],
+                'methods_found': [],
+                'needs_merge': False
+            }
+            
+            if os.path.exists(file_path):
+                file_info['exists'] = True
+                file_info['size'] = os.path.getsize(file_path)
+                
+                try:
+                    # 读取现有文件内容
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    file_info['content_preview'] = content[:300] + '...' if len(content) > 300 else content
+                    
+                    # 简单解析类名和方法名
+                    import re
+                    class_matches = re.findall(r'public\s+(?:class|interface)\s+(\w+)', content)
+                    method_matches = re.findall(r'public\s+[^{]+\s+(\w+)\s*\([^)]*\)\s*\{', content)
+                    
+                    file_info['classes_found'] = class_matches
+                    file_info['methods_found'] = method_matches
+                    file_info['needs_merge'] = True
+                    
+                    logger.info(f"📄 {code_type} 文件已存在: {Path(file_path).name} ({file_info['size']} bytes)")
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ 读取现有文件失败 {file_path}: {e}")
+            else:
+                logger.info(f"📄 {code_type} 文件不存在，将生成新文件: {Path(file_path).name}")
+            
+            existing_files_info[code_type] = file_info
+        
+        return existing_files_info
+    
+    def _format_existing_files_info(self, existing_files_info: Dict[str, Dict[str, Any]]) -> str:
+        """格式化现有文件信息为可读文本"""
+        
+        info_parts = []
+        existing_count = sum(1 for info in existing_files_info.values() if info['exists'])
+        total_count = len(existing_files_info)
+        
+        info_parts.append(f"📊 文件现状: {existing_count}/{total_count} 个文件已存在")
+        
+        for code_type, file_info in existing_files_info.items():
+            if file_info['exists']:
+                info_parts.append(f"✅ {code_type}: {Path(file_info['path']).name} "
+                                f"({file_info['size']} bytes, "
+                                f"{len(file_info['classes_found'])} 类, "
+                                f"{len(file_info['methods_found'])} 方法)")
+            else:
+                info_parts.append(f"⭕ {code_type}: {Path(file_info['path']).name} (需要生成)")
+        
+        if existing_count > 0:
+            info_parts.append("\n⚠️ 对于已存在的文件，请进行智能合并，保留现有功能并添加新的API函数")
+        
+        return '\n'.join(info_parts)
+    
+    def _merge_with_existing_code(self, new_code: Dict[str, str], 
+                                existing_files_info: Dict[str, Dict[str, Any]],
+                                project_context: Dict[str, Any]) -> Dict[str, str]:
+        """将新代码与现有代码智能合并"""
+        
+        merged_code = {}
+        
+        for code_type, new_content in new_code.items():
+            file_info = existing_files_info.get(code_type, {})
+            
+            if file_info.get('exists') and file_info.get('needs_merge'):
+                logger.info(f"🔗 智能合并 {code_type} 代码...")
+                
+                try:
+                    # 读取现有文件内容
+                    existing_path = file_info['path']
+                    with open(existing_path, 'r', encoding='utf-8') as f:
+                        existing_content = f.read()
+                    
+                    # 执行智能合并
+                    merged_content = self._intelligent_merge_api_functions(
+                        existing_content, new_content, code_type
+                    )
+                    
+                    merged_code[code_type] = merged_content
+                    logger.info(f"✅ {code_type} 代码合并完成")
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️ {code_type} 代码合并失败，使用新代码: {e}")
+                    merged_code[code_type] = new_content
+            else:
+                # 文件不存在或无需合并，直接使用新代码
+                merged_code[code_type] = new_content
+                logger.info(f"📝 {code_type} 使用新生成的代码")
+        
+        return merged_code
+    
+    def _intelligent_merge_api_functions(self, existing_content: str, new_content: str, code_type: str) -> str:
+        """智能合并API函数"""
+        
+        import re
+        
+        # 提取新代码中的方法
+        new_methods = re.findall(r'(public\s+[^{]+\{[^}]*\})', new_content, re.DOTALL)
+        new_method_names = re.findall(r'public\s+[^{]+\s+(\w+)\s*\([^)]*\)', new_content)
+        
+        # 检查现有代码中是否已有同名方法
+        existing_method_names = re.findall(r'public\s+[^{]+\s+(\w+)\s*\([^)]*\)', existing_content)
+        
+        merged_content = existing_content
+        
+        # 添加新方法（如果不存在同名方法）
+        for i, method_name in enumerate(new_method_names):
+            if method_name not in existing_method_names and i < len(new_methods):
+                # 在类的结束大括号前插入新方法
+                new_method = new_methods[i]
+                
+                # 找到类的结束位置
+                class_end_pos = merged_content.rfind('}')
+                if class_end_pos != -1:
+                    # 在类结束前插入新方法
+                    merged_content = (merged_content[:class_end_pos] + 
+                                    f"\n    {new_method}\n" + 
+                                    merged_content[class_end_pos:])
+                    
+                    logger.info(f"✅ 添加新方法: {method_name}")
+                else:
+                    logger.warning(f"⚠️ 无法定位类结束位置，跳过方法: {method_name}")
+            else:
+                logger.info(f"ℹ️ 方法 {method_name} 已存在，跳过")
+        
+        return merged_content
+    
+    def _validate_written_files(self, written_files: Dict[str, str]) -> Dict[str, Any]:
+        """验证写入的文件是否成功"""
+        
+        validation_result = {
+            'success': True,
+            'written_count': len(written_files),
+            'validated_files': [],
+            'failed_files': [],
+            'error': None
+        }
+        
+        for code_type, file_path in written_files.items():
+            try:
+                if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                    # 验证文件是否为有效的Java代码
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    # 基本检查：是否包含package声明和class定义
+                    if 'package ' in content and ('class ' in content or 'interface ' in content):
+                        validation_result['validated_files'].append(code_type)
+                        logger.info(f"✅ 文件验证成功: {Path(file_path).name}")
+                    else:
+                        validation_result['failed_files'].append(code_type)
+                        validation_result['success'] = False
+                        logger.warning(f"⚠️ 文件内容验证失败: {Path(file_path).name}")
+                else:
+                    validation_result['failed_files'].append(code_type)
+                    validation_result['success'] = False
+                    logger.error(f"❌ 文件不存在或为空: {Path(file_path).name}")
+                    
+            except Exception as e:
+                validation_result['failed_files'].append(code_type)
+                validation_result['success'] = False
+                validation_result['error'] = str(e)
+                logger.error(f"❌ 文件验证异常 {file_path}: {e}")
+        
+        return validation_result
+    
+    def _parse_react_response(self, response: str) -> tuple:
+        """解析ReAct响应中的思考、行动、观察、工具调用和代码"""
+        
+        import re
+        
+        # 提取Thought
+        thought_match = re.search(r'\*\*Thought\*\*:\s*(.*?)(?=\*\*Action\*\*|$)', response, re.DOTALL)
+        thought = thought_match.group(1).strip() if thought_match else ""
+        
+        # 提取Action
+        action_match = re.search(r'\*\*Action\*\*:\s*(.*?)(?=\*\*Observation\*\*|```|\*\*Tool Call\*\*|$)', response, re.DOTALL)
+        action = action_match.group(1).strip() if action_match else ""
+        
+        # 提取Observation
+        observation_match = re.search(r'\*\*Observation\*\*:\s*(.*?)(?=```|$)', response, re.DOTALL)
+        observation = observation_match.group(1).strip() if observation_match else ""
+        
+        # 提取Tool Call
+        tool_call_match = re.search(r'\*\*Tool Call\*\*:\s*(.*?)(?=\*\*Parameters\*\*|$)', response, re.DOTALL)
+        tool_call = tool_call_match.group(1).strip() if tool_call_match else None
+        
+        # 提取Tool Parameters  
+        tool_params = None
+        if tool_call:
+            params_match = re.search(r'\*\*Parameters\*\*:\s*(\{.*?\})', response, re.DOTALL)
+            if params_match:
+                try:
+                    import json
+                    tool_params = json.loads(params_match.group(1))
+                except json.JSONDecodeError:
+                    logger.warning("⚠️ 工具参数JSON解析失败")
+                    tool_params = {}
+        
+        # 提取代码块
+        code_blocks = re.findall(r'```java\n(.*?)\n```', response, re.DOTALL)
+        
+        return thought, action, observation, code_blocks, tool_call, tool_params
+    
+    def _extract_code_from_react_response(self, code_blocks: List[str]) -> Dict[str, str]:
+        """从ReAct响应中提取代码"""
+        
+        extracted_code = {}
+        
+        for i, code_block in enumerate(code_blocks):
+            code_content = code_block.strip()
+            
+            # 根据代码内容判断类型
+            if '@RestController' in code_content or '@Controller' in code_content:
+                extracted_code['controller'] = code_content
+            elif '@Service' in code_content and 'class' in code_content:
+                # 🔧 修复：区分Service接口和ServiceImpl实现类
+                if 'implements' in code_content or code_content.strip().endswith('Impl {') or 'ServiceImpl' in code_content:
+                    extracted_code['service_impl'] = code_content
+                else:
+                    extracted_code['service'] = code_content
+            elif 'interface' in code_content and ('Service' in code_content or '@Service' in code_content):
+                # 🔧 新增：明确识别Service接口
+                extracted_code['service'] = code_content
+            elif 'Request' in code_content and 'class' in code_content:
+                extracted_code['request_dto'] = code_content
+            elif 'Req' in code_content and 'class' in code_content:
+                extracted_code['request_dto'] = code_content
+            elif 'Response' in code_content and 'class' in code_content:
+                extracted_code['response_dto'] = code_content
+            elif 'Resp' in code_content and 'class' in code_content:
+                extracted_code['response_dto'] = code_content
+            elif '@Entity' in code_content or '@Table' in code_content:
+                extracted_code['entity'] = code_content
+            elif '@Mapper' in code_content or 'interface' in code_content and 'Mapper' in code_content:
+                extracted_code['mapper'] = code_content
+            else:
+                # 🔧 改进：通用代码块处理
+                extracted_code[f'java_code_{i+1}'] = code_content
+                
+        logger.info(f"📝 从ReAct响应提取到的代码类型: {list(extracted_code.keys())}")
+        
+        # 🔧 修复：确保Service接口和实现类配对，无论哪种情况都要生成完整的Service层
+        service_interface_generated = False
+        service_impl_generated = False
+        
+        # 检查是否有Service接口
+        if 'service' in extracted_code:
+            service_content = extracted_code['service']
+            if 'interface' in service_content:
+                service_interface_generated = True
+                logger.info("✅ 检测到Service接口")
+            elif 'class' in service_content and 'implements' not in service_content:
+                # 这是一个Service类但不是接口实现模式
+                logger.info("⚠️ 检测到Service类，但不是接口实现模式")
+        
+        # 检查是否有ServiceImpl
+        if 'service_impl' in extracted_code:
+            service_impl_generated = True
+            logger.info("✅ 检测到ServiceImpl实现类")
+        
+        # 🔧 核心修复：如果只有ServiceImpl没有Service接口，自动生成Service接口
+        if service_impl_generated and not service_interface_generated:
+            logger.warning("⚠️ 检测到ServiceImpl但缺少Service接口，将自动生成Service接口")
+            service_impl_content = extracted_code['service_impl']
+            service_interface = self._generate_service_interface_from_impl(service_impl_content)
+            if service_interface:
+                extracted_code['service'] = service_interface
+                logger.info("✅ 自动生成了Service接口")
+            else:
+                logger.error("❌ 自动生成Service接口失败")
+        
+        # 🔧 新增：如果只有Service类但不是接口模式，转换为接口+实现模式
+        elif not service_impl_generated and 'service' in extracted_code:
+            service_content = extracted_code['service']
+            if 'class' in service_content and 'interface' not in service_content:
+                logger.info("🔄 将Service类转换为接口+实现模式")
+                
+                # 生成Service接口
+                service_interface = self._convert_service_class_to_interface(service_content)
+                if service_interface:
+                    extracted_code['service'] = service_interface
+                    # 将原Service类改为ServiceImpl
+                    service_impl = self._convert_service_class_to_impl(service_content)
+                    if service_impl:
+                        extracted_code['service_impl'] = service_impl
+                    logger.info("✅ 成功转换为接口+实现模式")
+        
+        return extracted_code
+    
+    def _generate_service_interface_from_impl(self, service_impl_content: str) -> str:
+        """从ServiceImpl实现类生成对应的Service接口"""
+        
+        try:
+            import re
+            
+            # 提取类名
+            class_match = re.search(r'class\s+(\w+)(?:Impl)?\s+(?:implements\s+\w+\s+)?{', service_impl_content)
+            if not class_match:
+                return None
+            
+            impl_class_name = class_match.group(1)
+            service_interface_name = impl_class_name.replace('ServiceImpl', 'Service').replace('Impl', 'Service')
+            
+            # 提取包名
+            package_match = re.search(r'package\s+([\w.]+);', service_impl_content)
+            package_name = package_match.group(1) if package_match else 'com.example.service'
+            
+            # 提取公共方法
+            methods = []
+            method_pattern = r'public\s+(?!class)([^{]+\{)'
+            for method_match in re.finditer(method_pattern, service_impl_content, re.DOTALL):
+                method_signature = method_match.group(1).replace('{', '').strip()
+                # 清理方法签名，移除实现细节
+                if not any(keyword in method_signature.lower() for keyword in ['constructor', 'gettersetter']):
+                    methods.append(f"    {method_signature};")
+            
+            # 生成Service接口
+            service_interface = f"""package {package_name};
+
+/**
+ * {service_interface_name} - 业务服务接口
+ */
+public interface {service_interface_name} {{
+
+{chr(10).join(methods)}
+
+}}"""
+            
+            return service_interface
+            
+        except Exception as e:
+            logger.error(f"❌ 生成Service接口失败: {e}")
+            return None
+    
+    def _is_react_generation_complete(self, generated_code: Dict[str, str], 
+                                    project_context: Dict[str, Any]) -> bool:
+        """检查ReAct代码生成是否完成"""
+        
+        # 基本检查：至少需要controller和service
+        required_components = ['controller', 'service', 'response_dto']
+        
+        # 如果有输入参数，还需要request_dto
+        if any('request_dto' in code_type for code_type in generated_code.keys()):
+            required_components.append('request_dto')
+        
+        # 如果使用MyBatis Plus，还需要entity和mapper
+        if project_context.get('project_info', {}).get('is_mybatis_plus'):
+            required_components.extend(['entity', 'mapper'])
+        
+        # 检查是否都生成了
+        missing_components = [comp for comp in required_components if comp not in generated_code]
+        
+        if missing_components:
+            logger.info(f"🔍 还需要生成: {missing_components}")
+            return False
+        
+        logger.info("✅ 所有必需组件都已生成")
+        return True
+    
+    def _is_react_generation_complete_with_details(self, generated_code: Dict[str, str], 
+                                                 project_context: Dict[str, Any]) -> tuple:
+        """检查ReAct代码生成是否完成，返回详细状态"""
+        
+        # 定义必需组件
+        core_components = ['controller', 'service', 'response_dto']
+        optional_components = []
+        
+        # 动态添加组件
+        if any('Request' in code_type for code_type in generated_code.keys()):
+            core_components.append('request_dto')
+        
+        if project_context.get('project_info', {}).get('is_mybatis_plus'):
+            core_components.extend(['entity', 'mapper'])
+        
+        # 检查完成状态
+        generated_components = list(generated_code.keys())
+        missing_core = [comp for comp in core_components if comp not in generated_components]
+        
+        if not missing_core:
+            completion_status = {
+                'status': 'complete',
+                'core_components': len([c for c in core_components if c in generated_components]),
+                'total_components': len(generated_components),
+                'missing': [],
+                'message': f'所有{len(core_components)}个核心组件已生成'
+            }
+            return True, completion_status
+        else:
+            completion_status = {
+                'status': 'incomplete',
+                'core_components': len([c for c in core_components if c in generated_components]),
+                'total_components': len(generated_components),
+                'missing': missing_core,
+                'message': f'还缺少{len(missing_core)}个核心组件: {", ".join(missing_core)}'
+            }
+            return False, completion_status
+    
+    def _get_react_progress_info(self, generated_code: Dict[str, str], 
+                               project_context: Dict[str, Any]) -> str:
+        """获取ReAct进度信息"""
+        
+        if not generated_code:
+            return "🚀 开始代码生成，当前无已生成组件"
+        
+        # 分析已生成的组件
+        component_types = {
+            'controller': '控制器',
+            'service': '服务层',
+            'request_dto': '请求DTO',
+            'response_dto': '响应DTO',
+            'entity': '实体类',
+            'mapper': '数据访问层'
+        }
+        
+        generated_descriptions = []
+        for comp_type, comp_name in component_types.items():
+            if comp_type in generated_code:
+                generated_descriptions.append(f"✅ {comp_name}")
+            else:
+                generated_descriptions.append(f"⏳ {comp_name}")
+        
+        is_mybatis_plus = project_context.get('project_info', {}).get('is_mybatis_plus', False)
+        
+        progress_text = f"""📊 当前进度（已生成{len(generated_code)}个组件）:
+{chr(10).join(generated_descriptions)}
+
+💡 技术栈信息:
+- MyBatis Plus: {'启用' if is_mybatis_plus else '未启用'}
+- 包结构: {project_context.get('package_patterns', {}).get('base_package', 'com.main')}"""
+        
+        return progress_text
+    
+    def _get_next_react_guidance(self, generated_code: Dict[str, str], 
+                               project_context: Dict[str, Any]) -> str:
+        """获取下一轮ReAct的指导信息"""
+        
+        has_controller = 'controller' in generated_code
+        has_service = 'service' in generated_code
+        has_request_dto = 'request_dto' in generated_code
+        has_response_dto = 'response_dto' in generated_code
+        has_entity = 'entity' in generated_code
+        has_mapper = 'mapper' in generated_code
+        
+        is_mybatis_plus = project_context.get('project_info', {}).get('is_mybatis_plus')
+        
+        guidance_parts = []
+        
+        if not has_controller:
+            guidance_parts.append("- 需要生成Controller类（RESTful接口控制器）")
+        if not has_service:
+            guidance_parts.append("- 需要生成Service类（业务逻辑服务层）")
+        if not has_response_dto:
+            guidance_parts.append("- 需要生成Response DTO（响应数据传输对象）")
+        if not has_request_dto and len(generated_code) > 0:
+            guidance_parts.append("- 如需要，生成Request DTO（请求数据传输对象）")
+        if is_mybatis_plus and not has_entity:
+            guidance_parts.append("- 需要生成Entity类（MyBatis Plus实体）")
+        if is_mybatis_plus and not has_mapper:
+            guidance_parts.append("- 需要生成Mapper接口（MyBatis Plus数据访问层）")
+        
+        if guidance_parts:
+            return f"""当前已生成: {list(generated_code.keys())}
+
+还需要生成:
+{chr(10).join(guidance_parts)}"""
+        else:
+            return "所有组件已生成，请检查代码完整性并进行最终验证。"
+    
+    def _generate_code_direct(self, interface_name: str, input_params: List[Dict], 
+                            output_params: Dict, description: str, http_method: str,
+                            project_context: Dict[str, Any], api_path: str = '', business_logic: str = '') -> Dict[str, str]:
+        """直接生成模式（非ReAct）- 作为fallback使用"""
+        
+        logger.info(f"使用直接生成模式...")
+        
+        # 构建项目上下文信息
+        context_info = self._build_project_context_prompt(project_context)
+        
+        # 构建接口需求信息
+        requirement_info = self._build_interface_requirement_prompt(
+            interface_name, input_params, output_params, description, http_method, api_path=api_path, business_logic=business_logic
+        )
+        
+        # 构建代码生成指令
+        generation_prompt = self._build_code_generation_prompt(context_info, requirement_info)
+        
+        # 调用LLM生成代码
+        messages = [
+            {
+                "role": "system", 
+                "content": """你是一个专业的Java企业级后端开发工程师，精通Spring Boot、MyBatis Plus等后端技术栈。
+
+**重要说明**: 
+- 你只负责生成Java后端代码，不要生成任何前端代码（如JavaScript、React、Vue等）
+- 所有生成的代码都必须是Java语言，文件扩展名为.java或.xml
+- 专注于企业级后端架构：Controller、Service、DTO、Entity、Mapper等
+
+请根据项目上下文和需求生成高质量的企业级Java后端代码。"""
+            },
+            {
+                "role": "user", 
+                "content": generation_prompt
+            }
+        ]
+        
+        try:
+            logger.info(f"🤖 调用{self.llm_provider}生成代码...")
+            llm_response = self.llm_client.chat(
+                messages=messages,
+                temperature=0.1,  # 代码生成使用较低温度
+                max_tokens=4000   # 代码生成需要更多token
+            )
+            
+            # 解析LLM响应中的代码
+            generated_code = self._parse_llm_code_response(llm_response)
+            
+            # 验证和修正生成的代码
+            validated_code = self._validate_and_fix_generated_code(generated_code, project_context)
+            
+            return validated_code
+            
+        except Exception as e:
+            logger.error(f"❌ LLM代码生成失败: {e}")
+            # 如果LLM生成失败，fallback到模板生成
+            logger.info("🔄 LLM失败，使用模板生成fallback...")
+            return self._generate_fallback_code(interface_name, input_params, output_params, 
+                                              description, http_method, project_context, api_path=api_path, business_logic=business_logic)
+    
+    def _build_project_context_prompt(self, project_context: Dict[str, Any]) -> str:
+        """构建项目上下文提示信息"""
+        
+        project_info = project_context.get('project_info', {})
+        package_patterns = project_context.get('package_patterns', {})
+        architecture_patterns = project_context.get('architecture_patterns', {})
+        component_patterns = project_context.get('component_patterns', {})
+        technology_stack = project_context.get('technology_stack', {})
+        generation_guidelines = project_context.get('generation_guidelines', [])
+        
+        context_prompt = f"""
+## 项目分析上下文
+
+### 基础信息
+- 项目架构: {project_info.get('architecture_type', 'unknown')}
+- Spring Boot: {'是' if project_info.get('is_spring_boot') else '否'}
+- MyBatis Plus: {'是' if project_info.get('is_mybatis_plus') else '否'}
+- 基础包名: {package_patterns.get('base_package', 'com.main')}
+
+### 架构模式
+- 分层风格: {architecture_patterns.get('preferred_layer_style', 'unknown')}
+- 有接口层: {'是' if architecture_patterns.get('has_interfaces_layer') else '否'}
+- 有应用层: {'是' if architecture_patterns.get('has_application_layer') else '否'}
+- 有领域层: {'是' if architecture_patterns.get('has_domain_layer') else '否'}
+
+### 命名约定
+- Request后缀: {component_patterns.get('dto_patterns', {}).get('request_suffix', 'Request')}
+- Response后缀: {component_patterns.get('dto_patterns', {}).get('response_suffix', 'Response')}
+- Service后缀: {component_patterns.get('service_patterns', {}).get('service_suffix', 'Service')}
+- Controller后缀: {component_patterns.get('service_patterns', {}).get('controller_suffix', 'Controller')}
+
+### 技术栈特性
+- MyBatis Plus特性: {', '.join(technology_stack.get('mybatis_plus_features', []))}
+- 常用依赖: {', '.join(technology_stack.get('common_dependencies', []))}
+
+### 代码生成指导原则
+{chr(10).join(f'- {guideline}' for guideline in generation_guidelines)}
+"""
+        return context_prompt.strip()
+    
+    def _build_interface_requirement_prompt(self, interface_name: str, input_params: List[Dict], 
+                                          output_params: Dict, description: str, http_method: str,
+                                          api_path: str = '', business_logic: str = '') -> str:
+        """构建接口需求提示信息"""
+        
+        # 格式化输入参数
+        input_params_text = ""
+        if input_params:
+            input_params_text = "\n".join([
+                f"  - {param.get('name', 'field')}: {param.get('type', 'String')} "
+                f"{'(必填)' if param.get('required', True) else '(可选)'} "
+                f"- {param.get('description', '')}"
+                for param in input_params
+            ])
+        else:
+            input_params_text = "  无输入参数"
+        
+        # 格式化输出参数
+        output_params_text = ""
+        if output_params:
+            if isinstance(output_params, dict):
+                output_params_text = "\n".join([
+                    f"  - {field_name}: {field_info.get('type', 'String') if isinstance(field_info, dict) else field_info} "
+                    f"- {field_info.get('description', '') if isinstance(field_info, dict) else ''}"
+                    for field_name, field_info in output_params.items()
+                ])
+            else:
+                output_params_text = f"  - {output_params}"
+        else:
+            output_params_text = "  默认返回标准响应对象"
+        
+        # 处理API路径，生成合适的RequestMapping
+        request_mapping = api_path if api_path else f"/api/v1/{interface_name.lower()}"
+        
+        requirement_prompt = f"""
+## 接口需求规格
+
+### 基本信息
+- 接口名称: {interface_name}
+- 功能描述: {description}
+- HTTP方法: {http_method}
+- 请求路径: {request_mapping}
+- 业务逻辑: {business_logic if business_logic else description}
+
+### 输入参数
+{input_params_text}
+
+### 输出参数
+{output_params_text}
+
+### 技术要求
+- 使用SpringBoot REST风格接口
+- 请求路径严格按照: {request_mapping}
+- 类名应为: {interface_name}Controller
+- 方法名根据业务逻辑命名（如：query、list、get等）
+- 添加适当的参数校验注解
+- 返回统一的响应格式
+"""
+        return requirement_prompt.strip()
+    
+    def _build_code_generation_prompt(self, context_info: str, requirement_info: str) -> str:
+        """构建完整的代码生成提示"""
+        
+        prompt = f"""
+{context_info}
+
+{requirement_info}
+
+## 代码生成要求
+
+请根据以上项目上下文和接口需求，生成完整的企业级Java代码，包括：
+
+1. **Controller类** - RESTful接口控制器
+2. **Service类** - 业务逻辑服务层
+3. **Request DTO** - 请求数据传输对象（如有输入参数）
+4. **Response DTO** - 响应数据传输对象
+5. **Entity类** - 实体类（如果使用MyBatis Plus）
+6. **Mapper接口** - 数据访问层（如果使用MyBatis Plus）
+
+### 代码质量要求：
+- 严格遵循项目现有的包名、命名约定和架构模式
+- 使用项目中已有的注解和技术栈特性
+- 添加完整的JavaDoc注释和参数验证
+- 生成的代码应该可以直接编译运行
+- 每个类都包含必要的import语句
+
+### 输出格式：
+请使用以下格式输出代码，每个代码块用```java包围：
+
+```java
+// Controller类代码
+[Controller代码内容]
+```
+
+```java
+// Service类代码
+[Service代码内容]
+```
+
+```java
+// Request DTO代码（如需要）
+[Request DTO代码内容]
+```
+
+```java
+// Response DTO代码
+[Response DTO代码内容]
+```
+
+```java
+// Entity类代码（如使用MyBatis Plus）
+[Entity代码内容]
+```
+
+```java
+// Mapper接口代码（如使用MyBatis Plus）
+[Mapper代码内容]
+```
+
+请开始生成代码：
+"""
+        return prompt.strip()
+    
+    def _parse_llm_code_response(self, llm_response: str) -> Dict[str, str]:
+        """解析LLM响应中的代码块"""
+        
+        import re
+        
+        # 查找所有Java代码块
+        code_blocks = re.findall(r'```java\n(.*?)\n```', llm_response, re.DOTALL)
+        
+        parsed_code = {}
+        
+        for i, code_block in enumerate(code_blocks):
+            code_content = code_block.strip()
+            
+            # 根据代码内容判断类型
+            if '@RestController' in code_content or '@Controller' in code_content:
+                parsed_code['controller'] = code_content
+            elif '@Service' in code_content:
+                parsed_code['service'] = code_content
+            elif 'Request' in code_content and 'class' in code_content:
+                parsed_code['request_dto'] = code_content
+            elif 'Response' in code_content and 'class' in code_content:
+                parsed_code['response_dto'] = code_content
+            elif '@TableName' in code_content or '@Entity' in code_content:
+                parsed_code['entity'] = code_content
+            elif 'BaseMapper' in code_content or '@Mapper' in code_content:
+                parsed_code['mapper'] = code_content
+            else:
+                # 无法分类的代码，使用序号命名
+                parsed_code[f'code_block_{i+1}'] = code_content
+        
+        logger.info(f"📝 解析到 {len(parsed_code)} 个代码块: {list(parsed_code.keys())}")
+        return parsed_code
+    
+    def _validate_and_fix_generated_code(self, generated_code: Dict[str, str], 
+                                       project_context: Dict[str, Any]) -> Dict[str, str]:
+        """验证和修正生成的代码"""
+        
+        validated_code = {}
+        base_package = project_context.get('package_patterns', {}).get('base_package', 'com.example')
+        
+        for code_type, code_content in generated_code.items():
+            if not code_content.strip():
+                continue
+                
+            # 基本验证：确保包名正确
+            if not code_content.startswith('package'):
+                # 添加包名
+                if code_type == 'controller':
+                    code_content = f"package {base_package}.interfaces.rest;\n\n{code_content}"
+                elif code_type == 'service':
+                    code_content = f"package {base_package}.application.service;\n\n{code_content}"
+                elif code_type in ['request_dto', 'response_dto']:
+                    code_content = f"package {base_package}.interfaces.dto;\n\n{code_content}"
+                elif code_type == 'entity':
+                    code_content = f"package {base_package}.domain.entity;\n\n{code_content}"
+                elif code_type == 'mapper':
+                    code_content = f"package {base_package}.domain.mapper;\n\n{code_content}"
+            
+            validated_code[code_type] = code_content
+        
+        logger.info(f"✅ 验证完成，有效代码块: {len(validated_code)} 个")
+        return validated_code
+    
+    def _generate_fallback_code(self, interface_name: str, input_params: List[Dict], 
+                              output_params: Dict, description: str, http_method: str,
+                              project_context: Dict[str, Any], api_path: str = '', business_logic: str = '') -> Dict[str, str]:
+        """生成fallback代码（当LLM失败时使用简化模板）"""
+        
+        logger.info("🔧 使用fallback模板生成代码...")
+        
+        base_package = project_context.get('package_patterns', {}).get('base_package', 'com.main')
+        entity_name = interface_name
+        
+        # 使用实际的API路径
+        request_mapping = api_path if api_path else f"/api/v1/{entity_name.lower()}"
+        
+        fallback_code = {}
+        
+        # 简化的Controller
+        fallback_code['controller'] = f"""package {base_package}.interfaces.rest;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+
+/**
+ * {description}
+ * 自动生成 - Fallback模式
+ */
+@RestController
+@RequestMapping("{request_mapping}")
+public class {entity_name}Controller {{
+
+    @Autowired
+    private {entity_name}Service {entity_name.lower()}Service;
+
+    @{self._get_mapping_annotation(http_method)}
+    public ResponseEntity<{entity_name}Response> process() {{
+        // TODO: 实现{description}
+        // 业务逻辑: {business_logic if business_logic else description}
+        return ResponseEntity.ok(new {entity_name}Response());
+    }}
+}}"""
+        
+        # 简化的Service
+        fallback_code['service'] = f"""package {base_package}.application.service;
+
+import org.springframework.stereotype.Service;
+
+/**
+ * {entity_name}业务服务
+ * 自动生成 - Fallback模式
+ */
+@Service
+public class {entity_name}Service {{
+
+    public {entity_name}Response process() {{
+        // TODO: 实现{description}业务逻辑
+        // 具体逻辑: {business_logic if business_logic else description}
+        return new {entity_name}Response();
+    }}
+}}"""
+        
+        # 简化的Response DTO
+        fallback_code['response_dto'] = f"""package {base_package}.interfaces.dto;
+
+/**
+ * {entity_name}响应对象
+ * 自动生成 - Fallback模式
+ */
+public class {entity_name}Response {{
+    
+    private String message;
+    private Object data;
+    
+    // TODO: 根据接口需求添加具体字段
+    // 预期字段: {', '.join(output_params.keys()) if output_params else '待定义'}
+    
+    // TODO: 添加getter和setter方法
+}}"""
+        
+        return fallback_code
+    
+    def _get_mapping_annotation(self, http_method: str) -> str:
+        """根据HTTP方法获取对应的Spring注解"""
+        method_mapping = {
+            'GET': 'GetMapping',
+            'POST': 'PostMapping', 
+            'PUT': 'PutMapping',
+            'DELETE': 'DeleteMapping',
+            'PATCH': 'PatchMapping'
+        }
+        return method_mapping.get(http_method.upper(), 'GetMapping')
+    
+    def _generate_request_dto(self, entity_name: str, input_params: List[Dict], 
+                            base_package: str, request_suffix: str, 
+                            project_context: Dict[str, Any]) -> str:
+        """生成Request DTO"""
+        
+        class_name = f"{entity_name}{request_suffix}"
+        
+        # 生成字段
+        fields = []
+        imports = set()
+        
+        for param in input_params:
+            param_name = param.get('name', 'field')
+            param_type = param.get('type', 'String')
+            param_desc = param.get('description', '')
+            required = param.get('required', True)
+            
+            # 处理类型映射
+            java_type = self._map_to_java_type(param_type, imports)
+            
+            # 添加验证注解
+            validation_annotations = []
+            if required:
+                validation_annotations.append("@NotNull")
+                if java_type == "String":
+                    validation_annotations.append("@NotBlank")
+            
+            # 生成字段定义
+            field_code = []
+            if param_desc:
+                field_code.append(f"    /** {param_desc} */")
+            
+            for annotation in validation_annotations:
+                field_code.append(f"    {annotation}")
+            
+            field_code.append(f"    private {java_type} {param_name};")
+            fields.append('\n'.join(field_code))
+        
+        # 生成import语句
+        import_statements = []
+        if imports:
+            import_statements.extend(sorted(imports))
+        if any('@NotNull' in field for field in fields):
+            import_statements.append("import javax.validation.constraints.NotNull;")
+        if any('@NotBlank' in field for field in fields):
+            import_statements.append("import javax.validation.constraints.NotBlank;")
+        
+        import_section = '\n'.join(import_statements) if import_statements else ""
+        
+        return f"""package {base_package}.interfaces.dto;
+
+{import_section}
+
+/**
+ * {entity_name}请求对象
+ * 自动生成，基于企业级项目架构
+ */
+public class {class_name} {{
+
+{chr(10).join(fields)}
+
+    // TODO: 添加getter和setter方法
+}}"""
+    
+    def _map_to_java_type(self, param_type: str, imports: set) -> str:
+        """将参数类型映射为Java类型"""
+        
+        type_mapping = {
+            'string': 'String',
+            'str': 'String',
+            'int': 'Integer',
+            'integer': 'Integer',
+            'long': 'Long',
+            'float': 'Float',
+            'double': 'Double',
+            'boolean': 'Boolean',
+            'bool': 'Boolean',
+            'date': 'LocalDate',
+            'datetime': 'LocalDateTime',
+            'timestamp': 'LocalDateTime',
+            'time': 'LocalTime',
+            'bigdecimal': 'BigDecimal',
+            'decimal': 'BigDecimal'
+        }
+        
+        # 处理泛型类型
+        if 'list' in param_type.lower() or 'array' in param_type.lower():
+            imports.add("import java.util.List;")
+            return "List<String>"  # 简化处理
+        
+        # 处理日期时间类型的import
+        java_type = type_mapping.get(param_type.lower(), 'String')
+        
+        if java_type in ['LocalDate', 'LocalDateTime', 'LocalTime']:
+            imports.add(f"import java.time.{java_type};")
+        elif java_type == 'BigDecimal':
+            imports.add("import java.math.BigDecimal;")
+        
+        return java_type
+    
+    def _determine_output_paths_with_llm(self, generated_code: Dict[str, str], 
+                                        project_path: str, service_name: str,
+                                        project_context: Dict[str, Any]) -> Dict[str, str]:
+        """使用LLM判断生成代码的输出路径和文件名"""
+        
+        if not self.llm_client:
+            logger.warning("⚠️ LLM客户端未初始化，使用默认路径判断")
+            return self._determine_output_paths_default(generated_code, project_path, service_name, project_context)
+        
+        try:
+            # 构建项目结构分析prompt
+            base_package = project_context.get('package_patterns', {}).get('base_package', 'com.example')
+            
+            # 从generated_code中分析接口名称（更可靠）
+            interface_name = self._extract_interface_name_from_code(generated_code)
+            
+            # 预处理：强制确保所有代码都是Java代码
+            java_code_analysis = self._analyze_code_types(generated_code)
+            
+            # 🔧 修复：先将ReAct模式的代码块映射到标准类型
+            normalized_code = self._normalize_code_types(generated_code)
+            
+            structure_prompt = f"""
+# Java后端项目路径分析任务
+
+## 项目信息
+- 项目根路径: {project_path}
+- 服务名称: {service_name}
+- 基础包名: {base_package}
+- 接口名称: {interface_name}
+
+## 项目架构信息
+{self._build_project_structure_context(project_context)}
+
+## 生成的Java代码分析
+{java_code_analysis}
+
+## 标准化后的代码类型
+{self._format_normalized_code_info(normalized_code)}
+
+## 任务要求
+请为每个Java代码类型确定合适的输出路径。输出格式为JSON，包含相对路径、文件名和完整路径。
+
+**重要要求**：
+1. 这是Java后端项目，所有代码文件必须是.java扩展名
+2. SQL映射文件使用.xml扩展名
+3. 文件名必须与类名完全一致（{interface_name}Controller.java, {interface_name}Service.java等）
+4. 包路径要符合企业级项目规范
+5. 使用标准的分层架构目录结构
+6. 绝对不要生成任何前端文件（.js, .jsx, .ts, .tsx, .html, .css等）
+
+示例输出格式：
+{{
+    "controller": {{
+        "relative_path": "src/main/java/{base_package.replace('.', '/')}/interfaces/rest", 
+        "filename": "{interface_name}Controller.java",
+        "full_path": "src/main/java/{base_package.replace('.', '/')}/interfaces/rest/{interface_name}Controller.java"
+    }},
+    "service": {{
+        "relative_path": "src/main/java/{base_package.replace('.', '/')}/application/service", 
+        "filename": "{interface_name}Service.java",
+        "full_path": "src/main/java/{base_package.replace('.', '/')}/application/service/{interface_name}Service.java"
+    }}
+}}
+"""
+            
+            logger.info(f"🤖 调用{self.llm_provider}判断Java文件输出路径...")
+            response = self.llm_client.chat(
+                messages=[{"role": "user", "content": structure_prompt}],
+                temperature=0.1
+            )
+            
+            if response and isinstance(response, str):
+                # 提取JSON
+                import re
+                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                if json_match:
+                    import json
+                    paths_config = json.loads(json_match.group())
+                    
+                    # 构建完整路径并验证文件扩展名
+                    output_paths = {}
+                    project_root = Path(project_path)
+                    
+                    # 🔧 修复：优先使用标准化的代码类型进行匹配
+                    for code_type, path_info in paths_config.items():
+                        # 先检查标准化代码中是否有该类型
+                        if code_type in normalized_code:
+                            target_code_type = code_type
+                        # 再检查原始代码中是否有该类型
+                        elif code_type in generated_code:
+                            target_code_type = code_type
+                        # 🔧 新增：尝试通过代码内容反向匹配
+                        else:
+                            target_code_type = self._find_matching_code_type(code_type, generated_code)
+                        
+                        if target_code_type:
+                            file_name = path_info['filename']
+                            
+                            # 强制验证：Java代码必须是.java文件
+                            if not file_name.endswith('.java') and not file_name.endswith('.xml'):
+                                logger.warning(f"⚠️ 修正文件扩展名: {file_name}")
+                                # 提取类名并强制使用.java扩展名
+                                class_name = file_name.split('.')[0]
+                                file_name = f"{class_name}.java"
+                                
+                            full_path = project_root / path_info['full_path']
+                            # 如果路径包含非Java文件，强制修正
+                            if '.js' in str(full_path) or 'frontend' in str(full_path):
+                                logger.warning(f"⚠️ 检测到前端路径，使用默认Java路径: {full_path}")
+                                return self._determine_output_paths_default(generated_code, project_path, service_name, project_context)
+                            
+                            # 🔧 修复：使用原始的代码类型作为键，确保后续匹配成功
+                            output_paths[target_code_type] = str(full_path)
+                    
+                    if output_paths:
+                        logger.info(f"✅ LLM路径判断成功，配置了 {len(output_paths)} 个Java文件路径")
+                        for code_type, path in output_paths.items():
+                            logger.info(f"📍 {code_type}: {Path(path).name}")
+                        return output_paths
+                    else:
+                        logger.warning("⚠️ LLM路径判断未返回有效路径配置")
+        
+        except Exception as e:
+            logger.warning(f"⚠️ LLM路径判断失败: {e}")
+        
+        # Fallback到默认路径判断
+        logger.info("🔄 Fallback到默认Java路径判断...")
+        return self._determine_output_paths_default(generated_code, project_path, service_name, project_context)
+    
+    def _normalize_code_types(self, generated_code: Dict[str, str]) -> Dict[str, str]:
+        """标准化代码类型，将ReAct模式的java_code_x映射到标准类型"""
+        
+        normalized = {}
+        
+        for code_type, content in generated_code.items():
+            content_lower = content.lower()
+            
+            # 直接映射标准类型
+            if code_type in ['controller', 'service', 'service_impl', 'request_dto', 'response_dto', 'entity', 'mapper']:
+                normalized[code_type] = content
+                continue
+            
+            # 分析java_code_x类型的内容
+            if code_type.startswith('java_code_'):
+                mapped_type = None
+                
+                # 控制器检测
+                if any(annotation in content for annotation in ['@RestController', '@Controller']):
+                    mapped_type = 'controller'
+                
+                # Service实现类检测（优先检测）
+                elif ('@Service' in content and 'class' in content and 
+                      ('implements' in content or 'serviceimpl' in content_lower or content.strip().endswith('impl {'))):
+                    mapped_type = 'service_impl'
+                
+                # Service接口检测
+                elif 'interface' in content and ('service' in content_lower or '@Service' in content):
+                    mapped_type = 'service'
+                
+                # DTO检测
+                elif any(keyword in content_lower for keyword in ['request', 'req']) and 'class' in content:
+                    mapped_type = 'request_dto'
+                elif any(keyword in content_lower for keyword in ['response', 'resp']) and 'class' in content:
+                    mapped_type = 'response_dto'
+                
+                # Entity检测
+                elif any(annotation in content for annotation in ['@Entity', '@Table', '@TableName']):
+                    mapped_type = 'entity'
+                
+                # Mapper检测
+                elif '@Mapper' in content or ('interface' in content and 'mapper' in content_lower):
+                    mapped_type = 'mapper'
+                
+                # 如果成功映射，使用映射类型；否则保持原名
+                if mapped_type:
+                    # 如果目标类型已存在，添加后缀避免覆盖
+                    final_type = mapped_type
+                    counter = 1
+                    while final_type in normalized:
+                        final_type = f"{mapped_type}_{counter}"
+                        counter += 1
+                    
+                    normalized[final_type] = content
+                    logger.info(f"🔄 代码块映射: {code_type} -> {final_type}")
+                else:
+                    # 无法识别的代码块，保持原名
+                    normalized[code_type] = content
+                    logger.warning(f"⚠️ 无法识别代码块类型: {code_type}")
+            else:
+                # 其他类型直接保留
+                normalized[code_type] = content
+        
+        # 🔧 修复：确保service和service_impl都被正确保留，支持企业级接口隔离架构
+        final_mapping = {}
+        
+        # 首先复制所有标准化的代码
+        for code_type, content in normalized.items():
+            final_mapping[code_type] = content
+        
+        # 检查是否需要为路径生成提供额外的映射
+        # 注意：不要覆盖已存在的类型，只是确保路径生成能找到对应文件
+        if 'service_impl' in final_mapping and 'service' not in final_mapping:
+            logger.info("ℹ️ 检测到service_impl但缺少service，这是正常的（接口会被自动生成）")
+        
+        logger.info(f"📋 标准化后的代码类型: {list(final_mapping.keys())}")
+        return final_mapping
+    
+    def _format_normalized_code_info(self, normalized_code: Dict[str, str]) -> str:
+        """格式化标准化代码信息"""
+        
+        info_parts = ["📋 标准化后的代码类型映射:"]
+        
+        for code_type in normalized_code.keys():
+            info_parts.append(f"✅ {code_type}: 需要生成 .java 文件")
+        
+        return '\n'.join(info_parts)
+    
+    def _find_matching_code_type(self, target_type: str, generated_code: Dict[str, str]) -> str:
+        """通过代码内容反向匹配代码类型"""
+        
+        # 定义类型映射关系
+        type_patterns = {
+            'controller': ['@RestController', '@Controller'],
+            'service': ['@Service'],
+            'request_dto': ['Request', 'Req'],
+            'response_dto': ['Response', 'Resp'],
+            'entity': ['@Entity', '@TableName', 'Entity'],
+            'mapper': ['@Mapper', 'BaseMapper', 'Mapper']
+        }
+        
+        patterns = type_patterns.get(target_type, [])
+        
+        for code_type, content in generated_code.items():
+            for pattern in patterns:
+                if pattern in content:
+                    return code_type
+        
+        return None
+    
+    def _analyze_code_types(self, generated_code: Dict[str, str]) -> str:
+        """分析生成代码的类型，确保都是Java代码"""
+        
+        analysis_parts = []
+        analysis_parts.append("📋 已生成的Java后端代码类型:")
+        
+        for code_type, content in generated_code.items():
+            # 检查代码内容
+            is_java_code = ('package ' in content and 
+                           ('class ' in content or 'interface ' in content) and
+                           ('public ' in content or 'private ' in content))
+            
+            if is_java_code:
+                # 提取类名
+                import re
+                class_match = re.search(r'public\s+(?:class|interface)\s+(\w+)', content)
+                class_name = class_match.group(1) if class_match else 'Unknown'
+                
+                analysis_parts.append(f"✅ {code_type}: Java类 '{class_name}' - 需要.java文件")
+            else:
+                analysis_parts.append(f"⚠️ {code_type}: 内容需要验证 - 强制使用.java扩展名")
+        
+        analysis_parts.append("\n⚠️ 重要提醒：所有文件都必须使用.java扩展名，不要生成任何前端文件")
+        
+        return '\n'.join(analysis_parts)
+    
+    def _extract_interface_name_from_code(self, generated_code: Dict[str, str]) -> str:
+        """从生成的代码中提取接口名称"""
+        
+        # 优先从Controller代码中提取RequestMapping路径来推导接口名
+        for code_type in ['controller', 'react_code_1', 'react_code_2', 'react_code_3', 'react_code_4', 'react_code_5']:
+            if code_type in generated_code:
+                content = generated_code[code_type]
+                
+                # 先尝试从@RequestMapping或方法名中提取业务接口名
+                import re
+                
+                # 方法1：从方法名中提取（如 queryCompanyUnitList）
+                method_matches = re.findall(r'public\s+[^)]+\s+(\w+)\s*\([^)]*\)', content)
+                for method_name in method_matches:
+                    if method_name not in ['toString', 'equals', 'hashCode', 'process', 'handle']:
+                        # 从方法名推导接口名（去除动词前缀）
+                        interface_name = method_name
+                        for prefix in ['query', 'get', 'list', 'find', 'search', 'create', 'update', 'delete']:
+                            if interface_name.lower().startswith(prefix):
+                                interface_name = interface_name[len(prefix):]
+                                break
+                        if interface_name and len(interface_name) >= 3:
+                            # 确保首字母大写
+                            interface_name = interface_name[0].upper() + interface_name[1:]
+                            return interface_name
+                
+                # 方法2：从@RequestMapping路径中提取
+                mapping_match = re.search(r'@RequestMapping\s*\(\s*["\']([^"\']+)["\']', content)
+                if mapping_match:
+                    path = mapping_match.group(1)
+                    path_parts = [part for part in path.split('/') if part and part != 'api' and not part.startswith('v')]
+                    if path_parts:
+                        last_part = path_parts[-1]
+                        # 处理驼峰和下划线
+                        if '_' in last_part:
+                            words = last_part.split('_')
+                            interface_name = ''.join(word.capitalize() for word in words if word)
+                        else:
+                            words = re.findall(r'[A-Z]?[a-z]+|[A-Z]+(?=[A-Z][a-z]|\b)', last_part)
+                            interface_name = ''.join(word.capitalize() for word in words if word)
+                        return interface_name
+                
+                # 方法3：从Controller类名中提取
+                controller_match = re.search(r'public\s+class\s+(\w+)Controller', content)
+                if controller_match:
+                    return controller_match.group(1)
+        
+        # 方法4：从其他代码类型中查找业务相关的类名
+        business_keywords = ['Req', 'Resp', 'Request', 'Response', 'DTO', 'Entity']
+        for content in generated_code.values():
+            import re
+            class_matches = re.findall(r'public\s+class\s+(\w+)', content)
+            for class_name in class_matches:
+                # 查找包含业务关键词的类名
+                for keyword in business_keywords:
+                    if class_name.endswith(keyword):
+                        base_name = class_name[:-len(keyword)]
+                        if base_name and len(base_name) >= 3:
+                            return base_name
+        
+        # 方法5：通用类名提取（去除常见后缀）
+        for content in generated_code.values():
+            import re
+            class_match = re.search(r'public\s+class\s+(\w+)', content)
+            if class_match:
+                class_name = class_match.group(1)
+                for suffix in ['Controller', 'Service', 'ServiceImpl', 'Mapper', 'Dto', 'DTO', 'Handler', 'Utils', 'Factory']:
+                    if class_name.endswith(suffix):
+                        base_name = class_name[:-len(suffix)]
+                        if base_name and len(base_name) >= 3:
+                            return base_name
+                # 如果没有匹配的后缀，返回原类名
+                if len(class_name) >= 3:
+                    return class_name
+        
+        return 'Example'  # 默认值
+    
+    def _determine_output_paths_default(self, generated_code: Dict[str, str], 
+                                      project_path: str, service_name: str,
+                                      project_context: Dict[str, Any]) -> Dict[str, str]:
+        """默认路径判断逻辑（Fallback）- 支持基于API路径的智能目录选择"""
+        
+        logger.info(f"🔧 使用默认Java路径判断逻辑...{service_name}")
+        
+        # 🔧 修复：先标准化代码类型，确保ReAct模式的代码块能被正确处理
+        normalized_code = self._normalize_code_types(generated_code)
+        
+        # 🔍 使用优化的深度搜索找到最佳Java项目路径
+        optimal_project_path = self._find_deep_java_project_path(project_path, service_name)
+        logger.info(f"📂 实际分析路径: {optimal_project_path}")
+        
+        # 获取项目根路径
+        if optimal_project_path == '.' or not os.path.isabs(optimal_project_path):
+            project_root = Path.cwd()
+        else:
+            project_root = Path(optimal_project_path)
+        
+        # 从代码中提取接口名称用于文件命名
+        interface_name = self._extract_interface_name_from_code(generated_code)
+        if not interface_name:
+            interface_name = "Example"
+        
+        # 🎯 新增：尝试从项目上下文中获取API路径，构建智能包结构
+        api_path = project_context.get('current_api_path', '')
+        if api_path:
+            layer_paths_result = self._get_contextual_package_structure(optimal_project_path, api_path, project_context)
+            
+            # 🆕 检查是否已经在现有Controller中添加了接口
+            if isinstance(layer_paths_result, dict) and layer_paths_result.get('controller_interface_added'):
+                logger.info(f"✅ 接口已添加到现有Controller，跳过新文件生成")
+                return {}  # 返回空字典，表示不需要生成新文件
+            
+            layer_paths = layer_paths_result
+            logger.info(f"🎯 使用基于API路径的智能包结构: {api_path}")
+        else:
+            # 回退到默认包结构
+            package_patterns = project_context.get('package_patterns', {})
+            base_package = package_patterns.get('base_package', 'com.main')
+            package_path = base_package.replace('.', '/')
+            
+            layer_paths = {
+                'controller': f'src/main/java/{package_path}/interfaces/rest',
+                'service': f'src/main/java/{package_path}/application/service', 
+                'service_impl': f'src/main/java/{package_path}/application/service/impl',
+                'request_dto': f'src/main/java/{package_path}/interfaces/dto',
+                'response_dto': f'src/main/java/{package_path}/interfaces/dto',
+                'entity': f'src/main/java/{package_path}/domain/entity',
+                'mapper': f'src/main/java/{package_path}/domain/mapper'
+            }
+            
+            logger.info(f"📦 使用默认包结构")
+        
+        # 打印标准化后的代码类型以便调试
+        standardized_types = list(normalized_code.keys())
+        logger.info(f"📋 标准化后的代码类型: {standardized_types}")
+        
+        # 为每个生成的代码确定输出路径
+        output_paths = {}
+        
+        # 🔧 修复：遍历原始生成的代码，但使用标准化映射来确定路径
+        for original_code_type, content in generated_code.items():
+            # 找到对应的标准化类型
+            standard_type = None
+            for std_type, std_content in normalized_code.items():
+                if std_content == content:
+                    standard_type = std_type
+                    break
+            
+            # 如果没找到标准化类型，尝试通过内容分析
+            if not standard_type:
+                if '@RestController' in content or '@Controller' in content:
+                    standard_type = 'controller'
+                elif '@Service' in content and 'class' in content:
+                    # 🔧 修复：正确区分Service接口和ServiceImpl
+                    if 'implements' in content or 'ServiceImpl' in content or content.strip().endswith('Impl {'):
+                        standard_type = 'service_impl'
+                    elif 'interface' in content:
+                        standard_type = 'service'
+                    else:
+                        standard_type = 'service'  # 默认当作Service接口
+                elif ('Request' in content or 'Req' in content) and 'class' in content:
+                    standard_type = 'request_dto'
+                elif ('Response' in content or 'Resp' in content) and 'class' in content:
+                    standard_type = 'response_dto'
+                elif '@Entity' in content or '@TableName' in content or 'Entity' in content:
+                    standard_type = 'entity'
+                elif '@Mapper' in content or 'BaseMapper' in content or 'Mapper' in content:
+                    standard_type = 'mapper'
+                else:
+                    # 对于无法识别的类型，使用通用路径
+                    standard_type = 'service'  # 默认当作Service处理
+            
+            # 确定文件名
+            if standard_type == 'controller':
+                file_name = f"{interface_name}Controller.java"
+            elif standard_type == 'service':
+                file_name = f"{interface_name}Service.java"
+            elif standard_type == 'service_impl':
+                file_name = f"{interface_name}ServiceImpl.java"  # 🔧 修复：ServiceImpl使用正确的文件名
+            elif standard_type == 'request_dto':
+                file_name = f"{interface_name}Req.java"
+            elif standard_type == 'response_dto':
+                file_name = f"{interface_name}Resp.java"
+            elif standard_type == 'entity':
+                file_name = f"{interface_name}Entity.java"
+            elif standard_type == 'mapper':
+                file_name = f"{interface_name}Mapper.java"
+            else:
+                # 🔧 新增：从代码内容中提取实际类名
+                import re
+                class_match = re.search(r'public\s+(?:class|interface)\s+(\w+)', content)
+                if class_match:
+                    actual_class_name = class_match.group(1)
+                    file_name = f"{actual_class_name}.java"
+                else:
+                    file_name = f"{interface_name}Unknown.java"
+            
+            # 构建完整路径
+            if standard_type in layer_paths:
+                relative_path = layer_paths[standard_type]
+            else:
+                # 默认路径
+                package_patterns = project_context.get('package_patterns', {})
+                base_package = package_patterns.get('base_package', 'com.main')
+                package_path = base_package.replace('.', '/')
+                relative_path = f'src/main/java/{package_path}/application/service'
+            
+            full_path = project_root / relative_path / file_name
+            
+            # 🔧 修复：使用原始代码类型作为键，确保后续写入时能匹配
+            output_paths[original_code_type] = str(full_path)
+            
+            logger.info(f"📍 {original_code_type}: {file_name} -> {relative_path}")
+        
+        return output_paths
+    
+    def _find_deep_java_project_path(self, base_path: str, service_name: str = None) -> str:
+        """深度搜索Java项目路径，优先识别多模块项目的深层结构"""
+        
+        logger.info(f"🔍 在 {base_path} 中查找最佳Java项目路径...")
+        logger.info(f"🎯 目标服务名: {service_name}")
+        
+        potential_paths = []
+        search_path = Path(base_path)
+        
+        # 递归查找所有包含src/main/java的目录
+        for root, dirs, files in os.walk(search_path):
+            # 跳过隐藏目录和不相关的目录
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['target', 'build', 'out', 'bin']]
+            
+            if 'src' in dirs:
+                src_path = Path(root) / 'src'
+                java_path = src_path / 'main' / 'java'
+                
+                if java_path.exists():
+                    # 检查Java文件数量
+                    java_files_count = 0
+                    for java_file in java_path.rglob('*.java'):
+                        java_files_count += 1
+                    
+                    if java_files_count > 0:
+                        priority = self._calculate_enhanced_path_priority(root, service_name, java_files_count)
+                        relative_path = str(Path(root).relative_to(search_path)) if root != str(search_path) else "."
+                        relative_depth = len(Path(root).relative_to(search_path).parts)
+                        
+                        potential_paths.append({
+                            'path': root,
+                            'relative_path': relative_path,
+                            'java_files': java_files_count,
+                            'priority': priority,
+                            'depth': relative_depth
+                        })
+                        
+                        logger.info(f"   📁 发现Java项目: {Path(root).name}")
+                        logger.info(f"      🎯 相对路径: {relative_path}")
+                        logger.info(f"      📊 Java文件: {java_files_count}个")
+                        logger.info(f"      📐 目录深度: {relative_depth}")
+                        logger.info(f"      🏆 优先级分数: {priority}")
+        
+        if not potential_paths:
+            logger.warning(f"⚠️ 未找到Java项目结构，使用原路径: {base_path}")
+            return base_path
+        
+        # 排序：优先级高的在前面，深度作为次要排序条件
+        potential_paths.sort(key=lambda x: (x['priority'], x['depth']), reverse=True)
+        
+        # 打印排序后的候选路径（前3个）
+        logger.info(f"📋 排序后的候选路径（前3个）:")
+        for i, path_info in enumerate(potential_paths[:3]):
+            logger.info(f"   {i+1}. {path_info['relative_path']} (优先级: {path_info['priority']})")
+        
+        # 选择最佳路径
+        best_path_info = potential_paths[0]
+        best_path = best_path_info['path']
+        
+        logger.info(f"✅ 选择最佳Java项目路径:")
+        logger.info(f"   📁 完整路径: {best_path}")
+        logger.info(f"   📋 相对路径: {best_path_info['relative_path']}")
+        logger.info(f"   🏆 最终优先级: {best_path_info['priority']}")
+        
+        return best_path
+    
+    def _extract_api_path_keyword(self, api_path: str) -> str:
+        """从API路径中提取关键字（倒数第二个路径片段）"""
+        if not api_path:
+            return ""
+        
+        # 分割路径，过滤空字符串
+        path_parts = [part for part in api_path.split('/') if part.strip()]
+        
+        # 如果路径片段少于2个，返回空字符串
+        if len(path_parts) < 2:
+            return ""
+        
+        # 返回倒数第二个片段
+        keyword = path_parts[-2]
+        logger.info(f"🔍 从API路径 {api_path} 提取关键字: {keyword}")
+        return keyword
+
+    def _find_existing_path_by_keyword(self, project_path: str, keyword: str) -> str:
+        """根据关键字在项目中查找现有的相关路径结构"""
+        if not keyword:
+            return ""
+        
+        logger.info(f"🔍 在项目中搜索关键字相关路径: {keyword}")
+        
+        search_path = Path(project_path)
+        matching_paths = []
+        
+        # 递归搜索包含关键字的目录
+        for root, dirs, files in os.walk(search_path):
+            # 跳过隐藏目录和构建目录
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['target', 'build', 'out', 'bin']]
+            
+            for dir_name in dirs:
+                dir_path = Path(root) / dir_name
+                dir_name_lower = dir_name.lower()
+                keyword_lower = keyword.lower()
+                
+                # 检查目录名是否包含关键字
+                if keyword_lower in dir_name_lower or dir_name_lower in keyword_lower:
+                    # 检查这个目录下是否有Java文件
+                    java_files_found = False
+                    for java_file in dir_path.rglob('*.java'):
+                        java_files_found = True
+                        break
+                    
+                    if java_files_found:
+                        # 计算匹配得分
+                        exact_match = (dir_name_lower == keyword_lower)
+                        contains_match = keyword_lower in dir_name_lower
+                        score = 100 if exact_match else (50 if contains_match else 25)
+                        
+                        matching_paths.append({
+                            'path': str(dir_path),
+                            'dir_name': dir_name,
+                            'score': score,
+                            'relative_path': str(dir_path.relative_to(search_path))
+                        })
+                        
+                        logger.info(f"   📁 找到匹配目录: {dir_name} (得分: {score})")
+        
+        if not matching_paths:
+            logger.info(f"   ❌ 未找到包含关键字 '{keyword}' 的相关目录")
+            return ""
+        
+        # 按得分排序，选择最佳匹配
+        matching_paths.sort(key=lambda x: x['score'], reverse=True)
+        best_match = matching_paths[0]
+        
+        logger.info(f"   ✅ 选择最佳匹配目录: {best_match['dir_name']} (路径: {best_match['relative_path']})")
+        return best_match['path']
+
+    def _get_contextual_package_structure(self, project_path: str, api_path: str, project_context: Dict[str, Any]) -> Dict[str, str]:
+        """根据API路径和项目上下文获取优化的包结构路径"""
+        
+        # 获取基础包路径
+        package_patterns = project_context.get('package_patterns', {})
+        base_package = package_patterns.get('base_package', 'com.main')
+        package_path = base_package.replace('.', '/')
+        
+        # 从API路径提取关键字
+        keyword = self._extract_api_path_keyword(api_path)
+        
+        if keyword:
+            # 查找项目中是否存在相关的目录结构
+            existing_path = self._find_existing_path_by_keyword(project_path, keyword)
+            
+            if existing_path:
+                # 🆕 新增：使用Controller接口管理器处理现有Controller文件
+                try:
+                    from ...code_generator.controller_interface_manager import ControllerInterfaceManager
+                    
+                    # 初始化Controller接口管理器
+                    controller_manager = ControllerInterfaceManager(self.llm_client)
+                    
+                    # 处理API接口请求
+                    result = controller_manager.process_api_interface_request(
+                        existing_path, keyword, api_path, description=""
+                    )
+                    
+                    if result.get('success', False):
+                        logger.info(f"✅ 成功在现有Controller中添加接口: {result.get('interface_name', '')}")
+                        # 接口已成功添加到现有Controller，返回特殊标记
+                        return {
+                            'controller_interface_added': True,
+                            'interface_result': result,
+                            'message': result.get('message', ''),
+                            'skip_new_generation': True  # 跳过新文件生成
+                        }
+                    else:
+                        logger.info(f"⚠️ 未能在现有Controller中添加接口: {result.get('message', '')}")
+                        # 继续使用原有逻辑
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Controller接口管理器处理失败: {e}, 回退到原有逻辑")
+                
+                # 原有逻辑：如果找到现有路径，尝试从中提取包结构
+                existing_path_obj = Path(existing_path)
+                
+                # 寻找src/main/java路径
+                java_src_path = None
+                for parent in existing_path_obj.parents:
+                    potential_java_path = parent / 'src' / 'main' / 'java'
+                    if potential_java_path.exists():
+                        java_src_path = potential_java_path
+                        break
+                
+                if java_src_path:
+                    # 计算从java源代码目录到找到的目录的相对路径
+                    try:
+                        relative_to_java = existing_path_obj.relative_to(java_src_path)
+                        # 构建包路径
+                        contextual_package_path = str(relative_to_java).replace(os.sep, '/')
+                        
+                        logger.info(f"🎯 基于关键字 '{keyword}' 找到上下文包路径: {contextual_package_path}")
+                        
+                        # 构建层级路径
+                        layer_paths = {
+                            'controller': f'src/main/java/{contextual_package_path}/interfaces/rest',
+                            'service': f'src/main/java/{contextual_package_path}/application/service',
+                            'service_impl': f'src/main/java/{contextual_package_path}/application/service/impl',
+                            'request_dto': f'src/main/java/{contextual_package_path}/interfaces/dto',
+                            'response_dto': f'src/main/java/{contextual_package_path}/interfaces/dto',
+                            'entity': f'src/main/java/{contextual_package_path}/domain/entity',
+                            'mapper': f'src/main/java/{contextual_package_path}/domain/mapper'
+                        }
+                        
+                        return layer_paths
+                        
+                    except ValueError:
+                        logger.warning(f"⚠️ 无法计算相对路径，使用默认包结构")
+        
+        # 如果没有找到相关路径，使用默认的包结构
+        logger.info(f"📦 使用默认包结构: {package_path}")
+        layer_paths = {
+            'controller': f'src/main/java/{package_path}/interfaces/rest',
+            'service': f'src/main/java/{package_path}/application/service',
+            'service_impl': f'src/main/java/{package_path}/application/service/impl',
+            'request_dto': f'src/main/java/{package_path}/interfaces/dto',
+            'response_dto': f'src/main/java/{package_path}/interfaces/dto',
+            'entity': f'src/main/java/{package_path}/domain/entity',
+            'mapper': f'src/main/java/{package_path}/domain/mapper'
+        }
+        
+        return layer_paths
+    
+    def _build_project_structure_context(self, project_context: Dict[str, Any]) -> str:
+        """构建项目结构上下文信息"""
+        
+        package_patterns = project_context.get('package_patterns', {})
+        architecture_patterns = project_context.get('architecture_patterns', {})
+        
+        context_text = f"""
+### 包结构规范
+- 基础包名: {package_patterns.get('base_package', 'com.main')}
+- 分层风格: {architecture_patterns.get('preferred_layer_style', 'layered')}
+
+### 目录结构
+- Controller层: interfaces/rest
+- Service层: application/service  
+- Mapper层: domain/mapper
+- DTO层: interfaces/dto
+- Entity层: domain/entity
+"""
+        return context_text.strip()
+    
+    def _write_generated_code(self, generated_code: Dict[str, str], project_path: str, 
+                            service_name: str, project_context: Dict[str, Any]) -> Dict[str, str]:
+        """写入生成的代码文件，确保类名和文件名一致"""
+        
+        logger.info(f"📝 开始写入生成的代码文件...")
+        
+        # 先验证和修正代码内容，确保类名一致性
+        corrected_code = self._ensure_class_name_consistency(generated_code)
+        
+        # 确定输出路径
+        if self.llm_client:
+            output_paths = self._determine_output_paths_with_llm(corrected_code, project_path, service_name, project_context)
+        else:
+            output_paths = self._determine_output_paths_default(corrected_code, project_path, service_name, project_context)
+        
+        generated_files = {}
+        
+        for code_type, code_content in corrected_code.items():
+            if code_type in output_paths:
+                file_path = output_paths[code_type]
+                
+                try:
+                    # 确保目录存在
+                    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                    
+                    # 写入文件
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(code_content)
+                    
+                    logger.info(f"📝 已生成代码文件: {file_path}")
+                    
+                    # 验证文件是否正确写入
+                    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                        logger.info(f"✅ 文件写入验证成功: {file_path}")
+                        generated_files[code_type] = file_path
+                    else:
+                        logger.error(f"❌ 文件写入验证失败: {file_path}")
+                        
+                except Exception as e:
+                    logger.error(f"❌ 文件写入失败 {file_path}: {e}")
+        
+        logger.info(f"📊 代码生成完成，共写入 {len(generated_files)} 个文件到项目中")
+        return generated_files
+    
+    def _ensure_class_name_consistency(self, generated_code: Dict[str, str]) -> Dict[str, str]:
+        """确保所有生成代码中的类名保持一致"""
+        
+        # 提取核心接口名（去除后缀）
+        interface_name = self._extract_interface_name_from_code(generated_code)
+        logger.info(f"🔧 统一类名基础: {interface_name}")
+        
+        corrected_code = {}
+        
+        for code_type, content in generated_code.items():
+            try:
+                corrected_content = self._fix_class_names_in_content(content, interface_name, code_type)
+                corrected_code[code_type] = corrected_content
+                
+                # 验证修正结果
+                import re
+                class_matches = re.findall(r'public\s+class\s+(\w+)', corrected_content)
+                if class_matches:
+                    logger.info(f"✅ {code_type} 类名: {class_matches[0]}")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ 修正 {code_type} 类名失败: {e}, 使用原内容")
+                corrected_code[code_type] = content
+        
+        return corrected_code
+    
+    def _fix_class_names_in_content(self, content: str, interface_name: str, code_type: str) -> str:
+        """修正代码内容中的类名"""
+        
+        import re
+        
+        # 根据代码类型确定目标类名
+        if 'controller' in code_type.lower():
+            target_class_name = f"{interface_name}Controller"
+            service_class_name = f"{interface_name}Service"
+            
+            # 修正Controller类名
+            content = re.sub(r'public\s+class\s+\w+Controller', f'public class {target_class_name}', content)
+            
+            # 修正Service注入的类名  
+            content = re.sub(r'private\s+\w+Service\s+\w+Service;', f'private {service_class_name} {interface_name.lower()}Service;', content)
+            content = re.sub(r'@Autowired\s+private\s+\w+Service\s+\w+;', f'@Autowired\n    private {service_class_name} {interface_name.lower()}Service;', content)
+            
+        elif 'service' in code_type.lower():
+            target_class_name = f"{interface_name}Service"
+            mapper_class_name = f"{interface_name}Mapper"
+            
+            # 修正Service类名
+            content = re.sub(r'public\s+class\s+\w+Service', f'public class {target_class_name}', content)
+            content = re.sub(r'public\s+interface\s+\w+Service', f'public interface {target_class_name}', content)
+            
+            # 修正Mapper注入的类名
+            content = re.sub(r'private\s+\w+Mapper\s+\w+Mapper;', f'private {mapper_class_name} {interface_name.lower()}Mapper;', content)
+            content = re.sub(r'@Autowired\s+private\s+\w+Mapper\s+\w+;', f'@Autowired\n    private {mapper_class_name} {interface_name.lower()}Mapper;', content)
+            
+        elif 'mapper' in code_type.lower():
+            target_class_name = f"{interface_name}Mapper"
+            content = re.sub(r'public\s+interface\s+\w+Mapper', f'public interface {target_class_name}', content)
+            
+        elif 'dto' in code_type.lower() or 'request' in code_type.lower():
+            if 'request' in code_type.lower():
+                target_class_name = f"{interface_name}Req"
+            else:
+                target_class_name = f"{interface_name}Resp"
+            content = re.sub(r'public\s+class\s+\w+(Req|Request|Resp|Response|DTO|Dto)', f'public class {target_class_name}', content)
+            
+        elif 'entity' in code_type.lower():
+            target_class_name = f"{interface_name}Entity"
+            content = re.sub(r'public\s+class\s+\w+(Entity)?', f'public class {target_class_name}', content)
+        
+        return content
+    
+    def _convert_service_class_to_interface(self, service_class_content: str) -> str:
+        """将Service类转换为Service接口"""
+        
+        try:
+            import re
+            
+            # 提取类名
+            class_match = re.search(r'public\s+class\s+(\w+)(?:Service)?\s*(?:implements\s+\w+\s*)?{', service_class_content)
+            if not class_match:
+                logger.error("❌ 无法提取Service类名")
+                return None
+            
+            class_name = class_match.group(1)
+            if not class_name.endswith('Service'):
+                class_name += 'Service'
+            
+            # 提取包名
+            package_match = re.search(r'package\s+([\w.]+);', service_class_content)
+            package_name = package_match.group(1) if package_match else 'com.example.service'
+            
+            # 提取公共方法签名（去除实现）
+            methods = []
+            # 匹配公共方法，但排除构造方法
+            method_pattern = r'public\s+(?!class)([^{]+)\s*{'
+            for method_match in re.finditer(method_pattern, service_class_content, re.MULTILINE):
+                method_signature = method_match.group(1).strip()
+                
+                # 跳过构造方法和getter/setter
+                if (class_name.replace('Service', '') not in method_signature and 
+                    not any(keyword in method_signature.lower() for keyword in ['get', 'set']) and
+                    not method_signature.startswith('static')):
+                    methods.append(f"    {method_signature};")
+            
+            # 提取import语句
+            imports = re.findall(r'import\s+([^;]+);', service_class_content)
+            import_statements = []
+            for imp in imports:
+                if not imp.startswith('org.springframework.stereotype.Service'):
+                    import_statements.append(f"import {imp};")
+            
+            import_section = '\n'.join(import_statements) if import_statements else ""
+            
+            # 生成Service接口
+            service_interface = f"""package {package_name};
+
+{import_section}
+
+/**
+ * {class_name} - 业务服务接口
+ * 自动从Service类转换生成
+ */
+public interface {class_name} {{
+
+{chr(10).join(methods)}
+
+}}"""
+            
+            logger.info(f"✅ 成功转换Service类为接口: {class_name}")
+            return service_interface
+            
+        except Exception as e:
+            logger.error(f"❌ 转换Service类为接口失败: {e}")
+            return None
+    
+    def _convert_service_class_to_impl(self, service_class_content: str) -> str:
+        """将Service类转换为ServiceImpl实现类"""
+        
+        try:
+            import re
+            
+            # 提取类名
+            class_match = re.search(r'public\s+class\s+(\w+)(?:Service)?\s*(?:implements\s+\w+\s*)?{', service_class_content)
+            if not class_match:
+                logger.error("❌ 无法提取Service类名")
+                return None
+            
+            class_name = class_match.group(1)
+            if not class_name.endswith('Service'):
+                class_name += 'Service'
+            
+            service_impl_name = class_name + 'Impl'
+            
+            # 修改类声明
+            modified_content = re.sub(
+                r'public\s+class\s+\w+(?:Service)?\s*(?:implements\s+\w+\s*)?{',
+                f'public class {service_impl_name} implements {class_name} {{',
+                service_class_content
+            )
+            
+            # 确保有@Service注解
+            if '@Service' not in modified_content:
+                # 在package声明后添加@Service注解
+                modified_content = re.sub(
+                    r'(package\s+[^;]+;\s*\n)',
+                    r'\1\nimport org.springframework.stereotype.Service;\n',
+                    modified_content
+                )
+                
+                # 在类声明前添加@Service注解
+                modified_content = re.sub(
+                    r'(public\s+class\s+' + service_impl_name + ')',
+                    r'@Service\n\1',
+                    modified_content
+                )
+            
+            logger.info(f"✅ 成功转换Service类为实现类: {service_impl_name}")
+            return modified_content
+            
+        except Exception as e:
+            logger.error(f"❌ 转换Service类为实现类失败: {e}")
+            return None
+    
+    def _calculate_enhanced_path_priority(self, path: str, service_name: str, java_files_count: int) -> int:
+        """增强的路径优先级计算"""
+        priority = 0
+        path_str = str(path).lower()
+        path_parts = Path(path).parts
+        
+        # 基础分数：Java文件数量
+        priority += java_files_count
+        
+        # 服务名精确匹配（最高优先级）
+        if service_name:
+            service_clean = service_name.lower().replace('服务', '').replace('-service', '').replace('_service', '')
+            service_keywords = service_clean.split('-')
+            
+            for keyword in service_keywords:
+                if keyword and keyword in path_str:
+                    priority += 200  # 大幅加分
+                    logger.info(f"   🎯 服务名关键词匹配: {keyword} -> +200")
+        
+        # 深度优先：更深的目录结构通常是具体的服务模块
+        depth = len(path_parts)
+        if depth >= 8:  # 很深的目录结构
+            priority += 150
+            logger.info(f"   📐 深层目录结构 (深度{depth}) -> +150")
+        elif depth >= 6:  # 中等深度
+            priority += 100
+            logger.info(f"   📐 中等深度结构 (深度{depth}) -> +100")
+        
+        # 具体服务模块目录名匹配
+        service_module_indicators = [
+            'basic-service', 'user-basic-service', 'basic-general', 
+            'user-basic-general', 'service', 'api', 'web', 'rest'
+        ]
+        for indicator in service_module_indicators:
+            if indicator in path_str:
+                priority += 80
+                logger.info(f"   📦 服务模块匹配: {indicator} -> +80")
+        
+        # 业务域匹配
+        business_domains = [
+            'user', 'basic', 'general', 'common', 'core',
+            'order', 'payment', 'product', 'manage', 'admin'
+        ]
+        for domain in business_domains:
+            if domain in path_str:
+                priority += 50
+                logger.info(f"   🏢 业务域匹配: {domain} -> +50")
+        
+        # 路径包含关键架构层级目录
+        architecture_indicators = [
+            'interfaces', 'application', 'domain', 'infrastructure',
+            'controller', 'service', 'mapper', 'entity', 'dto'
+        ]
+        
+        # 检查是否存在标准的架构目录
+        src_java_path = Path(path) / 'src' / 'main' / 'java'
+        if src_java_path.exists():
+            for arch_dir in architecture_indicators:
+                if any(arch_dir in str(p) for p in src_java_path.rglob('*') if p.is_dir()):
+                    priority += 30
+                    logger.info(f"   🏗️ 架构层级匹配: {arch_dir} -> +30")
+                    break  # 避免重复计分
+        
+        # 避免选择根目录或过于通用的目录
+        if len(path_parts) <= 4:
+            priority -= 50
+            logger.info(f"   ⚠️ 目录层级过浅 -> -50")
+        
+        # 避免选择包含测试、示例等的目录
+        test_indicators = ['test', 'example', 'demo', 'sample', 'template']
+        for test_indicator in test_indicators:
+            if test_indicator in path_str:
+                priority -= 30
+                logger.info(f"   🚫 测试/示例目录: {test_indicator} -> -30")
+        
+        return max(priority, 0)  # 确保优先级不为负数
+
+
 
 
 async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:

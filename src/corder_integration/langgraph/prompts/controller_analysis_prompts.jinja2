@@ -1,0 +1,161 @@
+# Controller接口分析提示词模板
+
+## 基础分析模板
+```jinja2
+# Controller接口分析
+
+## 分析目标
+- 接口名称: {{ interface_name }}
+- API路径: {{ api_path }}
+- HTTP方法: {{ http_method }}
+
+## Controller文件信息
+- 文件路径: {{ controller_info.file_path }}
+- 类名: {{ controller_info.class_name }}
+- @RequestMapping: {{ controller_info.request_mapping }}
+
+## 现有Service依赖
+{% if controller_info.services %}
+{% for service in controller_info.services %}
+- {{ service.type }}: {{ service.variable }} ({{ service.injection_type }})
+{% endfor %}
+{% else %}
+- 无现有Service依赖
+{% endif %}
+
+## 分析要求
+1. 分析Controller中现有接口的业务模式
+2. 判断新接口是否与现有业务逻辑相关
+3. 确定最佳的实现方案
+
+请提供详细的分析结果和建议。
+```
+
+## Service决策模板
+```jinja2
+# Service实现决策分析
+
+## 接口信息
+- 接口名称: {{ interface_name }}
+- API路径: {{ api_path }}
+- 接口描述: {{ description }}
+
+## Controller分析结果
+- Controller类: {{ controller_info.class_name }}
+- 现有Service数量: {{ controller_info.services|length }}
+
+{% if controller_info.services %}
+### 现有Service依赖:
+{% for service in controller_info.services %}
+- **{{ service.type }}**
+  - 变量名: {{ service.variable }}
+  - 注入方式: {{ service.injection_type }}
+{% endfor %}
+{% endif %}
+
+## 项目Service扫描结果
+{% if project_services %}
+{% for service in project_services[:5] %}
+- **{{ service.class_name }}**
+  - 包名: {{ service.package_name }}
+  - 方法: {{ service.methods|join(', ') }}
+{% endfor %}
+{% else %}
+- 项目中未发现相关Service文件
+{% endif %}
+
+## 决策问题
+1. 新接口{{ interface_name }}应该使用哪个Service来实现？
+2. 是否需要创建新的Service类？
+3. 如果修改现有Service，应该选择哪一个？
+
+## 决策标准
+- 业务逻辑相关性
+- 代码复用性
+- 维护性考虑
+- 架构一致性
+
+请根据以上信息做出最佳决策并说明理由。
+```
+
+## 接口添加模板
+```jinja2
+# 在现有Controller中添加新接口
+
+## 目标Controller
+- 文件: {{ controller_info.file_path }}
+- 类名: {{ controller_info.class_name }}
+
+## 新接口规格
+- 接口名称: {{ interface_name }}
+- HTTP方法: {{ http_method }}
+- 映射路径: /{{ interface_name }}
+- 接口描述: {{ description }}
+
+## 参数设计
+{% if http_method in ['POST', 'PUT'] %}
+- 请求体: {{ interface_name|title }}Req
+- 响应体: {{ interface_name|title }}Resp
+{% else %}
+- 查询参数: Map<String, Object>
+- 响应体: {{ interface_name|title }}Resp
+{% endif %}
+
+## Service调用
+{% if selected_service %}
+- 使用Service: {{ selected_service.type }}
+- 调用方法: {{ selected_service.variable }}.{{ interface_name }}()
+{% else %}
+- 需要创建新Service: {{ interface_name|title }}Service
+{% endif %}
+
+## 实现要求
+1. 添加必要的import语句
+2. 生成标准的REST接口方法
+3. 包含异常处理逻辑
+4. 添加日志记录
+5. 保持代码风格一致
+
+请生成完整的接口方法代码。
+```
+
+## 错误处理模板
+```jinja2
+# Controller接口错误处理
+
+## 错误场景分析
+- 接口名称: {{ interface_name }}
+- 可能错误类型:
+  {% for error_type in error_types %}
+  - {{ error_type.name }}: {{ error_type.description }}
+  {% endfor %}
+
+## 异常处理策略
+```java
+try {
+    {{ return_type }} result = {{ service_call }};
+    return ResponseEntity.ok(result);
+} catch (BusinessException e) {
+    logger.error("业务异常: {}", e.getMessage());
+    return ResponseEntity.badRequest().body(e.getMessage());
+} catch (ValidationException e) {
+    logger.error("参数验证失败: {}", e.getMessage());
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
+} catch (Exception e) {
+    logger.error("处理{{ interface_name }}请求失败", e);
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+}
+```
+
+## 日志记录策略
+```java
+// 请求日志
+logger.info("开始处理{{ interface_name }}请求: {}", params);
+
+// 成功日志  
+logger.info("{{ interface_name }}请求处理成功");
+
+// 错误日志
+logger.error("{{ interface_name }}请求处理失败: {}", e.getMessage(), e);
+```
+``` 

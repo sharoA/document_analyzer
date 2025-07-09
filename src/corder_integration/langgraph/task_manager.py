@@ -92,18 +92,28 @@ class NodeTaskManager:
                 executable_tasks = []
                 
                 for row in cursor.fetchall():
+                    # 安全解析JSON字段
+                    def safe_json_loads(json_str, default_value):
+                        try:
+                            if not json_str:
+                                return default_value
+                            return json.loads(json_str)
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"⚠️ JSON解析失败，使用默认值: {e}")
+                            return default_value
+                    
                     task = {
                         'task_id': row[0],
                         'service_name': row[1],
                         'task_type': row[2],
                         'priority': row[3],
-                        'dependencies': json.loads(row[4] or '[]'),
+                        'dependencies': safe_json_loads(row[4], []),
                         'estimated_duration': row[5],
                         'description': row[6],
-                        'deliverables': json.loads(row[7] or '[]'),
+                        'deliverables': safe_json_loads(row[7], []),
                         'implementation_details': row[8],
                         'completion_criteria': row[9],
-                        'parameters': json.loads(row[10] or '{}'),
+                        'parameters': safe_json_loads(row[10], {}),
                         'status': row[11]
                     }
                     all_tasks.append(task)
@@ -151,14 +161,13 @@ class NodeTaskManager:
                     logger.warning(f"⚠️ 任务 {task_id} 状态为 {result[0]}，无法领取")
                     return False
                 
-                # 更新任务状态为in_progress，记录执行节点
+                # 更新任务状态为in_progress
                 cursor.execute("""
                     UPDATE execution_tasks 
                     SET status = 'in_progress', 
-                        updated_at = CURRENT_TIMESTAMP,
-                        parameters = json_set(COALESCE(parameters, '{}'), '$.executor', ?)
+                        updated_at = CURRENT_TIMESTAMP
                     WHERE task_id = ?
-                """, (node_name, task_id))
+                """, (task_id,))
                 
                 logger.info(f"✅ 任务 {task_id} 已被 {node_name} 领取")
                 return True
@@ -186,7 +195,12 @@ class NodeTaskManager:
                     result = cursor.fetchone()
                     
                     if result:
-                        current_params = json.loads(result[0] or '{}')
+                        try:
+                            current_params = json.loads(result[0] or '{}')
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"⚠️ 解析现有参数失败，使用空字典: {e}")
+                            current_params = {}
+                        
                         # 合并结果数据
                         current_params.update(result_data)
                         
