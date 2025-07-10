@@ -159,20 +159,31 @@ class TemplateAIGenerator:
                 {"role": "user", "content": enhancement_prompt}
             ]
             
-            response = self.llm_client.chat_completion(
+            response = self.llm_client.chat(
                 messages=messages,
                 temperature=0.1,
                 max_tokens=2000
             )
             
-            if response and 'choices' in response and len(response['choices']) > 0:
-                enhanced_code = response['choices'][0]['message']['content'].strip()
+            if response:
+                # 兼容不同LLM客户端的响应格式
+                enhanced_code = ""
+                if isinstance(response, str):
+                    enhanced_code = response.strip()
+                elif isinstance(response, dict) and 'choices' in response and len(response['choices']) > 0:
+                    enhanced_code = response['choices'][0]['message']['content'].strip()
+                elif hasattr(response, 'content'):
+                    enhanced_code = response.content.strip()
                 
-                # 提取代码块
-                enhanced_code = self._extract_code_block(enhanced_code)
-                
-                logger.info(f"✅ {code_type} AI增强完成")
-                return enhanced_code
+                if enhanced_code:
+                    # 提取代码块
+                    enhanced_code = self._extract_code_block(enhanced_code)
+                    
+                    logger.info(f"✅ {code_type} AI增强完成")
+                    return enhanced_code
+                else:
+                    logger.warning(f"⚠️ {code_type} AI响应格式无法解析，使用原始模板")
+                    return template_code
             else:
                 logger.warning(f"⚠️ {code_type} AI响应为空，使用原始模板")
                 return template_code

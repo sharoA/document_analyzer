@@ -213,8 +213,15 @@ class JavaTemplateManager:
     
     def _build_custom_mapper_methods(self, interface_name: str, input_params: List[Dict]) -> str:
         """构建自定义Mapper方法"""
+        # 计算实体名称，去除常见后缀
+        entity_name = interface_name
+        for suffix in ['Controller', 'Service', 'Impl', 'Mapper']:
+            if entity_name.endswith(suffix):
+                entity_name = entity_name[:-len(suffix)]
+                break
+        
         if not input_params:
-            return f"List<{{{{ENTITY_NAME}}}}> select{interface_name}List();"
+            return f"List<{entity_name}> select{interface_name}List();"
         
         # 构建参数列表
         param_list = []
@@ -225,7 +232,7 @@ class JavaTemplateManager:
         
         params_str = ', '.join(param_list)
         
-        return f"""List<{{{{ENTITY_NAME}}}}> select{interface_name}List({params_str});"""
+        return f"""List<{entity_name}> select{interface_name}List({params_str});"""
     
     def _map_java_type(self, param_type: str) -> str:
         """映射Java类型"""

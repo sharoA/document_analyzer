@@ -8,17 +8,14 @@ import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-# 导入现有的智能编码功能
+# 智能编码功能通过IntelligentCodingAgent类提供，避免循环导入
 try:
-    from ..langgraph.nodes.intelligent_coding_node import (
-        generate_single_service,
-        write_service_files,
-        generate_service_interconnections
-    )
+    from ..langgraph.nodes.intelligent_coding_node import IntelligentCodingAgent
     INTELLIGENT_CODING_AVAILABLE = True
 except ImportError as e:
     logging.warning(f"智能编码节点不可用: {e}")
     INTELLIGENT_CODING_AVAILABLE = False
+    IntelligentCodingAgent = None
 
 from .traditional_code_generator import TraditionalCodeGenerator
 
@@ -119,40 +116,32 @@ class UnifiedCodeGenerator:
                 "execution_errors": []
             }
             
-            # 🎯 为每个服务使用AI智能生成代码
-            for service_name in services:
-                logger.info(f"🧠 AI正在分析并生成服务: {service_name}")
-                
-                try:
-                    result = await generate_single_service(service_name, state)
-                    
-                    if result.get("success"):
-                        state["completed_services"].append(service_name)
-                        state["generated_services"][service_name] = result["generated_code"]
-                        state["generated_apis"][service_name] = result["api_endpoints"]
-                        if "sql_statements" in result:
-                            state["generated_sql"][service_name] = result["sql_statements"]
-                        logger.info(f"✅ AI成功生成服务: {service_name}")
-                    else:
-                        state["failed_services"].append(service_name)
-                        error_msg = result.get('error', 'Unknown error')
-                        state["execution_errors"].append(f"{service_name}: {error_msg}")
-                        logger.error(f"❌ AI生成服务 {service_name} 失败: {error_msg}")
-                        
-                except Exception as e:
-                    logger.error(f"🚨 AI生成服务 {service_name} 异常: {e}")
-                    state["failed_services"].append(service_name)
-                    state["execution_errors"].append(f"{service_name}: {str(e)}")
+            # 🎯 使用IntelligentCodingAgent执行数据库中的任务
+            coding_agent = IntelligentCodingAgent()
             
-            # 🌐 生成服务间调用代码（如果有多个服务成功生成）
-            if len(state["completed_services"]) > 1:
-                logger.info("🔗 AI正在生成服务间调用代码...")
-                try:
-                    await generate_service_interconnections(state)
-                    logger.info("✅ 服务间调用代码生成完成")
-                except Exception as e:
-                    logger.error(f"⚠️ 服务间调用代码生成失败: {e}")
-                    state["execution_errors"].append(f"服务互联生成失败: {str(e)}")
+            # 执行所有可用的任务
+            logger.info("🧠 AI正在执行数据库中的编码任务...")
+            task_results = coding_agent.execute_task_from_database()
+            
+            if task_results:
+                for task_result in task_results:
+                    if task_result.get("success"):
+                        # 从任务结果中提取服务信息
+                        if 'service_name' in task_result.get('result', {}):
+                            service_name = task_result['result']['service_name']
+                            if service_name not in state["completed_services"]:
+                                state["completed_services"].append(service_name)
+                            state["generated_services"][service_name] = task_result.get('result', {})
+                            logger.info(f"✅ AI成功生成服务: {service_name}")
+                        else:
+                            # 通用任务成功
+                            logger.info(f"✅ AI成功执行任务: {task_result.get('task_type', 'unknown')}")
+                    else:
+                        error_msg = task_result.get('message', 'Unknown error')
+                        state["execution_errors"].append(f"任务执行失败: {error_msg}")
+                        logger.error(f"❌ AI任务执行失败: {error_msg}")
+            else:
+                logger.warning("⚠️ 没有找到可执行的编码任务，可能需要先执行任务拆分")
             
             # 📊 生成结果统计
             success_count = len(state["completed_services"])

@@ -47,17 +47,33 @@ class IntelligentCodingAgent:
         self.llm_client = None
         self.llm_provider = None
         
-        # 直接读取配置文件
+        # 直接读取配置文件 - 使用绝对路径
         import yaml
         import os
         config = {}
-        try:
-            if os.path.exists('config.yaml'):
-                with open('config.yaml', 'r', encoding='utf-8') as f:
-                    config = yaml.safe_load(f)
-                logger.info("✅ 成功加载配置文件")
-        except Exception as e:
-            logger.warning(f"⚠️ 加载配置文件失败: {e}")
+        
+        # 尝试多个可能的配置文件路径
+        config_paths = [
+            'config.yaml',
+            os.path.join(os.getcwd(), 'config.yaml'),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../../config.yaml'),
+            'D:/ai_project/document_analyzer/config.yaml'
+        ]
+        
+        config_loaded = False
+        for config_path in config_paths:
+            try:
+                if os.path.exists(config_path):
+                    with open(config_path, 'r', encoding='utf-8') as f:
+                        config = yaml.safe_load(f) or {}
+                    logger.info(f"✅ 成功加载配置文件: {config_path}")
+                    config_loaded = True
+                    break
+            except Exception as e:
+                logger.warning(f"⚠️ 加载配置文件失败 {config_path}: {e}")
+        
+        if not config_loaded:
+            logger.error(f"❌ 所有配置文件路径都加载失败: {config_paths}")
         
         # 优先使用火山引擎
         if config and config.get('volcengine', {}).get('api_key'):
@@ -72,20 +88,28 @@ class IntelligentCodingAgent:
                 )
                 self.llm_client = VolcengineClient(volcengine_config)
                 self.llm_provider = "volcengine"
-                logger.info("✅ 使用火山引擎LLM客户端（从配置文件）")
+                logger.info(f"✅ 使用火山引擎LLM客户端：{config['volcengine']['model']}")
             except Exception as e:
-                logger.warning(f"⚠️ 火山引擎初始化失败: {e}")
+                logger.error(f"❌ 火山引擎初始化失败: {e}")
+                import traceback
+                logger.error(f"❌ 详细错误: {traceback.format_exc()}")
         
         # fallback到openai
         if not self.llm_client and config and config.get('openai', {}).get('api_key'):
             try:
+                from src.utils.openai_client import OpenAIClient
                 self.llm_client = OpenAIClient()
                 self.llm_provider = "openai"
                 logger.info("✅ 使用OpenAI LLM客户端")
             except Exception as e2:
-                logger.error(f"❌ LLM客户端初始化失败: volcengine={e}, openai={e2}")
-                self.llm_client = None
-                self.llm_provider = None
+                logger.error(f"❌ OpenAI客户端初始化失败: {e2}")
+                
+        # 最终检查
+        if not self.llm_client:
+            logger.error("❌ 所有LLM客户端初始化都失败！将无法执行代码生成任务")
+            self.llm_provider = "none"
+        else:
+            logger.info(f"✅ LLM客户端初始化成功: {self.llm_provider}")
         
         # 🆕 初始化模板+AI代码生成器
         self.template_ai_generator = TemplateAIGenerator(self.llm_client)

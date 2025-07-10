@@ -113,6 +113,15 @@ class TaskSplittingPrompts:
             "generate_sqlite_tasks": """你是任务管理专家。生成SQLite任务，输出JSON格式结果。
 执行计划: {execution_plan}
 服务概要: {services_summary}
+基础项目路径: {base_project_path}
+
+**路径一致性要求：**
+- git_clone任务的local_path: {base_project_path}/服务目录名
+- code_analysis任务的project_path: {base_project_path}/服务目录名
+- api任务的project_path: {base_project_path}/服务目录名
+- config任务的config_file: {base_project_path}/服务目录名/配置文件路径
+- deployment任务的path: {base_project_path}/服务目录名
+- **所有路径字段必须使用完全相同的基础路径格式**
 
 请输出JSON格式的任务列表：
 {{
@@ -120,12 +129,43 @@ class TaskSplittingPrompts:
     {{
       "task_id": "task_001",
       "service_name": "服务名称",
-      "task_type": "code_generation",
+      "task_type": "git_clone",
       "priority": 1,
       "dependencies": [],
-      "estimated_duration": "30分钟",
+      "estimated_duration": "10分钟",
       "description": "任务描述",
-      "parameters": {{}}
+      "parameters": {{
+        "git_url": "仓库地址",
+        "local_path": "{base_project_path}/服务目录名"
+      }}
+    }},
+    {{
+      "task_id": "task_002",
+      "service_name": "服务名称",
+      "task_type": "code_analysis",
+      "priority": 2,
+      "dependencies": ["task_001"],
+      "estimated_duration": "20分钟",
+      "description": "代码分析任务描述",
+      "parameters": {{
+        "project_path": "{base_project_path}/服务目录名",
+        "target_controller": "ControllerName",
+        "target_api": "/api/path"
+      }}
+    }},
+    {{
+      "task_id": "task_003",
+      "service_name": "服务名称",
+      "task_type": "api",
+      "priority": 3,
+      "dependencies": ["task_002"],
+      "estimated_duration": "30分钟",
+      "description": "API任务描述",
+      "parameters": {{
+        "project_path": "{base_project_path}/服务目录名",
+        "api_path": "/api/path",
+        "http_method": "GET"
+      }}
     }}
   ],
   "summary": "任务生成概要"
@@ -674,6 +714,12 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
     logger.info(f"📄 设计文档长度: {len(state.get('design_doc', ''))}")
     logger.info(f"🔄 当前阶段: {state.get('current_phase', 'unknown')}")
     
+    # 🔧 计算项目路径，与git_management_node保持一致
+    output_path = state.get('output_path', 'D:/gitlab')
+    project_name = state.get('project_name', 'unknown_project')
+    base_project_path = f"{output_path}/{project_name}"
+    logger.info(f"📁 计算的基础项目路径: {base_project_path}")
+    
     # 初始化组件
     if not VOLCENGINE_AVAILABLE:
         logger.error("❌ 火山引擎客户端不可用")
@@ -862,46 +908,14 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
                     "generate_sqlite_tasks",
                     execution_plan=window["content"],
                     services_summary=services_summary,
-                    context_window=window_manager.get_context_window()
+                    context_window=window_manager.get_context_window(),
+                    base_project_path=base_project_path
                 )
-                
-                # 🔧 增强提示词，确保API任务包含详细设计信息
-                enhanced_prompt = f"""
-{task_generation_prompt}
-
-**严格要求：对于api类型的任务，parameters字段必须严格按照以下结构生成：**
-{{
-  "project_path": "完整项目路径，如 D:/gitlab/create_project/项目名",
-  "api_path": "完整API路径，如 /api/service/method",
-  "http_method": "HTTP方法（GET/POST/PUT/DELETE）",
-  "content_type": "数据格式（application/json）",
-  "request_params": {{
-    "参数名1": "参数说明(必填/可选)",
-    "参数名2": "参数说明(必填/可选)"
-  }},
-  "response_params": {{
-    "字段名1": "字段说明",
-    "字段名2": "字段说明"
-  }},
-  "business_logic": "详细的业务逻辑描述",
-  "data_source": "数据来源和获取方式",
-  "validation_rules": {{
-    "参数名1": "校验规则描述",
-    "参数名2": "校验规则描述"
-  }}
-}}
-
-**注意：**
-1. project_path必须是完整的项目路径
-2. api_path必须是从设计文档中提取的真实API路径
-3. request_params和response_params必须根据设计文档的实际内容填写
-4. 不要添加executor等额外字段
-5. 结构必须与上述模板完全一致！"""
                 
                 task_result = client.chat(
                     messages=[
-                        {"role": "system", "content": f"你是任务管理专家。正在处理第 {window['window_id']}/{total_windows} 个执行计划片段。对于api类型任务，必须严格按照指定的parameters结构模板生成，不能有任何偏差！所有字段名称、层级结构必须完全一致。"},
-                        {"role": "user", "content": enhanced_prompt}
+                        {"role": "system", "content": f"你是任务管理专家。正在处理第 {window['window_id']}/{total_windows} 个执行计划片段。请严格按照模板格式生成任务，特别注意git_clone和api任务的路径一致性。"},
+                        {"role": "user", "content": task_generation_prompt}
                     ],
                     temperature=0.1
                 )
@@ -919,46 +933,14 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 "generate_sqlite_tasks",
                 execution_plan=execution_plan_text,
                 services_summary=services_summary,
-                context_window=window_manager.get_context_window()
+                context_window=window_manager.get_context_window(),
+                base_project_path=base_project_path
             )
-            
-            # 🔧 增强提示词，确保API任务包含详细设计信息
-            enhanced_prompt = f"""
-{task_generation_prompt}
-
-**严格要求：对于api类型的任务，parameters字段必须严格按照以下结构生成：**
-{{
-  "project_path": "完整项目路径，如 D:/gitlab/create_project/项目名",
-  "api_path": "完整API路径，如 /api/service/method",
-  "http_method": "HTTP方法（GET/POST/PUT/DELETE）",
-  "content_type": "数据格式（application/json）",
-  "request_params": {{
-    "参数名1": "参数说明(必填/可选)",
-    "参数名2": "参数说明(必填/可选)"
-  }},
-  "response_params": {{
-    "字段名1": "字段说明",
-    "字段名2": "字段说明"
-  }},
-  "business_logic": "详细的业务逻辑描述",
-  "data_source": "数据来源和获取方式",
-  "validation_rules": {{
-    "参数名1": "校验规则描述",
-    "参数名2": "校验规则描述"
-  }}
-}}
-
-**注意：**
-1. project_path必须是完整的项目路径
-2. api_path必须是从设计文档中提取的真实API路径
-3. request_params和response_params必须根据设计文档的实际内容填写
-4. 不要添加executor等额外字段
-5. 结构必须与上述模板完全一致！"""
             
             task_result = client.chat(
                 messages=[
-                    {"role": "system", "content": "你是任务管理专家。对于api类型任务，必须严格按照指定的parameters结构模板生成，不能有任何偏差！所有字段名称、层级结构必须完全一致。"},
-                    {"role": "user", "content": enhanced_prompt}
+                    {"role": "system", "content": "你是任务管理专家。请严格按照模板格式生成任务，特别注意git_clone和api任务的路径一致性。"},
+                    {"role": "user", "content": task_generation_prompt}
                 ],
                 temperature=0.1
             )
