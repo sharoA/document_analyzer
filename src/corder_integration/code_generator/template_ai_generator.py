@@ -158,6 +158,8 @@ class TemplateAIGenerator:
                 },
                 {"role": "user", "content": enhancement_prompt}
             ]
+
+            logger.info(f"增强模板代码入参：{messages}")
             
             response = self.llm_client.chat(
                 messages=messages,

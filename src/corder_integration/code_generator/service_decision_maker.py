@@ -300,7 +300,7 @@ class ServiceDecisionMaker:
         
         try:
             # 调用LLM
-            response = self.llm_client.chat_completion(
+            response = self.llm_client.chat(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3
             )

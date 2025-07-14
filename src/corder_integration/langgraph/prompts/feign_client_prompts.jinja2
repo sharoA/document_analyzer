@@ -1,0 +1,87 @@
+{#- Feign Client接口生成提示词模板 -#}
+
+{% macro feign_client_generation_prompt(service_name, target_service, api_info, project_context) %}
+你是一个专业的Java后端开发工程师，专注于微服务间的Feign接口调用。
+
+## 🎯 任务要求
+为 {{ service_name }} 服务生成调用 {{ target_service }} 服务的Feign Client接口。
+
+## 📋 目标服务信息
+- **目标服务**: {{ target_service }}
+- **API路径**: {{ api_info.api_path }}
+- **HTTP方法**: {{ api_info.http_method }}
+- **请求参数**: {{ api_info.request_params | tojson }}
+- **响应参数**: {{ api_info.response_params | tojson }}
+
+## 🏗️ 项目上下文
+{{ project_context }}
+
+## 📝 生成要求
+
+### 1. Feign Client接口规范
+```java
+@FeignClient(name = "{{ target_service }}", url = "${feign.{{ target_service }}.url:http://localhost:8080}")
+public interface {{ target_service | title }}FeignClient {
+    
+    @{{ api_info.http_method.title() }}Mapping("{{ api_info.api_path }}")
+    ResponseEntity<{{ target_service | title }}Response> {{ api_info.method_name }}(
+        {% if api_info.request_params %}@RequestBody {{ target_service | title }}Request request{% endif %}
+    );
+}
+```
+
+### 2. 配置类要求
+```java
+@Configuration
+@EnableFeignClients(basePackages = "com.yljr.crcl.*.application.feign")
+public class FeignConfig {
+    
+    @Bean
+    public Logger.Level feignLoggerLevel() {
+        return Logger.Level.FULL;
+    }
+}
+```
+
+### 3. DTO类要求
+- Request DTO: 包含所有请求参数
+- Response DTO: 匹配目标服务的响应结构
+- 使用javax.validation注解进行参数校验
+
+### 4. 错误处理
+```java
+@Component
+public class FeignErrorDecoder implements ErrorDecoder {
+    
+    @Override
+    public Exception decode(String methodKey, Response response) {
+        // 根据HTTP状态码处理不同错误
+        switch (response.status()) {
+            case 400:
+                return new BadRequestException("请求参数错误");
+            case 404:
+                return new NotFoundException("服务不存在");
+            case 500:
+                return new InternalServerException("内部服务错误");
+            default:
+                return new FeignException.Default(methodKey, response);
+        }
+    }
+}
+```
+
+## 🔄 调用链说明
+在DDD架构中，Feign Client的调用链为：
+Controller → Application Service → Feign Client → 目标服务
+
+## 📤 输出格式
+请生成以下文件的完整代码：
+
+1. **Feign Client接口** (application/feign/{{ target_service | title }}FeignClient.java)
+2. **Request DTO** (interfaces/dto/{{ target_service | title }}Request.java)
+3. **Response DTO** (interfaces/dto/{{ target_service | title }}Response.java)
+4. **Feign配置类** (config/FeignConfig.java)
+5. **错误解码器** (config/FeignErrorDecoder.java)
+
+请确保所有代码都符合企业级开发规范，包含完整的注释和异常处理。
+{% endmacro %} 

@@ -19,7 +19,7 @@ from src.apis.project_analysis_api import ProjectAnalysisAPI
 from src.utils.volcengine_client import VolcengineClient
 from src.utils.openai_client import OpenAIClient
 # 导入模板+AI代码生成器
-from src.corder_integration.code_generator.template_ai_generator import TemplateAIGenerator
+from src.corder_integration.code_generator.enhanced_template_ai_generator import EnhancedTemplateAIGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -111,9 +111,9 @@ class IntelligentCodingAgent:
         else:
             logger.info(f"✅ LLM客户端初始化成功: {self.llm_provider}")
         
-        # 🆕 初始化模板+AI代码生成器
-        self.template_ai_generator = TemplateAIGenerator(self.llm_client)
-        logger.info("✅ 模板+AI代码生成器初始化完成")
+        # 🆕 初始化增强版模板+AI代码生成器
+        self.template_ai_generator = EnhancedTemplateAIGenerator(self.llm_client)
+        logger.info("✅ 增强版模板+AI代码生成器初始化完成")
     
     def configure_react_mode(self, **config_updates):
         """配置ReAct模式参数"""
@@ -701,6 +701,84 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
             project_context['current_api_path'] = api_path
             project_context['optimized_project_path'] = optimized_project_path
             
+            # 🆕 新增：将设计文档内容添加到项目上下文（用于增强版代码生成）
+            document_content = parameters.get('document_content', '')
+            if not document_content and hasattr(self, '_current_design_doc'):
+                # 从编码代理的存储中获取设计文档
+                document_content = self._current_design_doc
+                logger.info(f"📄 从编码代理获取设计文档内容 ({len(document_content)} 字符)")
+            
+            if not document_content:
+                # 从全局状态获取设计文档内容
+                import inspect
+                frame = inspect.currentframe()
+                try:
+                    # 查找调用栈中可能包含document_content的帧
+                    while frame:
+                        if 'document_content' in frame.f_locals:
+                            document_content = frame.f_locals['document_content']
+                            break
+                        frame = frame.f_back
+                except:
+                    pass
+            
+            project_context['document_content'] = document_content
+            logger.info(f"📄 设计文档内容已添加到项目上下文 ({len(document_content)} 字符)")
+            
+            # 🆕 新增：检查是否需要在现有Controller中添加接口
+            if api_keyword:
+                try:
+                    from ...code_generator.controller_interface_manager import ControllerInterfaceManager
+                    
+                    # 初始化Controller接口管理器
+                    controller_manager = ControllerInterfaceManager(self.llm_client)
+                    
+                    # 处理API接口请求
+                    add_result = controller_manager.process_api_interface_request(
+                        optimized_project_path, api_keyword, api_path, business_logic
+                    )
+                    
+                    if add_result.get('success', False):
+                        logger.info(f"✅ 成功在现有Controller中添加接口: {add_result.get('interface_name', '')}")
+                        
+                        # 🆕 新增：处理Service和Mapper层
+                        # 使用现有的模块处理Service和Mapper
+                        from ...code_generator.service_decision_maker import ServiceDecisionMaker
+                        
+                        service_decision_maker = ServiceDecisionMaker(self.llm_client)
+                        service_mapper_result = self._handle_service_and_mapper_using_existing_modules(
+                            add_result, interface_name, input_params, output_params, 
+                            description, project_context, service_decision_maker
+                        )
+                        
+                        # 合并结果
+                        all_generated_files = add_result.get('results', [])
+                        if service_mapper_result.get('success', False):
+                            all_generated_files.extend(service_mapper_result.get('generated_files', []))
+                        
+                        # 返回成功结果
+                        return {
+                            'success': True,
+                            'message': f'{add_result.get("interface_name", interface_name)}接口已添加到现有Controller中，并处理了Service/Mapper层',
+                            'generated_files': all_generated_files,
+                            'service_name': service_name,
+                            'interface_name': add_result.get('interface_name', interface_name),
+                            'api_path': api_path,
+                            'llm_provider': self.llm_provider,
+                            'generation_mode': 'add_to_existing_controller',
+                            'controller_modified': True,
+                            'service_mapper_handled': service_mapper_result.get('success', False),
+                            'modification_details': {
+                                'controller': add_result,
+                                'service_mapper': service_mapper_result
+                            }
+                        }
+                    else:
+                        logger.info(f"⚠️ 未能在现有Controller中添加接口，将生成新文件")
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Controller接口管理器处理失败: {e}, 将生成新文件")
+            
             # 使用LLM生成代码
             logger.info(f" 调用{self.llm_provider}大模型生成代码...")
             generated_code = self._generate_code_with_llm(
@@ -712,23 +790,25 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
             # output_path = self._prepare_output_directory(service_name, project_path)  # 不再需要
             code_files = self._write_generated_code(generated_code, optimized_project_path, service_name, project_context)
             
+            # 🆕 新增：任务完成后清理备份文件
+            try:
+                from ...code_generator.interface_adder import InterfaceAdder
+                interface_adder = InterfaceAdder()
+                cleaned_count = interface_adder.cleanup_backup_files(optimized_project_path)
+                if cleaned_count > 0:
+                    logger.info(f"🧹 已清理 {cleaned_count} 个备份文件")
+            except Exception as e:
+                logger.warning(f"⚠️ 清理备份文件时出错: {e}")
+            
             return {
                 'success': True,
-                'message': f'{interface_name}接口代码生成完成（使用{self.llm_provider}）',
+                'message': f'{interface_name}接口生成完成',
                 'generated_files': code_files,
                 'service_name': service_name,
                 'interface_name': interface_name,
                 'api_path': api_path,
                 'llm_provider': self.llm_provider,
-                'project_context_summary': project_context.get('analysis_summary', ''),
-                'code_preview': {
-                    code_type: (content[:500] + '...' if len(content) > 500 else content)
-                    for code_type, content in generated_code.items()
-                },
-                'generation_mode': 'react' if self.react_config.get('enabled') else 'direct',
-                'react_status': self.get_react_status(),
-                'generated_components': list(generated_code.keys()),
-                'total_generated_files': len(code_files)
+                'generation_mode': 'new_files'
             }
             
         except FileNotFoundError as e:
@@ -815,13 +895,36 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
         react_messages = [
             {
                 "role": "system",
-                "content": """你是一个专业的Java企业级后端开发工程师，精通Spring Boot、MyBatis Plus等后端技术栈。
- **重要说明**: 
+                "content": """你是一个专业的Java企业级后端开发工程师，精通Spring Boot、MyBatis Plus、DDD架构等技术栈。
+
+**重要说明**: 
 - 你只负责生成Java后端代码，不要生成任何前端代码（如JavaScript、React、Vue等）
 - 所有生成的代码都必须是Java语言，文件扩展名为.java或.xml
-- 专注于企业级后端架构：Controller、Service、DTO、Entity、Mapper等
+- 严格遵循DDD（领域驱动设计）分层架构
 
-请根据项目上下文和需求生成高质量的企业级Java后端代码。"""
+**DDD架构分层要求**:
+1. **Controller层** (interfaces/rest): 对外REST接口，负责接收HTTP请求
+2. **Application Service层** (application/service): 应用服务，协调业务流程
+3. **Domain Service层** (domain/service): 领域服务，核心业务逻辑
+4. **Domain Mapper层** (domain/mapper): 数据访问层接口
+5. **Feign Client层** (application/feign): 外部服务调用接口
+6. **DTO层** (interfaces/dto): 数据传输对象
+7. **Entity层** (domain/entity): 领域实体
+8. **XML映射** (resources/mapper): MyBatis SQL映射
+
+**调用链规范**:
+- 查询类API: Controller → Application Service → Domain Service → Mapper → XML
+- 外部调用API: Controller → Application Service → Feign Client
+- 本地操作API: Controller → Application Service → Domain Service (或 Mapper)
+
+**代码生成要求**:
+- 必须生成完整的组件链，不能只生成Controller
+- 如果是查询类接口，必须包含：Controller、Application Service、Domain Service、Mapper、XML
+- 如果需要外部调用，必须包含：Feign Client
+- 所有组件都要有完整的业务逻辑实现
+- 遵循企业级代码规范和最佳实践
+
+请根据项目上下文和需求使用ReAct推理模式生成完整的企业级Java后端代码。"""
             },
             {
                 "role": "user",
@@ -1029,13 +1132,20 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
                     file_info['classes_found'] = class_matches
                     file_info['methods_found'] = method_matches
                     file_info['needs_merge'] = True
+                    # 新增：检测是否已包含目标接口/方法
+                    if interface_name in class_matches or any(interface_name in m for m in method_matches):
+                        file_info['already_has_target'] = True
+                    else:
+                        file_info['already_has_target'] = False
                     
                     logger.info(f"📄 {code_type} 文件已存在: {Path(file_path).name} ({file_info['size']} bytes)")
                     
                 except Exception as e:
                     logger.warning(f"⚠️ 读取现有文件失败 {file_path}: {e}")
+                    file_info['already_has_target'] = False
             else:
                 logger.info(f"📄 {code_type} 文件不存在，将生成新文件: {Path(file_path).name}")
+                file_info['already_has_target'] = False
             
             existing_files_info[code_type] = file_info
         
@@ -1372,41 +1482,116 @@ public interface {service_interface_name} {{
     
     def _is_react_generation_complete_with_details(self, generated_code: Dict[str, str], 
                                                  project_context: Dict[str, Any]) -> tuple:
-        """检查ReAct代码生成是否完成，返回详细状态"""
+        """检查ReAct代码生成是否完成，返回详细状态 - 支持DDD架构完整性检查"""
         
-        # 定义必需组件
-        core_components = ['controller', 'service', 'response_dto']
-        optional_components = []
+        # 🆕 DDD架构必需组件定义
+        core_components = ['controller']  # Controller是必需的
+        recommended_components = []
         
-        # 动态添加组件
-        if any('Request' in code_type for code_type in generated_code.keys()):
+        # 根据业务需求动态添加必需组件
+        has_request_params = any('Request' in code_type or 'Req' in code_type for code_type in generated_code.keys())
+        has_response_params = any('Response' in code_type or 'Resp' in code_type for code_type in generated_code.keys())
+        
+        if has_request_params:
             core_components.append('request_dto')
+        if has_response_params or not has_request_params:  # 至少需要响应DTO
+            core_components.append('response_dto')
         
+        # 🆕 增强：根据API类型判断必需组件
+        api_path = project_context.get('current_api_path', '')
+        
+        # 如果是查询类API，需要完整的数据访问层
+        if any(keyword in api_path.lower() for keyword in ['list', 'query', 'get', 'find', 'search']):
+            recommended_components.extend(['application_service', 'domain_service', 'mapper', 'mapper_xml'])
+            logger.info("🔍 检测到查询类API，需要完整的数据访问组件")
+        
+        # 如果是操作类API，可能需要Feign客户端或完整服务层
+        elif any(keyword in api_path.lower() for keyword in ['create', 'update', 'delete', 'save', 'export']):
+            recommended_components.extend(['application_service', 'domain_service'])
+            logger.info("✏️ 检测到操作类API，需要服务层组件")
+        
+        # 🆕 智能组件推荐：如果项目上下文显示使用MyBatis Plus
         if project_context.get('project_info', {}).get('is_mybatis_plus'):
-            core_components.extend(['entity', 'mapper'])
+            recommended_components.extend(['entity', 'mapper'])
+            logger.info("🗄️ 检测到MyBatis Plus项目，推荐Entity和Mapper组件")
         
-        # 检查完成状态
+        # 合并核心组件和推荐组件
+        all_required_components = core_components + recommended_components
+        
+        # 检查当前生成的组件
         generated_components = list(generated_code.keys())
-        missing_core = [comp for comp in core_components if comp not in generated_components]
         
+        # 🔧 修复：使用更智能的组件匹配
+        matched_core = []
+        matched_recommended = []
+        
+        for component in all_required_components:
+            # 检查是否有匹配的组件
+            if component in generated_components:
+                if component in core_components:
+                    matched_core.append(component)
+                else:
+                    matched_recommended.append(component)
+            else:
+                # 🆕 模糊匹配：尝试通过代码内容匹配
+                for code_type, content in generated_code.items():
+                    if self._is_component_match(component, code_type, content):
+                        if component in core_components:
+                            matched_core.append(component)
+                        else:
+                            matched_recommended.append(component)
+                        break
+        
+        # 计算完成状态
+        missing_core = [comp for comp in core_components if comp not in matched_core]
+        missing_recommended = [comp for comp in recommended_components if comp not in matched_recommended]
+        
+        # 🆕 完成条件：至少完成所有核心组件
         if not missing_core:
             completion_status = {
                 'status': 'complete',
-                'core_components': len([c for c in core_components if c in generated_components]),
+                'core_components': len(matched_core),
+                'recommended_components': len(matched_recommended),
                 'total_components': len(generated_components),
-                'missing': [],
-                'message': f'所有{len(core_components)}个核心组件已生成'
+                'missing_core': [],
+                'missing_recommended': missing_recommended,
+                'message': f'✅ 核心组件({len(matched_core)})已完成，推荐组件({len(matched_recommended)})已生成'
             }
             return True, completion_status
         else:
             completion_status = {
                 'status': 'incomplete',
-                'core_components': len([c for c in core_components if c in generated_components]),
+                'core_components': len(matched_core),
+                'recommended_components': len(matched_recommended), 
                 'total_components': len(generated_components),
-                'missing': missing_core,
-                'message': f'还缺少{len(missing_core)}个核心组件: {", ".join(missing_core)}'
+                'missing_core': missing_core,
+                'missing_recommended': missing_recommended,
+                'message': f'❌ 还缺少{len(missing_core)}个核心组件: {", ".join(missing_core)}'
             }
             return False, completion_status
+    
+    def _is_component_match(self, required_component: str, code_type: str, code_content: str) -> bool:
+        """检查代码类型和内容是否匹配所需组件"""
+        
+        # 组件匹配映射
+        component_patterns = {
+            'controller': ['@RestController', '@Controller', 'Controller'],
+            'service': ['@Service', 'Service', 'interface'],
+            'application_service': ['@Service', 'ApplicationService', 'Application'],
+            'domain_service': ['@Service', 'DomainService', 'Domain'],
+            'mapper': ['@Mapper', 'BaseMapper', 'Mapper'],
+            'request_dto': ['Request', 'Req', 'DTO'],
+            'response_dto': ['Response', 'Resp', 'DTO'],
+            'entity': ['@Entity', '@TableName', 'Entity'],
+            'feign_client': ['@FeignClient', 'FeignClient', 'Client'],
+            'mapper_xml': ['mapper', '.xml', '<?xml']
+        }
+        
+        if required_component in component_patterns:
+            patterns = component_patterns[required_component]
+            return any(pattern in code_content or pattern.lower() in code_type.lower() for pattern in patterns)
+        
+        return False
     
     def _get_react_progress_info(self, generated_code: Dict[str, str], 
                                project_context: Dict[str, Any]) -> str:
@@ -1445,39 +1630,66 @@ public interface {service_interface_name} {{
     
     def _get_next_react_guidance(self, generated_code: Dict[str, str], 
                                project_context: Dict[str, Any]) -> str:
-        """获取下一轮ReAct的指导信息"""
+        """获取下一轮ReAct指导信息 - 支持DDD架构完整性指导"""
         
-        has_controller = 'controller' in generated_code
-        has_service = 'service' in generated_code
-        has_request_dto = 'request_dto' in generated_code
-        has_response_dto = 'response_dto' in generated_code
-        has_entity = 'entity' in generated_code
-        has_mapper = 'mapper' in generated_code
+        generated_types = list(generated_code.keys())
         
-        is_mybatis_plus = project_context.get('project_info', {}).get('is_mybatis_plus')
+        # 🆕 DDD架构组件优先级指导
+        api_path = project_context.get('current_api_path', '')
         
-        guidance_parts = []
+        # 基础组件检查
+        missing_guidance = []
         
-        if not has_controller:
-            guidance_parts.append("- 需要生成Controller类（RESTful接口控制器）")
-        if not has_service:
-            guidance_parts.append("- 需要生成Service类（业务逻辑服务层）")
-        if not has_response_dto:
-            guidance_parts.append("- 需要生成Response DTO（响应数据传输对象）")
-        if not has_request_dto and len(generated_code) > 0:
-            guidance_parts.append("- 如需要，生成Request DTO（请求数据传输对象）")
-        if is_mybatis_plus and not has_entity:
-            guidance_parts.append("- 需要生成Entity类（MyBatis Plus实体）")
-        if is_mybatis_plus and not has_mapper:
-            guidance_parts.append("- 需要生成Mapper接口（MyBatis Plus数据访问层）")
+        if not any('controller' in t.lower() for t in generated_types):
+            missing_guidance.append("🎯 首先生成Controller层，作为REST接口入口")
         
-        if guidance_parts:
-            return f"""当前已生成: {list(generated_code.keys())}
-
-还需要生成:
-{chr(10).join(guidance_parts)}"""
+        # 🆕 根据API类型提供精确指导
+        if any(keyword in api_path.lower() for keyword in ['list', 'query', 'get', 'find', 'search']):
+            # 查询类API需要完整的数据访问链路
+            if not any('application' in t.lower() and 'service' in t.lower() for t in generated_types):
+                missing_guidance.append("🔗 生成Application Service，协调业务流程")
+            
+            if not any('domain' in t.lower() and 'service' in t.lower() for t in generated_types):
+                missing_guidance.append("🧠 生成Domain Service，处理核心业务逻辑")
+            
+            if not any('mapper' in t.lower() and '.xml' not in t.lower() for t in generated_types):
+                missing_guidance.append("🗄️ 生成Mapper接口，定义数据访问方法")
+                
+            if not any('mapper' in t.lower() and 'xml' in t.lower() for t in generated_types):
+                missing_guidance.append("📄 生成Mapper XML文件，编写SQL查询语句")
+                
+        elif any(keyword in api_path.lower() for keyword in ['export']):
+            # 导出类API可能需要Feign客户端
+            if not any('feign' in t.lower() for t in generated_types):
+                missing_guidance.append("🌐 考虑生成Feign Client，调用外部服务")
+                
+        # DTO检查
+        if not any('request' in t.lower() or 'req' in t.lower() for t in generated_types):
+            missing_guidance.append("📥 生成Request DTO，定义输入参数结构")
+            
+        if not any('response' in t.lower() or 'resp' in t.lower() for t in generated_types):
+            missing_guidance.append("📤 生成Response DTO，定义返回数据结构")
+        
+        # 实体层检查（如果使用MyBatis Plus）
+        if project_context.get('project_info', {}).get('is_mybatis_plus'):
+            if not any('entity' in t.lower() for t in generated_types):
+                missing_guidance.append("🏗️ 生成Entity实体类，映射数据库表结构")
+        
+        if missing_guidance:
+            guidance = "**下一步生成建议:**\n" + "\n".join(f"- {guide}" for guide in missing_guidance[:3])  # 限制最多3个建议
         else:
-            return "所有组件已生成，请检查代码完整性并进行最终验证。"
+            guidance = "**继续完善代码:**\n- 🔍 检查现有代码是否完整\n- 🛠️ 优化代码质量和注释\n- ✅ 确认所有业务逻辑实现"
+        
+        # 🆕 添加DDD架构调用链指导
+        guidance += "\n\n**DDD架构调用链:**\n"
+        if any(keyword in api_path.lower() for keyword in ['list', 'query', 'get', 'find', 'search']):
+            guidance += "Controller → Application Service → Domain Service → Mapper → XML"
+        elif any(keyword in api_path.lower() for keyword in ['export']):
+            guidance += "Controller → Application Service → Feign Client (外部调用)"
+        else:
+            guidance += "Controller → Application Service → Domain Service (或 Mapper)"
+        
+        return guidance
     
     def _generate_code_direct(self, interface_name: str, input_params: List[Dict], 
                             output_params: Dict, description: str, http_method: str,
@@ -2346,10 +2558,14 @@ public class {class_name} {{
                 'controller': f'src/main/java/{package_path}/interfaces/rest',
                 'service': f'src/main/java/{package_path}/application/service', 
                 'service_impl': f'src/main/java/{package_path}/application/service/impl',
+                'feign_client': f'src/main/java/{package_path}/application/feign',  # 🆕 Feign接口
+                'application_service': f'src/main/java/{package_path}/application/service',  # 🆕 应用服务
+                'domain_service': f'src/main/java/{package_path}/domain/service',  # 🆕 领域服务
                 'request_dto': f'src/main/java/{package_path}/interfaces/dto',
                 'response_dto': f'src/main/java/{package_path}/interfaces/dto',
                 'entity': f'src/main/java/{package_path}/domain/entity',
-                'mapper': f'src/main/java/{package_path}/domain/mapper'
+                'mapper': f'src/main/java/{package_path}/domain/mapper',
+                'mapper_xml': f'src/main/resources/mapper'  # 🔧 修复：正确的XML路径
             }
             
             logger.info(f"📦 使用默认包结构")
@@ -2401,14 +2617,22 @@ public class {class_name} {{
                 file_name = f"{interface_name}Service.java"
             elif standard_type == 'service_impl':
                 file_name = f"{interface_name}ServiceImpl.java"  # 🔧 修复：ServiceImpl使用正确的文件名
+            elif standard_type == 'application_service':
+                file_name = f"{interface_name}Application.java"  # 修正为Application
+            elif standard_type == 'domain_service':
+                file_name = f"{interface_name}DomainService.java"
             elif standard_type == 'request_dto':
                 file_name = f"{interface_name}Req.java"
             elif standard_type == 'response_dto':
                 file_name = f"{interface_name}Resp.java"
             elif standard_type == 'entity':
                 file_name = f"{interface_name}Entity.java"
+            elif standard_type == 'mapper_xml':
+                file_name = f"{interface_name}Mapper.xml"
             elif standard_type == 'mapper':
                 file_name = f"{interface_name}Mapper.java"
+            elif standard_type == 'feign_client':
+                file_name = f"{interface_name}FeignClient.java"
             else:
                 # 🔧 新增：从代码内容中提取实际类名
                 import re
@@ -2576,116 +2800,91 @@ public class {class_name} {{
         return best_match['path']
 
     def _get_contextual_package_structure(self, project_path: str, api_path: str, project_context: Dict[str, Any]) -> Dict[str, str]:
-        """根据API路径和项目上下文获取优化的包结构路径"""
+        """基于API路径获取符合DDD架构的包结构"""
         
-        # 获取基础包路径
+        logger.info(f"🎯 构建DDD架构包结构，API路径: {api_path}")
+        
+        # 提取API关键字
+        api_keyword = self._extract_api_path_keyword(api_path)
+        
+        # 🔧 改进：使用项目上下文中的包信息
         package_patterns = project_context.get('package_patterns', {})
-        base_package = package_patterns.get('base_package', 'com.main')
-        package_path = base_package.replace('.', '/')
+        base_package = package_patterns.get('base_package', 'com.yljr.crcl')
         
-        # 从API路径提取关键字
-        keyword = self._extract_api_path_keyword(api_path)
+        # 🎯 DDD架构包结构映射
+        if api_keyword:
+            # 基于API关键字构建包路径（例如：limit -> com.yljr.crcl.limit）
+            contextual_package = f"{base_package}.{api_keyword}"
+            contextual_package_path = contextual_package.replace('.', '/')
+            logger.info(f"🏗️ 基于API关键字 '{api_keyword}' 构建包路径: {contextual_package}")
+        else:
+            # 使用默认包路径
+            contextual_package_path = base_package.replace('.', '/')
+            logger.info(f"🏗️ 使用默认包路径: {base_package}")
         
-        if keyword:
-            # 查找项目中是否存在相关的目录结构
-            existing_path = self._find_existing_path_by_keyword(project_path, keyword)
-            
-            if existing_path:
-                # 🆕 新增：使用Controller接口管理器处理现有Controller文件
-                try:
-                    from ...code_generator.controller_interface_manager import ControllerInterfaceManager
-                    
-                    # 初始化Controller接口管理器
-                    controller_manager = ControllerInterfaceManager(self.llm_client)
-                    
-                    # 处理API接口请求
-                    result = controller_manager.process_api_interface_request(
-                        existing_path, keyword, api_path, description=""
-                    )
-                    
-                    if result.get('success', False):
-                        logger.info(f"✅ 成功在现有Controller中添加接口: {result.get('interface_name', '')}")
-                        # 接口已成功添加到现有Controller，返回特殊标记
-                        return {
-                            'controller_interface_added': True,
-                            'interface_result': result,
-                            'message': result.get('message', ''),
-                            'skip_new_generation': True  # 跳过新文件生成
-                        }
-                    else:
-                        logger.info(f"⚠️ 未能在现有Controller中添加接口: {result.get('message', '')}")
-                        # 继续使用原有逻辑
-                        
-                except Exception as e:
-                    logger.warning(f"⚠️ Controller接口管理器处理失败: {e}, 回退到原有逻辑")
-                
-                # 原有逻辑：如果找到现有路径，尝试从中提取包结构
-                existing_path_obj = Path(existing_path)
-                
-                # 寻找src/main/java路径
-                java_src_path = None
-                for parent in existing_path_obj.parents:
-                    potential_java_path = parent / 'src' / 'main' / 'java'
-                    if potential_java_path.exists():
-                        java_src_path = potential_java_path
-                        break
-                
-                if java_src_path:
-                    # 计算从java源代码目录到找到的目录的相对路径
-                    try:
-                        relative_to_java = existing_path_obj.relative_to(java_src_path)
-                        # 构建包路径
-                        contextual_package_path = str(relative_to_java).replace(os.sep, '/')
-                        
-                        logger.info(f"🎯 基于关键字 '{keyword}' 找到上下文包路径: {contextual_package_path}")
-                        
-                        # 构建层级路径
-                        layer_paths = {
-                            'controller': f'src/main/java/{contextual_package_path}/interfaces/rest',
-                            'service': f'src/main/java/{contextual_package_path}/application/service',
-                            'service_impl': f'src/main/java/{contextual_package_path}/application/service/impl',
-                            'request_dto': f'src/main/java/{contextual_package_path}/interfaces/dto',
-                            'response_dto': f'src/main/java/{contextual_package_path}/interfaces/dto',
-                            'entity': f'src/main/java/{contextual_package_path}/domain/entity',
-                            'mapper': f'src/main/java/{contextual_package_path}/domain/mapper'
-                        }
-                        
-                        return layer_paths
-                        
-                    except ValueError:
-                        logger.warning(f"⚠️ 无法计算相对路径，使用默认包结构")
+        # 检查当前路径是否已经在src目录中
+        is_already_in_src = 'src/main/java' in project_path
         
-        # 如果没有找到相关路径，使用默认的包结构
-        logger.info(f"📦 使用默认包结构: {package_path}")
-        layer_paths = {
-            'controller': f'src/main/java/{package_path}/interfaces/rest',
-            'service': f'src/main/java/{package_path}/application/service',
-            'service_impl': f'src/main/java/{package_path}/application/service/impl',
-            'request_dto': f'src/main/java/{package_path}/interfaces/dto',
-            'response_dto': f'src/main/java/{package_path}/interfaces/dto',
-            'entity': f'src/main/java/{package_path}/domain/entity',
-            'mapper': f'src/main/java/{package_path}/domain/mapper'
-        }
+        # 🆕 DDD分层架构路径配置
+        if is_already_in_src:
+            # 如果已经在src目录中，使用相对路径
+            layer_paths = {
+                'controller': f'{contextual_package_path}/interfaces/rest',
+                'service': f'{contextual_package_path}/application/service',
+                'service_impl': f'{contextual_package_path}/application/service/impl', 
+                'feign_client': f'{contextual_package_path}/application/feign',  # 🆕 Feign接口
+                'application_service': f'{contextual_package_path}/application/service',  # 🆕 应用服务
+                'domain_service': f'{contextual_package_path}/domain/service',  # 🆕 领域服务
+                'request_dto': f'{contextual_package_path}/interfaces/dto',
+                'response_dto': f'{contextual_package_path}/interfaces/dto',
+                'entity': f'{contextual_package_path}/domain/entity',
+                'mapper': f'{contextual_package_path}/domain/mapper',
+                'mapper_xml': f'resources/mapper'  # 🔧 修复：正确的XML路径
+            }
+        else:
+            # 如果不在src目录中，使用完整路径
+            layer_paths = {
+                'controller': f'src/main/java/{contextual_package_path}/interfaces/rest',
+                'service': f'src/main/java/{contextual_package_path}/application/service',
+                'service_impl': f'src/main/java/{contextual_package_path}/application/service/impl',
+                'feign_client': f'src/main/java/{contextual_package_path}/application/feign',  # 🆕 Feign接口
+                'application_service': f'src/main/java/{contextual_package_path}/application/service',  # 🆕 应用服务
+                'domain_service': f'src/main/java/{contextual_package_path}/domain/service',  # 🆕 领域服务
+                'request_dto': f'src/main/java/{contextual_package_path}/interfaces/dto',
+                'response_dto': f'src/main/java/{contextual_package_path}/interfaces/dto',
+                'entity': f'src/main/java/{contextual_package_path}/domain/entity',
+                'mapper': f'src/main/java/{contextual_package_path}/domain/mapper',
+                'mapper_xml': f'src/main/resources/mapper'  # 🔧 修复：正确的XML路径
+            }
         
+        logger.info(f"✅ DDD架构路径配置完成，包含 {len(layer_paths)} 个分层")
         return layer_paths
     
     def _build_project_structure_context(self, project_context: Dict[str, Any]) -> str:
-        """构建项目结构上下文信息"""
+        """构建项目结构上下文信息 - 支持DDD架构"""
         
         package_patterns = project_context.get('package_patterns', {})
         architecture_patterns = project_context.get('architecture_patterns', {})
         
         context_text = f"""
-### 包结构规范
-- 基础包名: {package_patterns.get('base_package', 'com.main')}
-- 分层风格: {architecture_patterns.get('preferred_layer_style', 'layered')}
+### DDD分层架构规范
+- 基础包名: {package_patterns.get('base_package', 'com.yljr.crcl')}
+- 架构风格: DDD (Domain-Driven Design)
 
-### 目录结构
-- Controller层: interfaces/rest
-- Service层: application/service  
-- Mapper层: domain/mapper
-- DTO层: interfaces/dto
-- Entity层: domain/entity
+### 目录结构说明
+- Controller层: interfaces/rest (对外REST接口)
+- Application Service层: application/service (应用服务，协调业务流程)
+- Feign Client层: application/feign (外部服务调用接口)
+- Domain Service层: domain/service (领域服务，核心业务逻辑)
+- Domain Mapper层: domain/mapper (数据访问层)
+- DTO层: interfaces/dto (数据传输对象)
+- Entity层: domain/entity (领域实体)
+- XML映射文件: resources/mapper (MyBatis XML映射)
+
+### 调用链说明
+Controller -> Application Service -> Domain Service 或 Domain Mapper
+如需调用外部服务: Controller -> Application Service -> Feign Client
+如需本地数据: Controller -> Application Service -> Domain Mapper -> XML映射
 """
         return context_text.strip()
     
@@ -2709,6 +2908,20 @@ public class {class_name} {{
         for code_type, code_content in corrected_code.items():
             if code_type in output_paths:
                 file_path = output_paths[code_type]
+                
+                # 检查是否已存在且包含目标接口/方法
+                skip_write = False
+                if os.path.exists(file_path):
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        existing_content = f.read()
+                    import re
+                    class_matches = re.findall(r'public\s+(?:class|interface)\s+(\w+)', existing_content)
+                    method_matches = re.findall(r'public\s+[^\{]+\s+(\w+)\s*\([^)]*\)\s*\{', existing_content)
+                    if interface_name in class_matches or any(interface_name in m for m in method_matches):
+                        logger.info(f"⏩ 跳过已存在且包含目标接口/方法的文件: {file_path}")
+                        skip_write = True
+                if skip_write:
+                    continue
                 
                 try:
                     # 确保目录存在
@@ -2802,6 +3015,12 @@ public class {class_name} {{
         elif 'entity' in code_type.lower():
             target_class_name = f"{interface_name}Entity"
             content = re.sub(r'public\s+class\s+\w+(Entity)?', f'public class {target_class_name}', content)
+        
+        elif 'application_service' in code_type.lower():
+            target_class_name = f"{interface_name}Application"
+            # 修正Application类名
+            content = re.sub(r'public\s+class\s+\w+Application', f'public class {target_class_name}', content)
+            content = re.sub(r'public\s+interface\s+\w+Application', f'public interface {target_class_name}', content)
         
         return content
     
@@ -2917,84 +3136,243 @@ public interface {class_name} {{
             logger.error(f"❌ 转换Service类为实现类失败: {e}")
             return None
     
-    def _calculate_enhanced_path_priority(self, path: str, service_name: str, java_files_count: int) -> int:
-        """增强的路径优先级计算"""
-        priority = 0
-        path_str = str(path).lower()
-        path_parts = Path(path).parts
+    def _handle_service_and_mapper_using_existing_modules(self, controller_result: Dict[str, Any],
+                                                         interface_name: str, input_params: List[Dict], 
+                                                         output_params: Dict, description: str,
+                                                         project_context: Dict[str, Any],
+                                                         service_decision_maker) -> Dict[str, Any]:
+        """
+        使用现有模块处理Service和Mapper层
         
-        # 基础分数：Java文件数量
-        priority += java_files_count
+        这个方法只是协调现有模块的工作，不包含具体实现逻辑
+        """
+        logger.info(f"🔧 使用现有模块处理Service和Mapper层: {interface_name}")
         
-        # 服务名精确匹配（最高优先级）
-        if service_name:
-            service_clean = service_name.lower().replace('服务', '').replace('-service', '').replace('_service', '')
-            service_keywords = service_clean.split('-')
+        try:
+            generated_files = []
             
-            for keyword in service_keywords:
-                if keyword and keyword in path_str:
-                    priority += 200  # 大幅加分
-                    logger.info(f"   🎯 服务名关键词匹配: {keyword} -> +200")
+            # 从controller_result中提取Service分析信息
+            service_analysis = None
+            if controller_result.get('results'):
+                for result in controller_result['results']:
+                    if 'service_analysis' in result:
+                        service_analysis = result['service_analysis']
+                        break
+            
+            if service_analysis:
+                # 根据Service分析结果决定下一步行动
+                decision = service_analysis.get('decision', {})
+                action = decision.get('action', 'create_new')
+                
+                logger.info(f"📋 Service决策结果: {action}")
+                
+                if action == 'modify_existing':
+                    # 记录需要修改现有Service的信息
+                    target_service = decision.get('target_service', {})
+                    generated_files.append({
+                        'type': 'service_modification_needed',
+                        'target_service': target_service.get('class_name', 'Unknown'),
+                        'action': 'modify_existing',
+                        'interface_method': interface_name
+                    })
+                elif action == 'create_new':
+                    # 记录需要创建新Service的信息
+                    generated_files.append({
+                        'type': 'service_creation_needed',
+                        'service_name': f'{interface_name}Service',
+                        'action': 'create_new',
+                        'interface_method': interface_name
+                    })
+                
+                # 如果项目使用MyBatis Plus，记录需要处理Mapper
+                if project_context.get('project_info', {}).get('is_mybatis_plus'):
+                    generated_files.append({
+                        'type': 'mapper_handling_needed',
+                        'mapper_name': f'{interface_name}Mapper',
+                        'action': 'review_required'
+                    })
+                
+                # 记录需要生成DTO
+                generated_files.extend([
+                    {
+                        'type': 'dto_generation_needed',
+                        'dto_name': f'{interface_name}Req',
+                        'action': 'create_if_needed'
+                    },
+                    {
+                        'type': 'dto_generation_needed', 
+                        'dto_name': f'{interface_name}Resp',
+                        'action': 'create_new'
+                    }
+                ])
+            
+            return {
+                'success': True,
+                'message': f'已分析Service和Mapper需求',
+                'generated_files': generated_files,
+                'files_count': len(generated_files),
+                'note': '具体的Service和Mapper代码生成需要后续处理'
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Service和Mapper分析失败: {e}")
+            return {
+                'success': False,
+                'message': f'Service和Mapper分析失败: {str(e)}',
+                'error': str(e)
+            }
+
+    def _analyze_api_domain_similarity(self, api_path: str, existing_controllers: List[Dict]) -> Dict[str, Any]:
+        """
+        分析API路径与现有Controller的领域相似度
+        使用LLM进行智能分析
+        """
+        if not self.llm_client:
+            logger.warning("⚠️ LLM客户端未初始化，使用基于规则的匹配")
+            return self._rule_based_domain_matching(api_path, existing_controllers)
         
-        # 深度优先：更深的目录结构通常是具体的服务模块
-        depth = len(path_parts)
-        if depth >= 8:  # 很深的目录结构
-            priority += 150
-            logger.info(f"   📐 深层目录结构 (深度{depth}) -> +150")
-        elif depth >= 6:  # 中等深度
-            priority += 100
-            logger.info(f"   📐 中等深度结构 (深度{depth}) -> +100")
+        try:
+            # 使用LLM分析领域相似度
+            analysis_prompt = f"""
+分析API路径与现有Controller的领域相似度：
+
+API路径: {api_path}
+
+现有Controllers:
+{self._format_controllers_for_analysis(existing_controllers)}
+
+请分析：
+1. API路径的业务领域
+2. 与哪个现有Controller最相关
+3. 是否应该添加到现有Controller还是创建新的
+
+返回格式:
+{{
+    "api_domain": "API的业务领域",
+    "best_match_controller": "最匹配的Controller类名",
+    "match_score": 0-100的匹配分数,
+    "action": "add_to_existing" 或 "create_new",
+    "reason": "判断理由"
+}}
+"""
+            
+            response = self.llm_client.chat(
+                messages=[{"role": "user", "content": analysis_prompt}],
+                temperature=0.1
+            )
+            
+            import json
+            import re
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                analysis_result = json.loads(json_match.group())
+                return analysis_result
+            
+        except Exception as e:
+            logger.warning(f"⚠️ LLM分析失败: {e}, 使用基于规则的匹配")
         
-        # 具体服务模块目录名匹配
-        service_module_indicators = [
-            'basic-service', 'user-basic-service', 'basic-general', 
-            'user-basic-general', 'service', 'api', 'web', 'rest'
-        ]
-        for indicator in service_module_indicators:
-            if indicator in path_str:
-                priority += 80
-                logger.info(f"   📦 服务模块匹配: {indicator} -> +80")
+        return self._rule_based_domain_matching(api_path, existing_controllers)
+    
+    def _rule_based_domain_matching(self, api_path: str, existing_controllers: List[Dict]) -> Dict[str, Any]:
+        """基于规则的领域匹配"""
+        # 提取API路径的关键词
+        path_parts = [p for p in api_path.split('/') if p and p not in ['api', 'v1', 'v2']]
+        if not path_parts:
+            return {"action": "create_new", "reason": "无法提取有效路径"}
         
-        # 业务域匹配
-        business_domains = [
-            'user', 'basic', 'general', 'common', 'core',
-            'order', 'payment', 'product', 'manage', 'admin'
-        ]
-        for domain in business_domains:
-            if domain in path_str:
+        # 查找最佳匹配
+        best_match = None
+        best_score = 0
+        
+        for controller in existing_controllers:
+            controller_name = controller.get('class_name', '').lower()
+            request_mapping = controller.get('request_mapping', '').lower()
+            
+            score = 0
+            for part in path_parts:
+                part_lower = part.lower()
+                if part_lower in controller_name:
+                    score += 50
+                if part_lower in request_mapping:
+                    score += 30
+                    
+            if score > best_score:
+                best_score = score
+                best_match = controller
+        
+        if best_score >= 50:
+            return {
+                "api_domain": path_parts[-1] if path_parts else "unknown",
+                "best_match_controller": best_match.get('class_name', ''),
+                "match_score": best_score,
+                "action": "add_to_existing",
+                "reason": f"路径关键词与Controller匹配度高 (score: {best_score})"
+            }
+        else:
+            return {
+                "api_domain": path_parts[-1] if path_parts else "unknown",
+                "best_match_controller": None,
+                "match_score": 0,
+                "action": "create_new",
+                "reason": "未找到相关的Controller"
+            }
+    
+    def _format_controllers_for_analysis(self, controllers: List[Dict]) -> str:
+        """格式化Controller信息用于分析"""
+        formatted = []
+        for ctrl in controllers[:10]:  # 只取前10个避免太长
+            formatted.append(f"- {ctrl.get('class_name', 'Unknown')}: {ctrl.get('request_mapping', 'N/A')}")
+        return '\n'.join(formatted)
+    
+    def _calculate_enhanced_path_priority(self, path: str, service_name: str, java_files_count: int) -> int:
+        """
+        使用LLM智能计算路径优先级，如果LLM不可用则使用基础规则
+        """
+        if not self.llm_client:
+            # 基础规则：主要基于Java文件数量和路径深度
+            priority = java_files_count
+            path_depth = len(Path(path).parts)
+            if path_depth >= 6:
                 priority += 50
-                logger.info(f"   🏢 业务域匹配: {domain} -> +50")
+            return priority
         
-        # 路径包含关键架构层级目录
-        architecture_indicators = [
-            'interfaces', 'application', 'domain', 'infrastructure',
-            'controller', 'service', 'mapper', 'entity', 'dto'
-        ]
-        
-        # 检查是否存在标准的架构目录
-        src_java_path = Path(path) / 'src' / 'main' / 'java'
-        if src_java_path.exists():
-            for arch_dir in architecture_indicators:
-                if any(arch_dir in str(p) for p in src_java_path.rglob('*') if p.is_dir()):
-                    priority += 30
-                    logger.info(f"   🏗️ 架构层级匹配: {arch_dir} -> +30")
-                    break  # 避免重复计分
-        
-        # 避免选择根目录或过于通用的目录
-        if len(path_parts) <= 4:
-            priority -= 50
-            logger.info(f"   ⚠️ 目录层级过浅 -> -50")
-        
-        # 避免选择包含测试、示例等的目录
-        test_indicators = ['test', 'example', 'demo', 'sample', 'template']
-        for test_indicator in test_indicators:
-            if test_indicator in path_str:
-                priority -= 30
-                logger.info(f"   🚫 测试/示例目录: {test_indicator} -> -30")
-        
-        return max(priority, 0)  # 确保优先级不为负数
+        try:
+            # 使用LLM智能评估路径优先级
+            prompt = f"""
+分析Java项目路径的优先级，用于选择最佳的代码生成位置：
 
+路径: {path}
+服务名: {service_name}
+Java文件数量: {java_files_count}
 
+请评估这个路径作为"{service_name}"服务代码生成位置的适合度。
+
+考虑因素：
+1. 路径是否与服务名相关
+2. 项目结构的合理性
+3. Java文件数量的意义
+4. 目录层级的深度
+
+返回一个0-1000的分数，分数越高表示越适合。
+只返回数字，不要解释。
+"""
+            
+            response = self.llm_client.chat(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1
+            )
+            
+            # 提取数字
+            import re
+            score_match = re.search(r'\d+', response)
+            if score_match:
+                return int(score_match.group())
+            
+        except Exception as e:
+            logger.warning(f"⚠️ LLM路径优先级计算失败: {e}")
+        
+        # 回退到基础计算
+        return java_files_count + len(Path(path).parts) * 10
 
 
 async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -3003,6 +3381,18 @@ async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
     
     try:
         coding_agent = IntelligentCodingAgent()
+        
+        # 🆕 新增：将设计文档内容传递给编码代理
+        design_doc = state.get('design_doc', '')
+        if design_doc:
+            logger.info(f"📄 从工作流状态获取设计文档 ({len(design_doc)} 字符)")
+            # 设置到编码代理的全局变量中，供任务执行时使用
+            coding_agent._current_design_doc = design_doc
+        
+        # 🆕 新增：递增重试计数器
+        retry_count = state.get("retry_count", 0)
+        if retry_count > 0:
+            logger.info(f"🔄 智能编码节点重试，当前重试次数: {retry_count}")
         
         # 执行数据库中的任务
         task_results = coding_agent.execute_task_from_database()
@@ -3026,11 +3416,13 @@ async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
                     }
                 })
         
-        # 更新状态
-        updated_state = {
+        # 🆕 新增：递增重试计数器并更新状态
+        updated_state = state.copy()  # 保留现有状态
+        updated_state.update({
             'coding_operations': coding_operations,
-            'intelligent_coding_completed': True
-        }
+            'intelligent_coding_completed': True,
+            'retry_count': retry_count + 1  # 递增重试计数器
+        })
         
         # 收集生成的服务信息
         generated_services = []
@@ -3048,7 +3440,10 @@ async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
     except Exception as e:
         logger.error(f"❌ 智能编码节点执行失败: {e}")
-        return {
+        updated_state = state.copy()
+        updated_state.update({
             'coding_operations': state.get('coding_operations', []),
-            'error': f'智能编码节点执行失败: {str(e)}'
-        } 
+            'error': f'智能编码节点执行失败: {str(e)}',
+            'retry_count': state.get("retry_count", 0) + 1
+        })
+        return updated_state

@@ -240,6 +240,20 @@ class LangGraphWorkflowOrchestrator:
             self.logger.warning("没有识别到任何服务，结束编码流程")
             return "critical_error"
         
+        # 🆕 新增：无进展检测机制
+        retry_count = state.get("retry_count", 0)
+        
+        # 如果已经重试多次但没有进展，强制结束
+        if retry_count >= 5:
+            self.logger.warning(f"编码流程重试次数过多({retry_count})，强制结束")
+            return "critical_error"
+        
+        # 检查是否有coding_operations结果，如果连续多轮都没有任务执行，说明可能没有可执行的任务
+        coding_operations = state.get("coding_operations", [])
+        if retry_count >= 2 and len(coding_operations) == 0:
+            self.logger.warning("连续多轮没有任务执行，可能数据库中没有可执行的任务，结束流程")
+            return "critical_error"
+        
         if completed_services == total_services:
             return "all_completed"
         elif len(state["failed_services"]) > 0:
@@ -401,7 +415,7 @@ class LangGraphWorkflowOrchestrator:
             "configurable": {
                 "thread_id": f"coding_session_{project_name}_{int(time.time())}"
             },
-            "recursion_limit": 50  # 🔧 增加递归限制，防止无限循环
+            "recursion_limit": 100  # 🔧 增加递归限制，防止复杂工作流被误判
         }
         
         try:

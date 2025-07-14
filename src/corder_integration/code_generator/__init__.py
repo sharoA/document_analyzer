@@ -3,6 +3,6 @@
 提供统一的代码生成服务，支持AI智能生成和传统模板生成
 """
 
-from .unified_code_generator import UnifiedCodeGenerator
+from .controller_interface_manager import ControllerInterfaceManager
 
-__all__ = ['UnifiedCodeGenerator'] 
+__all__ = [ 'ControllerInterfaceManager'] 

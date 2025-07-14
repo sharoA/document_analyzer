@@ -10,6 +10,39 @@ app:
   name: AnalyDesign
   port: 8000
   version: 1.0.0
+coder_agent:
+  ai_provider: volcengine
+  backend_template_path: templates/back_construct.md
+  backend_test_framework: junit5
+  code_generation:
+    backend_framework: spring_boot
+    backend_java_version: '8'
+    backend_package_prefix: com
+    backend_version: 2.7.x
+    frontend_framework: vue2
+  code_generation_model: ep-20250605091804-wmw6w
+  frontend_template_path: templates/fronted_construct.md
+  frontend_test_framework: jest
+  git_config:
+    commit_prefix:
+      chore: 构建变更
+      docs: 文档更新
+      feat: 新功能
+      fix: 修复问题
+      refactor: 重构代码
+      style: 代码格式
+      test: 添加测试
+    default_branch: main
+    default_branch_pattern: D_{timestamp}_aigc
+    default_remote_url: https://github.com/sharoA/testproject.git
+  max_tokens: 4000
+  project_root: D:/new_project
+  review_model: ep-20250605091804-wmw6w
+  tasks_dir: tasks
+  tech_stack_docs_dir: docs/tech-stack
+  temperature: 0.7
+  test_coverage_target: 0.8
+  test_project_dir: test-project
 directories:
   analysis_results: uploads/analysis_results
   cache: uploads/cache
@@ -28,7 +61,7 @@ file_upload:
   max_size: 52428800
   temp_dir: uploads/temp
 logging:
-  backup_count: 5
+  backup_count: 7
   file: logs/app.log
   format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
   level: INFO
@@ -39,108 +72,54 @@ openai:
   max_tokens: 4000
   model: gpt-3.5-turbo
   temperature: 0.7
-vector_database:
-  # 向量数据库类型: faiss 或 weaviate
-  type: weaviate
-  dimension: 768
-  # FAISS 配置
-  faiss:
-    index_file: uploads/cache/vector_index.faiss
-    metadata_file: uploads/cache/vector_metadata.json
-  # Weaviate 配置
-  weaviate:
-    host: localhost
-    port: 8080
-    grpc_port: 50051
-    scheme: http
-    api_key: root-user-key
-    timeout: 30
-    # 默认集合配置
-    default_collection:
-      name: AnalyDesignDocuments
-      vectorizer: none
-      vector_dimension: 768
-volcengine:
-  api_key: '7fcb3541-9363-4bfa-90aa-19e9f691bc25'
-  endpoint: https://ark.cn-beijing.volces.com/api/v3
-  max_tokens: 4000
-  #model: doubao-pro-4k
-  model: ep-20250605091804-wmw6w
-  temperature: 0.7
-# Redis 配置
 redis:
-  host: localhost
-  port: 6379
+  cache:
+    default_ttl: 3600
+    key_prefix: 'analydesign:'
+  connection_pool:
+    max_connections: 50
   db: 0
-  password: ''
   decode_responses: true
-  socket_timeout: 30
+  host: localhost
+  password: ''
+  port: 6379
   socket_connect_timeout: 30
   socket_keepalive: true
   socket_keepalive_options: {}
-  connection_pool:
-    max_connections: 50
-  # 缓存配置
-  cache:
-    default_ttl: 3600  # 默认过期时间（秒）
-    key_prefix: 'analydesign:'  # 键前缀
-# 验证配置
+  socket_timeout: 30
 validation:
-  max_content_length: 10485760  # 10MB
-  min_content_length: 1
   allowed_file_types:
-    - "text/plain"
-    - "application/pdf"
-    - "application/msword"
-    - "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    - "text/markdown"
-    - "application/json"
-    - "text/html"
-    - "application/xml"
-  max_file_size: 52428800  # 50MB
-
-# 编码智能体配置
-coder_agent:
-  # 项目路径配置
-  project_root: "D:/new_project"
-  tasks_dir: "tasks"
-  test_project_dir: "test-project"
-  tech_stack_docs_dir: "docs/tech-stack"
-  
-  # Git配置
-  git_config:
-    default_remote_url: "https://github.com/sharoA/testproject.git"
-    default_branch: "main"
-    default_branch_pattern: "D_{timestamp}_aigc"
-    commit_prefix:
-      feat: "新功能"
-      fix: "修复问题"
-      test: "添加测试"
-      docs: "文档更新"
-      refactor: "重构代码"
-      style: "代码格式"
-      chore: "构建变更"
-  
-  # 代码生成配置
-  code_generation:
-    backend_framework: "spring_boot"
-    backend_version: "2.7.x"
-    backend_java_version: "8"
-    frontend_framework: "vue2"
-    backend_package_prefix: "com"
-  
-  # 测试配置
-  test_coverage_target: 0.8
-  backend_test_framework: "junit5"
-  frontend_test_framework: "jest"
-  
-  # AI配置 - 使用火山引擎
-  ai_provider: "volcengine"  # 使用火山引擎而不是openai
-  code_generation_model: "ep-20250605091804-wmw6w"
-  review_model: "ep-20250605091804-wmw6w"
+  - text/plain
+  - application/pdf
+  - application/msword
+  - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  - text/markdown
+  - application/json
+  - text/html
+  - application/xml
+  max_content_length: 10485760
+  max_file_size: 52428800
+  min_content_length: 1
+vector_database:
+  dimension: 768
+  faiss:
+    index_file: uploads/cache/vector_index.faiss
+    metadata_file: uploads/cache/vector_metadata.json
+  type: weaviate
+  weaviate:
+    api_key: root-user-key
+    default_collection:
+      name: AnalyDesignDocuments
+      vector_dimension: 768
+      vectorizer: none
+    grpc_port: 50051
+    host: localhost
+    port: 8080
+    scheme: http
+    timeout: 30
+volcengine:
+  api_key: 7fcb3541-9363-4bfa-90aa-19e9f691bc25
+  endpoint: https://ark.cn-beijing.volces.com/api/v3
   max_tokens: 4000
+  model: ep-20250605091804-wmw6w
   temperature: 0.7
-  
-  # 模板配置
-  backend_template_path: "templates/back_construct.md"
-  frontend_template_path: "templates/fronted_construct.md"

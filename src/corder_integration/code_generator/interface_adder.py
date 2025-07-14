@@ -233,54 +233,156 @@ class InterfaceAdder:
             # 如果没找到，直接在末尾添加
             return content + "\n" + method_code + "\n}"
     
-    def backup_original_file(self, file_path: str) -> str:
+    def backup_original_file(self, file_path: str, create_backup: bool = False) -> str:
         """
         备份原始文件
         
         Args:
             file_path: 文件路径
+            create_backup: 是否创建备份文件（默认为False，避免生成不必要的.backup文件）
             
         Returns:
             备份文件路径
         """
+        # 🆕 如果不需要备份，直接返回原文件路径（表示可以安全修改）
+        if not create_backup:
+            logger.info(f"🚫 跳过文件备份（按配置）: {file_path}")
+            return file_path
+            
+        # 验证原文件是否存在
+        if not os.path.exists(file_path):
+            logger.error(f"❌ 原文件不存在，无法备份: {file_path}")
+            return ""
+        
         backup_path = file_path + ".backup"
         
         try:
+            # 读取原文件
             with open(file_path, 'r', encoding='utf-8') as src:
                 content = src.read()
             
+            # 写入备份文件
             with open(backup_path, 'w', encoding='utf-8') as dst:
                 dst.write(content)
             
-            logger.info(f"📝 已备份原始文件: {backup_path}")
-            return backup_path
+            # 验证备份是否成功
+            if os.path.exists(backup_path):
+                logger.info(f"📝 已备份原始文件: {backup_path}")
+                return backup_path
+            else:
+                logger.error(f"❌ 备份文件创建失败: {backup_path}")
+                return ""
             
+        except UnicodeDecodeError as e:
+            logger.error(f"❌ 读取原文件编码错误: {e}")
+            return ""
+        except UnicodeEncodeError as e:
+            logger.error(f"❌ 备份文件编码错误: {e}")
+            return ""
+        except PermissionError as e:
+            logger.error(f"❌ 权限错误: {e}")
+            return ""
         except Exception as e:
             logger.error(f"❌ 备份文件失败: {e}")
+            import traceback
+            logger.error(f"详细错误: {traceback.format_exc()}")
             return ""
     
-    def save_updated_controller(self, file_path: str, updated_content: str) -> bool:
+    def save_updated_controller(self, file_path: str, updated_content: str, create_backup: bool = False) -> bool:
         """
         保存更新后的Controller文件
         
         Args:
             file_path: 文件路径
             updated_content: 更新后的内容
+            create_backup: 是否创建备份文件（默认为False）
             
         Returns:
             是否保存成功
         """
         try:
-            # 先备份原始文件
-            self.backup_original_file(file_path)
+            # 验证文件路径
+            if not os.path.exists(file_path):
+                logger.error(f"❌ 目标文件不存在: {file_path}")
+                return False
+            
+            # 验证路径是否可写
+            if not os.access(os.path.dirname(file_path), os.W_OK):
+                logger.error(f"❌ 目录不可写: {os.path.dirname(file_path)}")
+                return False
+            
+            # 🆕 可选择性备份原始文件
+            if create_backup:
+                backup_path = self.backup_original_file(file_path, create_backup=True)
+                if not backup_path:
+                    logger.error(f"❌ 备份文件失败，取消保存操作: {file_path}")
+                    return False
+            else:
+                logger.info(f"🚫 跳过文件备份，直接更新: {file_path}")
             
             # 写入更新后的内容
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(updated_content)
             
-            logger.info(f"✅ 已保存更新后的Controller文件: {file_path}")
-            return True
+            # 验证写入是否成功
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    saved_content = f.read()
+                if len(saved_content) == len(updated_content):
+                    logger.info(f"✅ 已保存更新后的Controller文件: {file_path}")
+                    return True
+                else:
+                    logger.error(f"❌ 文件写入验证失败，内容长度不匹配")
+                    return False
+            else:
+                logger.error(f"❌ 文件保存后不存在: {file_path}")
+                return False
             
+        except UnicodeEncodeError as e:
+            logger.error(f"❌ 编码错误，可能包含特殊字符: {e}")
+            return False
+        except PermissionError as e:
+            logger.error(f"❌ 权限错误: {e}")
+            return False
         except Exception as e:
             logger.error(f"❌ 保存Controller文件失败: {e}")
-            return False 
+            import traceback
+            logger.error(f"详细错误: {traceback.format_exc()}")
+            return False
+    
+    def cleanup_backup_files(self, project_path: str) -> int:
+        """
+        清理项目中的所有.backup文件
+        
+        Args:
+            project_path: 项目路径
+            
+        Returns:
+            清理的文件数量
+        """
+        cleaned_count = 0
+        
+        try:
+            import glob
+            import os
+            
+            # 递归查找所有.backup文件
+            backup_files = glob.glob(os.path.join(project_path, "**", "*.backup"), recursive=True)
+            
+            for backup_file in backup_files:
+                try:
+                    os.remove(backup_file)
+                    logger.info(f"🗑️ 已清理备份文件: {backup_file}")
+                    cleaned_count += 1
+                except Exception as e:
+                    logger.warning(f"⚠️ 无法删除备份文件 {backup_file}: {e}")
+            
+            if cleaned_count > 0:
+                logger.info(f"✅ 总共清理了 {cleaned_count} 个备份文件")
+            else:
+                logger.info("ℹ️ 没有找到需要清理的备份文件")
+                
+        except Exception as e:
+            logger.error(f"❌ 清理备份文件失败: {e}")
+            
+        return cleaned_count 

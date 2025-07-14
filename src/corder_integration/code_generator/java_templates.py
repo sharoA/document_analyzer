@@ -22,7 +22,8 @@ class JavaTemplateManager:
             'request_dto': self._get_request_dto_template(),
             'response_dto': self._get_response_dto_template(),
             'entity': self._get_entity_template(),
-            'mapper': self._get_mapper_template()
+            'mapper': self._get_mapper_template(),
+            'mapper_xml': self._get_mapper_xml_template()
         }
         logger.info("✅ Java模板管理器初始化完成")
     
@@ -68,6 +69,12 @@ class JavaTemplateManager:
         entity_fields = self._build_entity_fields(input_params, output_params)
         custom_methods = self._build_custom_mapper_methods(interface_name, input_params)
         
+        # 构建XML模板变量
+        xml_result_map_fields = self._build_xml_result_map_fields(input_params, output_params)
+        xml_column_list = self._build_xml_column_list(input_params, output_params)
+        xml_where_conditions = self._build_xml_where_conditions(input_params)
+        xml_custom_methods = self._build_xml_custom_methods(interface_name, input_params)
+        
         template_vars = {
             'PACKAGE_NAME': base_package,
             'CONTROLLER_CLASS_NAME': controller_name,
@@ -99,6 +106,11 @@ class JavaTemplateManager:
             'ENTITY_FIELDS': entity_fields,
             'CUSTOM_METHODS': custom_methods,
             'CUSTOM_METHOD_DESCRIPTION': f"Custom query for {interface_name}",
+            # XML模板变量
+            'XML_RESULT_MAP_FIELDS': xml_result_map_fields,
+            'XML_COLUMN_LIST': xml_column_list,
+            'XML_WHERE_CONDITIONS': xml_where_conditions,
+            'XML_CUSTOM_METHODS': xml_custom_methods,
             # 业务逻辑占位符
             'BUSINESS_LOGIC_CALL': f'{service_interface_name[0].lower() + service_interface_name[1:]}.{interface_name}(request)',
             'BUSINESS_LOGIC_IMPLEMENTATION': f'// TODO: 实现{description}业务逻辑',
@@ -466,4 +478,160 @@ public interface {{MAPPER_NAME}} extends BaseMapper<{{ENTITY_NAME}}> {
      * {{CUSTOM_METHOD_DESCRIPTION}}
      */
     {{CUSTOM_METHODS}}
-}''' 
+}'''
+
+    def _get_mapper_xml_template(self) -> str:
+        """获取MyBatis Mapper XML模板"""
+        return '''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="{{PACKAGE_NAME}}.domain.mapper.{{MAPPER_NAME}}">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="{{PACKAGE_NAME}}.domain.entity.{{ENTITY_NAME}}">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+{{XML_RESULT_MAP_FIELDS}}
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础列名 -->
+    <sql id="Base_Column_List">
+        id, {{XML_COLUMN_LIST}}, create_time, update_time
+    </sql>
+
+    <!-- 表名 -->
+    <sql id="Table_Name">
+        {{TABLE_NAME}}
+    </sql>
+
+    <!-- 通用查询条件 -->
+    <sql id="Common_Where_Clause">
+        <where>
+{{XML_WHERE_CONDITIONS}}
+        </where>
+    </sql>
+
+    <!-- 自定义查询方法 -->
+    {{XML_CUSTOM_METHODS}}
+
+</mapper>'''
+
+    def _map_jdbc_type(self, param_type: str) -> str:
+        """映射JDBC类型"""
+        jdbc_mapping = {
+            'string': 'VARCHAR',
+            'str': 'VARCHAR',
+            'int': 'INTEGER',
+            'integer': 'INTEGER',
+            'long': 'BIGINT',
+            'float': 'FLOAT',
+            'double': 'DOUBLE',
+            'boolean': 'BOOLEAN',
+            'bool': 'BOOLEAN',
+            'date': 'DATE',
+            'datetime': 'TIMESTAMP',
+            'timestamp': 'TIMESTAMP',
+            'time': 'TIME',
+            'decimal': 'DECIMAL',
+            'bigdecimal': 'DECIMAL'
+        }
+        
+        return jdbc_mapping.get(param_type.lower(), 'VARCHAR')
+    
+    def _build_xml_result_map_fields(self, input_params: List[Dict], output_params: Dict) -> str:
+        """构建XML结果映射字段"""
+        fields = []
+        
+        # 从输入参数构建字段
+        for param in input_params:
+            name = param.get('name', 'field')
+            param_type = param.get('type', 'String')
+            jdbc_type = self._map_jdbc_type(param_type)
+            
+            fields.append(f'        <result column="{name}" property="{name}" jdbcType="{jdbc_type}"/>')
+        
+        # 从输出参数构建字段（避免重复）
+        input_names = {param.get('name') for param in input_params}
+        for name, info in output_params.items():
+            if name not in input_names:
+                param_type = info.get('type', 'String')
+                jdbc_type = self._map_jdbc_type(param_type)
+                fields.append(f'        <result column="{name}" property="{name}" jdbcType="{jdbc_type}"/>')
+        
+        return '\n'.join(fields) if fields else '        <!-- No additional fields -->'
+    
+    def _build_xml_column_list(self, input_params: List[Dict], output_params: Dict) -> str:
+        """构建XML列名列表"""
+        columns = []
+        
+        # 从输入参数获取列名
+        for param in input_params:
+            name = param.get('name', 'field')
+            columns.append(name)
+        
+        # 从输出参数获取列名（避免重复）
+        input_names = {param.get('name') for param in input_params}
+        for name in output_params.keys():
+            if name not in input_names:
+                columns.append(name)
+        
+        return ', '.join(columns) if columns else ''
+    
+    def _build_xml_where_conditions(self, input_params: List[Dict]) -> str:
+        """构建XML WHERE条件"""
+        conditions = []
+        
+        for param in input_params:
+            name = param.get('name', 'field')
+            java_name = f"#{{{name}}}"
+            
+            conditions.append(f'''            <if test="{name} != null and {name} != ''">
+                AND {name} = {java_name}
+            </if>''')
+        
+        return '\n'.join(conditions) if conditions else '            <!-- No conditions -->'
+    
+    def _build_xml_custom_methods(self, interface_name: str, input_params: List[Dict]) -> str:
+        """构建XML自定义方法"""
+        # 计算实体名称
+        entity_name = interface_name
+        for suffix in ['Controller', 'Service', 'Impl', 'Mapper']:
+            if entity_name.endswith(suffix):
+                entity_name = entity_name[:-len(suffix)]
+                break
+        
+        method_name = f"select{interface_name}List"
+        
+        if not input_params:
+            return f'''    <!-- 查询{entity_name}列表 -->
+    <select id="{method_name}" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM
+        <include refid="Table_Name"/>
+        <include refid="Common_Where_Clause"/>
+        ORDER BY id DESC
+    </select>'''
+        
+        # 构建参数条件
+        param_conditions = []
+        for param in input_params:
+            name = param.get('name', 'field')
+            java_name = f"#{{{name}}}"
+            param_conditions.append(f'''            <if test="{name} != null and {name} != ''">
+                AND {name} = {java_name}
+            </if>''')
+        
+        param_conditions_str = '\n'.join(param_conditions)
+        
+        return f'''    <!-- 自定义查询{entity_name}列表 -->
+    <select id="{method_name}" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM
+        <include refid="Table_Name"/>
+        <where>
+{param_conditions_str}
+        </where>
+        ORDER BY id DESC
+    </select>''' 
