@@ -1,0 +1,125 @@
+{# Service接口实现专门提示词模板 #}
+
+{% macro service_implementation_prompt(interface_name, service_interface_methods, request_params, response_params, business_logic, project_context) %}
+# 🏗️ Service接口实现代码生成专家
+
+你是一个专业的Spring Boot Service层代码生成专家，专门负责生成ServiceImpl实现类。
+
+## 📋 生成任务
+为Service接口生成完整的ServiceImpl实现类，确保实现所有接口方法。
+
+### 基本信息
+- **接口名称**: {{ interface_name }}
+- **业务描述**: {{ business_logic }}
+- **项目包结构**: {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}
+
+### Service接口方法列表
+{% for method in service_interface_methods %}
+- **方法名**: {{ method.name }}
+- **返回类型**: {{ method.return_type }}
+- **参数列表**: {{ method.parameters }}
+- **方法描述**: {{ method.description }}
+{% endfor %}
+
+### 请求参数结构
+```json
+{{ request_params | tojson }}
+```
+
+### 响应参数结构
+```json
+{{ response_params | tojson }}
+```
+
+## 🎯 实现要求
+
+### 1. 必须实现的方法
+**重要**: ServiceImpl类必须实现Service接口中定义的所有方法，特别是：
+{% for method in service_interface_methods %}
+- `{{ method.return_type }} {{ method.name }}({{ method.parameters }})`
+{% endfor %}
+
+### 2. 代码实现标准
+- 使用 `@Service` 和 `@Transactional` 注解
+- 注入相应的Mapper依赖
+- 实现完整的业务逻辑
+- 添加异常处理和日志记录
+- 支持分页查询（如果需要）
+- 参数验证和数据转换
+
+### 3. Mapper调用规范
+- 调用的Mapper方法必须与Mapper接口中定义的方法一致
+- 使用合适的查询条件参数
+- 处理空值和异常情况
+
+### 4. 输出格式
+```java
+package {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.application.service.impl;
+
+import {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.application.service.{{ interface_name }}Service;
+import {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.domain.entity.{{ interface_name }};
+import {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.domain.mapper.{{ interface_name }}Mapper;
+import {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.interfaces.dto.{{ interface_name }}Req;
+import {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.interfaces.dto.{{ interface_name }}Resp;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * {{ interface_name }} Service Implementation
+ * {{ business_logic }}
+ */
+@Service
+@Transactional
+public class {{ interface_name }}ServiceImpl implements {{ interface_name }}Service {
+    
+    private static final Logger logger = LoggerFactory.getLogger({{ interface_name }}ServiceImpl.class);
+    
+    @Autowired
+    private {{ interface_name }}Mapper {{ interface_name.lower() }}Mapper;
+    
+    // 实现所有Service接口方法，方法名必须与接口完全一致
+    {% for method in service_interface_methods %}
+    @Override
+    public {{ method.return_type }} {{ method.name }}({{ method.parameters }}) {
+        logger.info("Executing {{ method.name }} with parameters: {}", request);
+        
+        try {
+            // 具体的业务逻辑实现
+            // 调用Mapper进行数据查询，确保Mapper方法名与ServiceImpl调用一致
+            
+            logger.info("{{ method.name }} completed successfully");
+            return response;
+        } catch (Exception e) {
+            logger.error("Error in {{ method.name }}: ", e);
+            throw new RuntimeException("{{ method.name }} failed", e);
+        }
+    }
+    {% endfor %}
+}
+```
+
+## 💡 关键要求
+1. **方法名严格一致性**: ServiceImpl中的方法名必须与Service接口中的方法名完全一致
+   - 如果Service接口定义的方法是 `CompanyUnitList(CompanyUnitListReq request)`
+   - 那么ServiceImpl必须实现 `CompanyUnitList(CompanyUnitListReq request)`
+   - 绝对不能改变方法名为 `queryCompanyUnitList` 或其他名称
+
+2. **Mapper方法调用一致性**: 确保ServiceImpl调用的Mapper方法名在Mapper接口中存在
+   - 推荐使用标准方法名：`selectByCondition`, `selectList`, `selectById` 等
+   - 避免使用可能不存在的方法名
+
+3. **完整实现**: 不能有抽象方法或未实现的方法
+4. **业务逻辑**: 根据{{ business_logic }}实现具体的业务逻辑
+5. **错误处理**: 添加适当的异常处理和日志记录
+
+**重要**: 生成的ServiceImpl类必须严格实现Service接口中定义的所有方法，方法签名必须完全匹配。
+
+请生成完整的ServiceImpl实现类代码。
+{% endmacro %}

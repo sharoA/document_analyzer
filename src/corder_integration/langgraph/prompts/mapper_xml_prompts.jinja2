@@ -1,0 +1,157 @@
+{# Mapper XML文件生成专门提示词模板 #}
+
+{% macro mapper_xml_prompt(interface_name, mapper_methods, entity_fields, table_name, project_context) %}
+# 📄 MyBatis Mapper XML生成专家
+
+你是一个专业的MyBatis XML映射文件生成专家，专门负责生成完整的Mapper XML文件。
+
+## 📋 生成任务
+为{{ interface_name }}Mapper接口生成完整的XML映射文件，包含所有方法的SQL实现。
+
+### 基本信息
+- **Mapper接口**: {{ interface_name }}Mapper
+- **实体类**: {{ interface_name }}
+- **数据表**: {{ table_name }}
+- **命名空间**: {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.domain.mapper.{{ interface_name }}Mapper
+
+### Mapper接口方法列表
+{% for method in mapper_methods %}
+- **方法名**: {{ method.name }}
+- **返回类型**: {{ method.return_type }}
+- **参数**: {{ method.parameters }}
+- **SQL类型**: {{ method.sql_type }}
+{% endfor %}
+
+### 实体字段映射
+{% for field in entity_fields %}
+- **Java字段**: {{ field.java_name }} ({{ field.java_type }})
+- **数据库列**: {{ field.column_name }} ({{ field.jdbc_type }})
+{% endfor %}
+
+## 🎯 XML生成要求
+
+### 1. 文件结构
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="{{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.domain.mapper.{{ interface_name }}Mapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="{{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.domain.entity.{{ interface_name }}">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        {% for field in entity_fields %}
+        <result column="{{ field.column_name }}" property="{{ field.java_name }}" jdbcType="{{ field.jdbc_type }}"/>
+        {% endfor %}
+    </resultMap>
+
+    <!-- 基础列名 -->
+    <sql id="Base_Column_List">
+        id, {% for field in entity_fields %}{{ field.column_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+    </sql>
+
+    <!-- 表名 -->
+    <sql id="Table_Name">
+        {{ table_name }}
+    </sql>
+
+    <!-- 通用查询条件 -->
+    <sql id="Base_Where_Clause">
+        <where>
+            {% for field in entity_fields %}
+            <if test="{{ field.java_name }} != null{% if field.java_type == 'String' %} and {{ field.java_name }} != ''{% endif %}">
+                AND {{ field.column_name }} = #{{'{'}}{{ field.java_name }}{{'}'}}
+            </if>
+            {% endfor %}
+        </where>
+    </sql>
+
+    <!-- 实现所有Mapper接口方法 -->
+    {% for method in mapper_methods %}
+    <!-- {{ method.description }} -->
+    {% if method.sql_type == 'SELECT' %}
+    <select id="{{ method.name }}" resultMap="BaseResultMap">
+        {{ method.sql_template }}
+    </select>
+    {% elif method.sql_type == 'INSERT' %}
+    <insert id="{{ method.name }}" parameterType="{{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.domain.entity.{{ interface_name }}">
+        {{ method.sql_template }}
+    </insert>
+    {% elif method.sql_type == 'UPDATE' %}
+    <update id="{{ method.name }}">
+        {{ method.sql_template }}
+    </update>
+    {% elif method.sql_type == 'DELETE' %}
+    <delete id="{{ method.name }}">
+        {{ method.sql_template }}
+    </delete>
+    {% endif %}
+    {% endfor %}
+
+</mapper>
+```
+
+### 2. SQL模板示例
+
+#### 条件查询模板
+```xml
+<select id="selectByCondition" resultMap="BaseResultMap">
+    SELECT
+    <include refid="Base_Column_List"/>
+    FROM
+    <include refid="Table_Name"/>
+    <include refid="Base_Where_Clause"/>
+    ORDER BY id DESC
+</select>
+```
+
+#### 分页查询模板
+```xml
+<select id="selectPageList" resultMap="BaseResultMap">
+    SELECT
+    <include refid="Base_Column_List"/>
+    FROM
+    <include refid="Table_Name"/>
+    <where>
+        {% for field in entity_fields %}
+        <if test="params.{{ field.java_name }} != null{% if field.java_type == 'String' %} and params.{{ field.java_name }} != ''{% endif %}">
+            AND {{ field.column_name }} = #{{'{'}}params.{{ field.java_name }}{{'}'}}
+        </if>
+        {% endfor %}
+    </where>
+    ORDER BY id DESC
+</select>
+```
+
+#### 自定义查询模板
+```xml
+<select id="customQuery" resultMap="BaseResultMap">
+    SELECT
+    <include refid="Base_Column_List"/>
+    FROM
+    <include refid="Table_Name"/>
+    WHERE 1=1
+    {% for field in entity_fields %}
+    <if test="{{ field.java_name }} != null{% if field.java_type == 'String' %} and {{ field.java_name }} != ''{% endif %}">
+        AND {{ field.column_name }} = #{{'{'}}{{ field.java_name }}{{'}'}}
+    </if>
+    {% endfor %}
+</select>
+```
+
+## 💡 关键要求
+1. **方法完整性**: XML文件必须包含Mapper接口中定义的所有方法
+2. **SQL正确性**: 确保SQL语法正确，表名和字段名匹配
+3. **参数映射**: 正确处理方法参数和SQL参数的映射
+4. **结果映射**: 完整的resultMap映射所有实体字段
+5. **动态SQL**: 使用MyBatis动态SQL处理可选条件
+6. **性能优化**: 合理使用索引和查询优化
+
+### 特殊要求
+- 表名: {{ table_name }}
+- 字段映射要准确
+- 支持分页查询
+- 包含常用的CRUD操作
+- 动态条件查询
+
+请生成完整的Mapper XML文件，确保所有方法都有对应的SQL实现。
+{% endmacro %}

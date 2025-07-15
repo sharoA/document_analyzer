@@ -1,0 +1,105 @@
+{# Mapper接口方法生成专门提示词模板 #}
+
+{% macro mapper_interface_prompt(interface_name, service_impl_mapper_calls, request_params, response_params, business_logic, project_context) %}
+# 🗃️ MyBatis Mapper接口代码生成专家
+
+你是一个专业的MyBatis Mapper接口生成专家，专门负责生成Mapper接口方法。
+
+## 📋 生成任务
+为{{ interface_name }}生成完整的Mapper接口，确保包含ServiceImpl中调用的所有方法。
+
+### 基本信息
+- **实体名称**: {{ interface_name }}
+- **业务描述**: {{ business_logic }}
+- **项目包结构**: {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}
+
+### ServiceImpl中的Mapper方法调用
+{% for call in service_impl_mapper_calls %}
+- **调用方法**: {{ call.method_name }}
+- **调用参数**: {{ call.parameters }}
+- **调用上下文**: {{ call.context }}
+{% endfor %}
+
+### 数据查询需求
+```json
+{{ request_params | tojson }}
+```
+
+### 返回数据结构
+```json
+{{ response_params | tojson }}
+```
+
+## 🎯 生成要求
+
+### 1. 必须包含的方法
+**重要**: Mapper接口必须包含ServiceImpl中调用的所有方法：
+{% for call in service_impl_mapper_calls %}
+- `{{ call.method_name }}` - {{ call.description }}
+{% endfor %}
+
+### 2. 常用查询方法
+除了ServiceImpl需要的方法外，还应包含：
+- 根据ID查询单个记录
+- 根据条件查询列表
+- 分页查询支持
+- 批量操作方法
+
+### 3. 方法命名规范
+- `selectByCondition` - 根据条件查询
+- `selectById` - 根据ID查询
+- `selectList` - 查询列表
+- `insertSelective` - 选择性插入
+- `updateById` - 根据ID更新
+- `deleteById` - 根据ID删除
+
+### 4. 输出格式
+```java
+package {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.domain.mapper;
+
+import {{ project_context.get('package_patterns', {}).get('base_package', 'com.example') }}.domain.entity.{{ interface_name }};
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import java.util.List;
+
+/**
+ * {{ interface_name }}Mapper
+ * {{ business_logic }}
+ */
+@Mapper
+public interface {{ interface_name }}Mapper extends BaseMapper<{{ interface_name }}> {
+    
+    {% for call in service_impl_mapper_calls %}
+    /**
+     * {{ call.description }}
+     */
+    {{ call.return_type }} {{ call.method_name }}({{ call.parameters }});
+    {% endfor %}
+    
+    /**
+     * 根据条件查询记录列表
+     */
+    List<{{ interface_name }}> selectByCondition(@Param("condition") {{ interface_name }} condition);
+    
+    /**
+     * 根据ID查询详细信息
+     */
+    {{ interface_name }} selectByPrimaryKey(@Param("id") Long id);
+    
+    /**
+     * 自定义分页查询
+     */
+    List<{{ interface_name }}> selectPageList(@Param("params") java.util.Map<String, Object> params);
+}
+```
+
+## 💡 关键要求
+1. **方法名匹配**: 确保ServiceImpl调用的所有方法都在Mapper接口中定义
+2. **参数一致**: 方法参数类型和数量必须与ServiceImpl调用一致
+3. **继承BaseMapper**: 继承MyBatis Plus的BaseMapper获得基础CRUD功能
+4. **注解完整**: 使用@Mapper注解和@Param注解
+5. **业务逻辑**: 根据{{ business_logic }}设计合适的查询方法
+
+请生成完整的Mapper接口代码，确保包含ServiceImpl中调用的所有方法。
+{% endmacro %}
