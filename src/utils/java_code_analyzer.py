@@ -1335,7 +1335,7 @@ class JavaCodeAnalyzer:
         # 目录树结构
         overview.append("## 🌳 完整目录树结构")
         overview.append("```")
-        directory_tree = self.generate_directory_tree(project_path, max_depth=3)
+        directory_tree = self.generate_directory_tree(project_path, max_depth=10)
         overview.append(directory_tree)
         overview.append("```")
         overview.append("")

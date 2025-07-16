@@ -186,7 +186,22 @@ class IntelligentFileReuseManager:
                 else:
                     generated_code['domain_service'] = domain_service_code
         
-        # 4. 生成Mapper逻辑
+        # 4. 🆕 生成DTO代码
+        if input_params:
+            request_dto_code = self._generate_request_dto_logic(
+                interface_name, input_params, business_logic
+            )
+            if request_dto_code:
+                generated_code['request_dto'] = request_dto_code
+        
+        # 5. 🆕 生成Response DTO代码
+        response_dto_code = self._generate_response_dto_logic(
+            interface_name, output_params, business_logic
+        )
+        if response_dto_code:
+            generated_code['response_dto'] = response_dto_code
+        
+        # 6. 生成Mapper逻辑
         if strategy['mapper']['action'] in ['create_new', 'add_method']:
             mapper_code = self._generate_mapper_logic(
                 interface_name, strategy, input_params, output_params, business_logic
@@ -601,12 +616,16 @@ class IntelligentFileReuseManager:
         # 根据策略决定调用链
         if strategy['application_service']['action'] != 'skip':
             # Controller -> Application Service
-            service_call = f"return {interface_name.lower()}Application.{interface_name}(request);"
-            service_injection = f"@Autowired\n    private {interface_name}Application {interface_name.lower()}Application;"
+            service_field_name = self._first_char_lower(interface_name) + "Application"
+            method_name = self._first_char_lower(interface_name)
+            service_call = f"return {service_field_name}.{method_name}(request);"
+            service_injection = f"@Autowired\n    private {interface_name}Application {service_field_name};"
         elif strategy['domain_service']['action'] != 'skip':
             # Controller -> Domain Service
-            service_call = f"return {interface_name.lower()}DomainService.{interface_name}(request);"
-            service_injection = f"@Autowired\n    private {interface_name}DomainService {interface_name.lower()}DomainService;"
+            service_field_name = self._first_char_lower(interface_name) + "Service"
+            method_name = self._first_char_lower(interface_name)
+            service_call = f"return {service_field_name}.{method_name}(request);"
+            service_injection = f"@Autowired\n    private {interface_name}Service {service_field_name};"
         else:
             # 默认调用
             service_call = f"// TODO: 实现{interface_name}业务逻辑\n        return new {interface_name}Resp();"
@@ -615,20 +634,21 @@ class IntelligentFileReuseManager:
         # 🔧 关键修复：根据action决定生成内容
         if action == 'add_method':
             # 只生成方法，用于添加到现有Controller
+            method_name = self._first_char_lower(interface_name)
             method_code = f"""
     /**
      * {business_logic}
      */
-    @PostMapping("/{interface_name}")
+    @RequestMapping("/{interface_name}")
     @ApiOperation(value = "{business_logic}")
-    public Response<{interface_name}Resp> {interface_name}(@RequestBody @Valid {interface_name}Req request) {{
+    public Response<{interface_name}Resp> {method_name}(@RequestBody @Valid {interface_name}Req request) {{
         try {{
-            logger.info("开始执行{interface_name}，请求参数: {{}}", request);
+            logger.info("开始执行{method_name}，请求参数: {{}}", request);
             
             {service_call}
             
         }} catch (Exception e) {{
-            logger.error("执行{interface_name}失败", e);
+            logger.error("执行{method_name}失败", e);
             return Response.error("执行失败: " + e.getMessage());
         }}
     }}"""
@@ -640,7 +660,9 @@ class IntelligentFileReuseManager:
                 
         else:
             # action == 'create_new' - 生成完整的Controller类
-            base_package = self.project_structure.get('base_package', 'com.yljr.crcl.limit')
+            base_package = self.project_structure.get('base_package', 'com.yljr.crcl')
+            method_name = self._first_char_lower(interface_name)
+            api_path = self._first_char_lower(interface_name)
             
             controller_code = f"""
 package {base_package}.interfaces;
@@ -663,7 +685,7 @@ import javax.validation.Valid;
  */
 @Validated
 @RestController
-@RequestMapping("/api/{interface_name.lower()}")
+@RequestMapping("/api/{api_path}")
 public class {interface_name}Controller {{
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
@@ -673,16 +695,16 @@ public class {interface_name}Controller {{
     /**
      * {business_logic}
      */
-    @PostMapping("/{interface_name}")
+    @PostMapping("/{method_name}")
     @ApiOperation(value = "{business_logic}")
-    public Response<{interface_name}Resp> {interface_name}(@RequestBody @Valid {interface_name}Req request) {{
+    public Response<{interface_name}Resp> {method_name}(@RequestBody @Valid {interface_name}Req request) {{
         try {{
-            logger.info("开始执行{interface_name}，请求参数: {{}}", request);
+            logger.info("开始执行{method_name}，请求参数: {{}}", request);
             
             {service_call}
             
         }} catch (Exception e) {{
-            logger.error("执行{interface_name}失败", e);
+            logger.error("执行{method_name}失败", e);
             return Response.error("执行失败: " + e.getMessage());
         }}
     }}
@@ -710,7 +732,7 @@ public class {interface_name}Controller {{
             dependencies = ""
         
         # 获取基础包名，提供默认值
-        base_package = self.project_structure.get('base_package', 'com.yljr.crcl.limit')
+        base_package = self.project_structure.get('base_package', 'com.yljr.crcl')
         
         class_code = f"""
 package {base_package}.application.service;
@@ -759,7 +781,7 @@ public class {interface_name}Application {{
         method_name = self._first_char_lower(interface_name)
         
         # 获取基础包名，提供默认值
-        base_package = self.project_structure.get('base_package', 'com.yljr.crcl.limit')
+        base_package = self.project_structure.get('base_package', 'com.yljr.crcl')
         
         # 生成Service接口
         service_interface = f"""
@@ -849,7 +871,7 @@ public class {interface_name}ServiceImpl implements {interface_name}Service {{
         """生成Mapper逻辑"""
         
         # 获取基础包名，提供默认值
-        base_package = self.project_structure.get('base_package', 'com.yljr.crcl.limit')
+        base_package = self.project_structure.get('base_package', 'com.yljr.crcl')
         
         mapper_code = f"""
 package {base_package}.domain.mapper;
@@ -901,7 +923,7 @@ public interface {interface_name}Mapper {{
         """生成Feign Client逻辑"""
         
         # 获取基础包名，提供默认值
-        base_package = self.project_structure.get('base_package', 'com.yljr.crcl.limit')
+        base_package = self.project_structure.get('base_package', 'com.yljr.crcl')
         
         # 🔧 修复：生成具体的Feign接口而不是通用模板
         # 根据业务逻辑判断调用的外部服务
@@ -947,7 +969,7 @@ public interface {interface_name}FeignClient {{
         """生成XML映射逻辑 - 基于设计文档中的表结构动态生成"""
         
         # 获取基础包名，提供默认值
-        base_package = self.project_structure.get('base_package', 'com.yljr.crcl.limit')
+        base_package = self.project_structure.get('base_package', 'com.yljr.crcl')
         
         # 🔧 关键修复：从项目上下文中提取表结构信息
         table_structure = self._extract_table_structure_from_context(interface_name, business_logic)
@@ -1295,17 +1317,51 @@ public interface {interface_name}FeignClient {{
     
     def _infer_package_info(self, java_src_path: Path) -> Tuple[str, set]:
         """推断包信息和模块"""
-        base_package = "com.yljr.crcl"
+        base_package = "com.yljr.crcl"  # 默认值，会被动态推断覆盖
         modules = set()
+        
+        # 🔧 修复：从实际的Java文件中推断基础包名
+        java_files = list(java_src_path.rglob("*.java"))
+        if java_files:
+            for java_file in java_files[:5]:  # 检查前5个文件就够了
+                try:
+                    content = java_file.read_text(encoding='utf-8')
+                    # 查找package声明
+                    package_match = re.search(r'package\s+([a-zA-Z0-9_.]+);', content)
+                    if package_match:
+                        full_package = package_match.group(1)
+                        # 提取基础包名（通常是com.yljr.xxx.xxx的格式）
+                        package_parts = full_package.split('.')
+                        if len(package_parts) >= 4 and package_parts[0] == 'com' and package_parts[1] == 'yljr':
+                            # 取前4部分作为基础包名：com.yljr.service.module
+                            base_package = '.'.join(package_parts[:4])
+                            logger.info(f"🔍 从文件 {java_file.name} 推断基础包名: {base_package}")
+                            break
+                except Exception as e:
+                    logger.warning(f"⚠️ 读取文件 {java_file} 失败: {e}")
+                    continue
         
         # 扫描目录结构推断模块
         for path in java_src_path.rglob("*"):
             if path.is_dir():
                 path_str = str(path)
-                for module in ['credit', 'limit', 'open', 'ls']:
-                    if module in path_str:
-                        modules.add(module)
+                # 从目录结构中提取模块信息
+                if "com/yljr" in path_str or "com\\yljr" in path_str:
+                    # 提取com.yljr之后的包路径
+                    parts = re.split(r'[/\\]com[/\\]yljr[/\\]', path_str)
+                    if len(parts) > 1:
+                        package_parts = re.split(r'[/\\]', parts[1])
+                        for part in package_parts:
+                            if part and part not in ['src', 'main', 'java', 'resources']:
+                                modules.add(part)
         
+        # 如果没有找到模块，从基础包名中提取
+        if not modules:
+            package_parts = base_package.split('.')
+            if len(package_parts) >= 4:
+                modules.add(package_parts[2])  # 服务模块
+                modules.add(package_parts[3])  # 业务模块
+            
         return base_package, modules
     
     def _calculate_controller_match_score(self, controller_info: Dict, 
@@ -1380,3 +1436,227 @@ public interface {interface_name}FeignClient {{
         if not text:
             return text
         return text[0].lower() + text[1:] if len(text) > 1 else text.lower()
+    
+    def _generate_request_dto_logic(self, interface_name: str, input_params: List[Dict], 
+                                   business_logic: str) -> str:
+        """生成Request DTO代码"""
+        
+        # 获取基础包名
+        base_package = self.project_structure.get('base_package', 'com.yljr.crcl')
+        
+        # 生成字段定义
+        fields = []
+        for param in input_params:
+            param_name = param.get('name', '')
+            param_type = param.get('type', 'String')
+            param_desc = param.get('description', param_name)
+            
+            # 处理类型映射
+            java_type = self._map_param_type_to_java_type(param_type)
+            
+            field_code = f"""
+    /**
+     * {param_desc}
+     */
+    @ApiModelProperty(value = "{param_desc}")
+    private {java_type} {param_name};"""
+            fields.append(field_code)
+        
+        # 生成getter/setter方法
+        getters_setters = []
+        for param in input_params:
+            param_name = param.get('name', '')
+            param_type = param.get('type', 'String')
+            java_type = self._map_param_type_to_java_type(param_type)
+            
+            # 首字母大写的属性名
+            capitalized_name = param_name[0].upper() + param_name[1:] if param_name else ''
+            
+            getter_setter = f"""
+    public {java_type} get{capitalized_name}() {{
+        return {param_name};
+    }}
+
+    public void set{capitalized_name}({java_type} {param_name}) {{
+        this.{param_name} = {param_name};
+    }}"""
+            getters_setters.append(getter_setter)
+        
+        # 生成完整的DTO类
+        dto_code = f"""
+package {base_package}.interfaces.dto;
+
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import javax.validation.constraints.*;
+import java.util.List;
+import java.util.Date;
+import java.math.BigDecimal;
+
+/**
+ * {interface_name} 请求DTO
+ * {business_logic}
+ */
+@ApiModel(value = "{interface_name}Req", description = "{business_logic}")
+public class {interface_name}Req {{
+{''.join(fields)}
+{''.join(getters_setters)}
+
+    @Override
+    public String toString() {{
+        return "{interface_name}Req{{" +
+{self._generate_to_string_fields(input_params)} +
+                "}};";
+    }}
+}}"""
+        
+        return dto_code
+    
+    def _generate_response_dto_logic(self, interface_name: str, output_params: Dict, 
+                                    business_logic: str) -> str:
+        """生成Response DTO代码"""
+        
+        # 获取基础包名
+        base_package = self.project_structure.get('base_package', 'com.yljr.crcl')
+        
+        # 生成字段定义
+        fields = []
+        getters_setters = []
+        to_string_fields = []
+        
+        # 处理输出参数
+        if isinstance(output_params, dict):
+            for param_name, param_info in output_params.items():
+                if isinstance(param_info, dict):
+                    param_type = param_info.get('type', 'String')
+                    param_desc = param_info.get('description', param_name)
+                else:
+                    param_type = 'String'
+                    param_desc = param_name
+                
+                # 处理类型映射
+                java_type = self._map_param_type_to_java_type(param_type)
+                
+                field_code = f"""
+    /**
+     * {param_desc}
+     */
+    @ApiModelProperty(value = "{param_desc}")
+    private {java_type} {param_name};"""
+                fields.append(field_code)
+                
+                # 生成getter/setter
+                capitalized_name = param_name[0].upper() + param_name[1:] if param_name else ''
+                getter_setter = f"""
+    public {java_type} get{capitalized_name}() {{
+        return {param_name};
+    }}
+
+    public void set{capitalized_name}({java_type} {param_name}) {{
+        this.{param_name} = {param_name};
+    }}"""
+                getters_setters.append(getter_setter)
+                
+                # 生成toString字段
+                to_string_fields.append(f'"{param_name}=" + {param_name}')
+        
+        # 如果没有特定的输出参数，添加通用的列表和分页字段
+        if not fields:
+            fields.append(f"""
+    /**
+     * 数据列表
+     */
+    @ApiModelProperty(value = "数据列表")
+    private List<{interface_name}> dataList;
+
+    /**
+     * 总数
+     */
+    @ApiModelProperty(value = "总数")
+    private Long totalCount;""")
+            
+            getters_setters.append(f"""
+    public List<{interface_name}> getDataList() {{
+        return dataList;
+    }}
+
+    public void setDataList(List<{interface_name}> dataList) {{
+        this.dataList = dataList;
+    }}
+
+    public Long getTotalCount() {{
+        return totalCount;
+    }}
+
+    public void setTotalCount(Long totalCount) {{
+        this.totalCount = totalCount;
+    }}""")
+            
+            to_string_fields.extend(["\\\"dataList=\\\" + dataList", "\\\"totalCount=\\\" + totalCount"])
+        
+        # 生成完整的DTO类
+        dto_code = f"""
+package {base_package}.interfaces.dto;
+
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import java.util.List;
+import java.util.Date;
+import java.math.BigDecimal;
+
+/**
+ * {interface_name} 响应DTO
+ * {business_logic}
+ */
+@ApiModel(value = "{interface_name}Resp", description = "{business_logic}")
+public class {interface_name}Resp {{
+{''.join(fields)}
+{''.join(getters_setters)}
+
+    @Override
+    public String toString() {{
+        return "{interface_name}Resp{{" +
+{self._generate_to_string_content(to_string_fields)} +
+                "}};";
+    }}
+}}"""
+        
+        return dto_code
+    
+    def _map_param_type_to_java_type(self, param_type: str) -> str:
+        """映射参数类型到Java类型"""
+        
+        type_mapping = {
+            'String': 'String',
+            'Integer': 'Integer',
+            'Long': 'Long',
+            'Double': 'Double',
+            'Boolean': 'Boolean',
+            'Date': 'Date',
+            'BigDecimal': 'BigDecimal',
+            'List': 'List<String>',
+            'Object': 'Object'
+        }
+        
+        return type_mapping.get(param_type, 'String')
+    
+    def _generate_to_string_fields(self, input_params: List[Dict]) -> str:
+        """生成toString方法的字段"""
+        
+        fields = []
+        for param in input_params:
+            param_name = param.get('name', '')
+            fields.append(f'                "{param_name}=" + {param_name}')
+        
+        if fields:
+            return ' + ", " +\n'.join(fields)
+        else:
+            return '                ""'
+    
+    def _generate_to_string_content(self, to_string_fields: List[str]) -> str:
+        """生成toString方法的内容"""
+        
+        if to_string_fields:
+            return '                ' + ' + ", " +\n                '.join(to_string_fields)
+        else:
+            return '                ""'

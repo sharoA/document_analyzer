@@ -526,7 +526,7 @@ def test_langgraph_api():
     print(f"🚀 调用API: {api_url}")
     print(f"📋 项目名称: {project_name}")
     print(f"🔧 使用LangGraph: True")
-    print(f"📄 文档长度: {len(document_content)} 字符")
+    print(f"📄 post参数: {request_data}")
     print("-" * 60)
     
     try:

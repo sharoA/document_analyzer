@@ -75,6 +75,19 @@ class JavaTemplateManager:
         xml_where_conditions = self._build_xml_where_conditions(input_params)
         xml_custom_methods = self._build_xml_custom_methods(interface_name, input_params)
         
+        # 解析API路径 - 分离Controller基础路径和方法路径
+        if api_path:
+            path_parts = api_path.strip('/').split('/')
+            if len(path_parts) > 1:
+                controller_base_path = '/' + '/'.join(path_parts[:-1])
+                method_path = '/' + path_parts[-1]
+            else:
+                controller_base_path = '/api'
+                method_path = '/' + (path_parts[0] if path_parts else interface_name.lower())
+        else:
+            controller_base_path = f"/api/{interface_name.lower()}"
+            method_path = f"/{interface_name}"
+        
         template_vars = {
             'PACKAGE_NAME': base_package,
             'CONTROLLER_CLASS_NAME': controller_name,
@@ -87,7 +100,9 @@ class JavaTemplateManager:
             'ENTITY_NAME': entity_name,
             'MAPPER_NAME': mapper_name,
             'MAPPER_FIELD_NAME': mapper_name[0].lower() + mapper_name[1:],
-            'API_PATH': api_path or f"/api/{interface_name.lower()}",
+            'CONTROLLER_BASE_PATH': controller_base_path,  # Controller级别的@RequestMapping路径
+            'METHOD_PATH': method_path,  # 方法级别的映射路径
+            'API_PATH': api_path or controller_base_path,  # 保持兼容性
             'HTTP_METHOD_ANNOTATION': http_method_mapping.get(http_method.upper(), 'PostMapping'),
             'REQUEST_MAPPING_PATH': '',  # 如果需要额外路径
             'METHOD_NAME': interface_name,
@@ -113,7 +128,10 @@ class JavaTemplateManager:
             'XML_CUSTOM_METHODS': xml_custom_methods,
             # 业务逻辑占位符
             'BUSINESS_LOGIC_CALL': f'{service_interface_name[0].lower() + service_interface_name[1:]}.{interface_name}(request)',
-            'BUSINESS_LOGIC_IMPLEMENTATION': f'// TODO: 实现{description}业务逻辑',
+            # 业务逻辑实现 - 支持PageHelper分页和Feign Client调用
+            'BUSINESS_LOGIC_IMPLEMENTATION': self._generate_business_logic_implementation(
+                interface_name, description, input_params, output_params
+            ),
             'REQUEST_PARAM_LOG': 'request',
             'PARAM_LOG': 'request',
             'RESPONSE_CREATION': f'new {response_dto_name}()',
@@ -289,7 +307,7 @@ import io.swagger.annotations.ApiOperation;
  */
 @Api(tags = "{{CONTROLLER_DESCRIPTION}}")
 @RestController
-@RequestMapping("{{API_PATH}}")
+@RequestMapping("{{CONTROLLER_BASE_PATH}}")
 @CrossOrigin(origins = "*")
 public class {{CONTROLLER_CLASS_NAME}} {
     
@@ -302,7 +320,7 @@ public class {{CONTROLLER_CLASS_NAME}} {
      * {{METHOD_DESCRIPTION}}
      */
     @ApiOperation("{{METHOD_DESCRIPTION}}")
-    @{{HTTP_METHOD_ANNOTATION}}{{REQUEST_MAPPING_PATH}}
+    @{{HTTP_METHOD_ANNOTATION}}("{{METHOD_PATH}}")
     public ResponseEntity<{{RESPONSE_DTO_NAME}}> {{METHOD_NAME}}({{METHOD_PARAMETERS}}) {
         try {
             logger.info("Processing {{METHOD_NAME}} request: {}", {{REQUEST_PARAM_LOG}});
@@ -347,13 +365,17 @@ import {{PACKAGE_NAME}}.domain.entity.{{ENTITY_NAME}};
 import {{PACKAGE_NAME}}.domain.mapper.{{MAPPER_NAME}};
 import {{PACKAGE_NAME}}.interfaces.dto.{{REQUEST_DTO_NAME}};
 import {{PACKAGE_NAME}}.interfaces.dto.{{RESPONSE_DTO_NAME}};
+import {{PACKAGE_NAME}}.application.feign.ZqylUserCenterFeignClient;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * {{SERVICE_DESCRIPTION}}
@@ -367,6 +389,9 @@ public class {{SERVICE_IMPL_NAME}} implements {{SERVICE_INTERFACE_NAME}} {
     
     @Autowired
     private {{MAPPER_NAME}} {{MAPPER_FIELD_NAME}};
+    
+    @Autowired
+    private ZqylUserCenterFeignClient zqylUserCenterFeignClient;
     
     @Override
     public {{RETURN_TYPE}} {{METHOD_NAME}}({{REQUEST_DTO_NAME}} request) {
@@ -634,4 +659,89 @@ public interface {{MAPPER_NAME}} extends BaseMapper<{{ENTITY_NAME}}> {
 {param_conditions_str}
         </where>
         ORDER BY id DESC
-    </select>''' 
+    </select>'''
+    
+    def _generate_business_logic_implementation(self, interface_name: str, description: str, 
+                                              input_params: List[Dict], output_params: List[Dict]) -> str:
+        """生成业务逻辑实现 - 支持PageHelper分页和Feign Client调用"""
+        
+        interface_lower = interface_name.lower()
+        
+        # 判断是否是查询类接口（需要分页）
+        if any(keyword in interface_lower for keyword in ['query', 'list', 'search', 'find']):
+            # 查询类接口 - 使用PageHelper分页
+            if any(keyword in interface_lower for keyword in ['company', 'unit', 'organization']):
+                # 企业组织相关接口 - 调用zqyl-user-center-service
+                return '''
+            // 检查分页参数
+            Integer pageNum = request.getPageNum() != null ? request.getPageNum() : 1;
+            Integer pageSize = request.getPageSize() != null ? request.getPageSize() : 10;
+            
+            // 使用PageHelper进行分页
+            PageHelper.startPage(pageNum, pageSize);
+            
+            try {
+                // 构建查询参数
+                Map<String, Object> params = new HashMap<>();
+                // TODO: 根据request参数构建查询条件
+                
+                // 调用zqyl-user-center-service服务获取组织单元信息
+                List<Map<String, Object>> dataList = zqylUserCenterFeignClient.queryCompanyUnitList(params);
+                
+                // 构建分页结果
+                PageInfo<Map<String, Object>> pageInfo = new PageInfo<>(dataList);
+                
+                // 构建响应对象
+                return buildSuccessResponse(dataList, pageInfo);
+            } finally {
+                // 清理分页参数
+                PageHelper.clearPage();
+            }'''
+            else:
+                # 其他查询接口 - 使用本地数据库
+                return '''
+            // 检查分页参数
+            Integer pageNum = request.getPageNum() != null ? request.getPageNum() : 1;
+            Integer pageSize = request.getPageSize() != null ? request.getPageSize() : 10;
+            
+            // 使用PageHelper进行分页
+            PageHelper.startPage(pageNum, pageSize);
+            
+            try {
+                // 调用Mapper查询数据
+                List dataList = mapper.queryData(request);
+                
+                // 构建分页结果
+                PageInfo pageInfo = new PageInfo<>(dataList);
+                
+                // 构建响应对象
+                return buildSuccessResponse(dataList, pageInfo);
+            } finally {
+                // 清理分页参数
+                PageHelper.clearPage();
+            }'''
+        
+        elif any(keyword in interface_lower for keyword in ['export', 'download']):
+            # 导出类接口
+            return '''
+            // 导出不需要分页，获取全部数据
+            List<Map<String, Object>> dataList;
+            
+            // 构建查询参数
+            Map<String, Object> params = new HashMap<>();
+            // TODO: 根据request参数构建查询条件
+            
+            // 调用zqyl-user-center-service服务获取组织单元信息
+            dataList = zqylUserCenterFeignClient.queryCompanyUnitList(params);
+            
+            // 构建响应对象
+            return buildExportResponse(dataList);'''
+        
+        else:
+            # 其他类型接口（增删改）
+            return '''
+            // 执行业务操作
+            int result = mapper.executeOperation(request);
+            
+            // 构建响应对象
+            return buildOperationResponse(result);''' 

@@ -69,11 +69,11 @@ class InterfaceAdder:
         Returns:
             接口方法代码
         """
-        # 生成映射注解
-        mapping_annotation = self._get_mapping_annotation(http_method, interface_name)
+        # 生成映射注解 - 🔧 修复：使用完整API路径而不是接口名
+        mapping_annotation = self._get_mapping_annotation(http_method, api_path)
         
-        # 生成方法签名
-        method_name = interface_name
+        # 生成方法签名 - 🔧 修复：使用驼峰命名
+        method_name = self._first_char_lower(interface_name)
         
         # 根据HTTP方法生成参数和返回类型
         if http_method in ["POST", "PUT"]:
@@ -105,22 +105,32 @@ class InterfaceAdder:
         
         return method_code
     
-    def _get_mapping_annotation(self, http_method: str, interface_name: str) -> str:
-        """生成映射注解"""
-        if http_method == "GET":
-            return f'@GetMapping("/{interface_name}")'
-        elif http_method == "POST":
-            return f'@PostMapping("/{interface_name}")'
-        elif http_method == "PUT":
-            return f'@PutMapping("/{interface_name}")'
-        elif http_method == "DELETE":
-            return f'@DeleteMapping("/{interface_name}")'
+    def _get_mapping_annotation(self, http_method: str, api_path: str) -> str:
+        """生成映射注解 - 🔧 修复：使用完整API路径"""
+        # 如果api_path是完整路径，直接使用；否则使用接口名
+        if api_path.startswith('/'):
+            path = api_path
         else:
-            return f'@RequestMapping(value = "/{interface_name}", method = RequestMethod.{http_method})'
+            path = f'/{api_path}'
+            
+        if http_method == "GET":
+            return f'@GetMapping("{path}")'
+        elif http_method == "POST":
+            return f'@PostMapping("{path}")'
+        elif http_method == "PUT":
+            return f'@PutMapping("{path}")'
+        elif http_method == "DELETE":
+            return f'@DeleteMapping("{path}")'
+        else:
+            return f'@RequestMapping(value = "{path}", method = RequestMethod.{http_method})'
     
     def _capitalize_first(self, text: str) -> str:
         """首字母大写"""
         return text[0].upper() + text[1:] if text else ""
+    
+    def _first_char_lower(self, text: str) -> str:
+        """首字母小写"""
+        return text[0].lower() + text[1:] if text else ""
     
     def _generate_service_call(self, interface_name: str, services: List[Dict[str, str]]) -> str:
         """

@@ -135,23 +135,7 @@ class IntelligentCodingAgent:
         
         logger.info(f"🎯 当前ReAct配置: {self.react_config}")
     
-    def get_react_status(self) -> Dict[str, Any]:
-        """获取ReAct模式状态信息"""
-        
-        return {
-            'react_enabled': self.react_config.get('enabled', False),
-            'llm_provider': self.llm_provider,
-            'llm_available': self.llm_client is not None,
-            'react_config': self.react_config.copy(),
-            'supported_features': [
-                'multi_iteration_reasoning',
-                'step_by_step_generation', 
-                'automatic_validation',
-                'fallback_protection',
-                'progress_monitoring'
-            ]
-        }
-    
+   
     def get_available_tools(self) -> Dict[str, Any]:
         """获取ReAct模式可用的工具列表"""
         
@@ -679,10 +663,10 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
             }
         
         try:
-            # 🎯 深度搜索最佳Java项目路径
+            # 🎯 深度搜索最佳Java项目路径,可以拿到根据/lslimit找到对应的\crcl-open\src\main\java\com\yljr\crcl\limit
             optimized_project_path = self._find_deep_java_project_path(project_path, service_name)
             
-            # 🎯 基于API路径关键字查找现有文件结构
+            # 🎯 基于API路径关键字查找现有文件结构，返回倒数第二个片段 /crcl-open-api/lsLimit/listUnitLimitByCompanyId，也就是领域名lslimit
             api_keyword = self._extract_api_path_keyword(api_path)
             if api_keyword:
                 existing_path = self._find_existing_path_by_keyword(optimized_project_path, api_keyword)
@@ -697,87 +681,76 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
                 optimized_project_path, service_name
             )
             
-            # 🎯 新增：将API路径添加到项目上下文，用于智能路径选择
+            # 将API路径添加到项目上下文，用于智能路径选择
             project_context['current_api_path'] = api_path
             project_context['optimized_project_path'] = optimized_project_path
             
-            # 🆕 新增：将设计文档内容添加到项目上下文（用于增强版代码生成）
+            # 将设计文档内容添加到项目上下文（用于增强版代码生成）
             document_content = parameters.get('document_content', '')
             if not document_content and hasattr(self, '_current_design_doc'):
                 # 从编码代理的存储中获取设计文档
                 document_content = self._current_design_doc
                 logger.info(f"📄 从编码代理获取设计文档内容 ({len(document_content)} 字符)")
-            
-            if not document_content:
-                # 从全局状态获取设计文档内容
-                import inspect
-                frame = inspect.currentframe()
-                try:
-                    # 查找调用栈中可能包含document_content的帧
-                    while frame:
-                        if 'document_content' in frame.f_locals:
-                            document_content = frame.f_locals['document_content']
-                            break
-                        frame = frame.f_back
-                except:
-                    pass
+       
             
             project_context['document_content'] = document_content
             logger.info(f"📄 设计文档内容已添加到项目上下文 ({len(document_content)} 字符)")
             
-            # 🆕 新增：检查是否需要在现有Controller中添加接口
-            if api_keyword:
+            # 智能项目策略判断，判断是需要新生成文件还是复用现有文件
+            project_strategy = self._determine_project_strategy(optimized_project_path, service_name, api_keyword, project_context)
+            logger.info(f"🎯 项目策略判断: {project_strategy['strategy']} - {project_strategy['reason']}")
+            
+            # 🆕 根据项目策略决定处理方式
+            if project_strategy['strategy'] == 'enhance_existing' and api_keyword:
+                # 策略1：在现有文档下生成
+                # 1：获取optimized_project_path路径下项目结构 output1
+                # 2、output1 作为输入给大模型让大模型判断需要在哪些类下实现接口的功能 output2
+                # 3、将output2生成的内容写入到对应的文件
                 try:
-                    from ...code_generator.controller_interface_manager import ControllerInterfaceManager
+                    from ...code_generator.strategy1_manager import Strategy1Manager
+                       
+                    logger.info(f"进入策略1管理器========================")
+                    # 初始化策略1管理器
+                    strategy1_manager = Strategy1Manager(self.llm_client)
                     
-                    # 初始化Controller接口管理器
-                    controller_manager = ControllerInterfaceManager(self.llm_client)
-                    
-                    # 处理API接口请求
-                    add_result = controller_manager.process_api_interface_request(
+                    # 执行策略1完整流程
+                    strategy1_result = strategy1_manager.execute_strategy1(
                         optimized_project_path, api_keyword, api_path, business_logic
                     )
                     
-                    if add_result.get('success', False):
-                        logger.info(f"✅ 成功在现有Controller中添加接口: {add_result.get('interface_name', '')}")
+                    if strategy1_result['success']:
+                        # 🆕 新增：策略1完成后清理项目分析缓存
+                        try:
+                            self.project_analysis_api.clear_analysis_cache(optimized_project_path, service_name)
+                            logger.info(f"🗑️ 策略1完成后已清理项目分析缓存")
+                        except Exception as e:
+                            logger.warning(f"⚠️ 清理项目分析缓存时出错: {e}")
                         
-                        # 🆕 新增：处理Service和Mapper层
-                        # 使用现有的模块处理Service和Mapper
-                        from ...code_generator.service_decision_maker import ServiceDecisionMaker
-                        
-                        service_decision_maker = ServiceDecisionMaker(self.llm_client)
-                        service_mapper_result = self._handle_service_and_mapper_using_existing_modules(
-                            add_result, interface_name, input_params, output_params, 
-                            description, project_context, service_decision_maker
-                        )
-                        
-                        # 合并结果
-                        all_generated_files = add_result.get('results', [])
-                        if service_mapper_result.get('success', False):
-                            all_generated_files.extend(service_mapper_result.get('generated_files', []))
-                        
-                        # 返回成功结果
+                        # 3.3、返回成功结果
                         return {
                             'success': True,
-                            'message': f'{add_result.get("interface_name", interface_name)}接口已添加到现有Controller中，并处理了Service/Mapper层',
-                            'generated_files': all_generated_files,
+                            'message': f'{api_keyword}接口已通过策略1成功实现',
+                            'generated_files': strategy1_result.get('write_result', {}).get('written_files', []),
                             'service_name': service_name,
-                            'interface_name': add_result.get('interface_name', interface_name),
+                            'interface_name': api_keyword,
                             'api_path': api_path,
                             'llm_provider': self.llm_provider,
-                            'generation_mode': 'add_to_existing_controller',
-                            'controller_modified': True,
-                            'service_mapper_handled': service_mapper_result.get('success', False),
-                            'modification_details': {
-                                'controller': add_result,
-                                'service_mapper': service_mapper_result
-                            }
+                            'generation_mode': 'strategy1_implementation',
+                            'strategy1_result': strategy1_result,
+                            'execution_summary': strategy1_manager.get_execution_summary(strategy1_result)
                         }
                     else:
-                        logger.info(f"⚠️ 未能在现有Controller中添加接口，将生成新文件")
+                        logger.info(f"⚠️ 策略1失败：{strategy1_result.get('error', '未知错误')}，将使用策略2")
                         
                 except Exception as e:
-                    logger.warning(f"⚠️ Controller接口管理器处理失败: {e}, 将生成新文件")
+                    logger.warning(f"⚠️ 策略1异常: {e}, 将使用策略2")
+               
+            
+            elif project_strategy['strategy'] == 'create_new':
+                # 策略2：新项目或不完整项目，直接生成新文件
+                logger.info(f"📁 策略2：直接使用新文件生成策略，原因: {project_strategy['reason']}")
+            
+           
             
             # 使用LLM生成代码
             logger.info(f" 调用{self.llm_provider}大模型生成代码...")
@@ -787,7 +760,6 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
             )
             
             # 生成输出文件路径
-            # output_path = self._prepare_output_directory(service_name, project_path)  # 不再需要
             code_files = self._write_generated_code(generated_code, optimized_project_path, service_name, project_context)
             
             # 🆕 新增：任务完成后清理备份文件
@@ -799,6 +771,13 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
                     logger.info(f"🧹 已清理 {cleaned_count} 个备份文件")
             except Exception as e:
                 logger.warning(f"⚠️ 清理备份文件时出错: {e}")
+            
+            # 🆕 新增：清理项目分析缓存，确保下次分析时能获取最新状态
+            try:
+                self.project_analysis_api.clear_analysis_cache(optimized_project_path, service_name)
+                logger.info(f"🗑️ 已清理项目分析缓存，确保下次分析获取最新状态")
+            except Exception as e:
+                logger.warning(f"⚠️ 清理项目分析缓存时出错: {e}")
             
             return {
                 'success': True,
@@ -1822,8 +1801,34 @@ public interface {service_interface_name} {{
         else:
             output_params_text = "  默认返回标准响应对象"
         
-        # 处理API路径，生成合适的RequestMapping
-        request_mapping = api_path if api_path else f"/api/v1/{interface_name.lower()}"
+        # 🔧 修复：正确处理API路径，分离Controller基础路径和方法路径
+        if api_path:
+            # 分解API路径：/general/multiorgManage/queryCompanyUnitList
+            path_parts = api_path.strip('/').split('/')
+            if len(path_parts) > 1:
+                # Controller基础路径：/general/multiorgManage
+                controller_base_path = '/' + '/'.join(path_parts[:-1])
+                # 方法路径：/queryCompanyUnitList  
+                method_path = '/' + path_parts[-1]
+                request_mapping = controller_base_path
+            else:
+                # 如果只有一段，使用默认格式
+                controller_base_path = f"/api/{interface_name.lower()}"
+                method_path = f"/{interface_name.lower()}"
+                request_mapping = controller_base_path
+        else:
+            # 默认路径格式
+            controller_base_path = f"/api/v1/{interface_name.lower()}"
+            method_path = f"/{interface_name.lower()}"
+            request_mapping = controller_base_path
+        
+        # 确定HTTP方法对应的注解
+        method_annotation = {
+            'GET': '@GetMapping',
+            'POST': '@PostMapping', 
+            'PUT': '@PutMapping',
+            'DELETE': '@DeleteMapping'
+        }.get(http_method.upper(), '@GetMapping')
         
         requirement_prompt = f"""
 ## 接口需求规格
@@ -1832,7 +1837,9 @@ public interface {service_interface_name} {{
 - 接口名称: {interface_name}
 - 功能描述: {description}
 - HTTP方法: {http_method}
-- 请求路径: {request_mapping}
+- Controller基础路径: {controller_base_path}
+- 方法路径: {method_path}
+- 完整API路径: {api_path}
 - 业务逻辑: {business_logic if business_logic else description}
 
 ### 输入参数
@@ -1843,11 +1850,13 @@ public interface {service_interface_name} {{
 
 ### 技术要求
 - 使用SpringBoot REST风格接口
-- 请求路径严格按照: {request_mapping}
+- Controller类使用 @RequestMapping("{controller_base_path}")
+- 方法使用 {method_annotation}("{method_path}")
 - 类名应为: {interface_name}Controller
 - 方法名根据业务逻辑命名（如：query、list、get等）
 - 添加适当的参数校验注解
 - 返回统一的响应格式
+- 如果涉及企业组织相关功能，使用PageHelper进行分页并调用zqyl-user-center-service的Feign Client接口
 """
         return requirement_prompt.strip()
     
@@ -2665,11 +2674,14 @@ public class {class_name} {{
     def _find_deep_java_project_path(self, base_path: str, service_name: str = None) -> str:
         """深度搜索Java项目路径，优先识别多模块项目的深层结构"""
         
-        logger.info(f"🔍 在 {base_path} 中查找最佳Java项目路径...")
+        # 🔧 修复：规范化路径，避免嵌套的src/main/java结构
+        normalized_base_path = self._normalize_nested_project_path(base_path)
+        
+        logger.info(f"🔍 在 {normalized_base_path} 中查找最佳Java项目路径...")
         logger.info(f"🎯 目标服务名: {service_name}")
         
         potential_paths = []
-        search_path = Path(base_path)
+        search_path = Path(normalized_base_path)
         
         # 递归查找所有包含src/main/java的目录
         for root, dirs, files in os.walk(search_path):
@@ -2706,8 +2718,8 @@ public class {class_name} {{
                         logger.info(f"      🏆 优先级分数: {priority}")
         
         if not potential_paths:
-            logger.warning(f"⚠️ 未找到Java项目结构，使用原路径: {base_path}")
-            return base_path
+            logger.warning(f"⚠️ 未找到Java项目结构，使用规范化路径: {normalized_base_path}")
+            return normalized_base_path
         
         # 排序：优先级高的在前面，深度作为次要排序条件
         potential_paths.sort(key=lambda x: (x['priority'], x['depth']), reverse=True)
@@ -2727,6 +2739,39 @@ public class {class_name} {{
         logger.info(f"   🏆 最终优先级: {best_path_info['priority']}")
         
         return best_path
+    
+    def _normalize_nested_project_path(self, path: str) -> str:
+        """规范化嵌套的项目路径，避免多层src/main/java结构"""
+        
+        # 检查路径中是否包含嵌套的src/main/java结构
+        if path.count('src/main/java') > 1 or path.count('src\\main\\java') > 1:
+            logger.warning(f"⚠️ 检测到嵌套的src/main/java路径: {path}")
+            
+            # 找到第一个src/main/java的位置，截取到其根目录
+            import re
+            # 处理Windows和Linux路径分隔符
+            normalized_path = path.replace('\\', '/')
+            
+            # 找到第一个src/main/java结构的位置
+            src_pattern = r'(.*?)src/main/java'
+            match = re.search(src_pattern, normalized_path)
+            
+            if match:
+                # 提取项目根目录（第一个src/main/java之前的部分）
+                project_root = match.group(1).rstrip('/')
+                
+                # 如果项目根目录为空，使用当前目录
+                if not project_root:
+                    project_root = '.'
+                
+                # 转换回原始路径格式
+                if '\\' in path:
+                    project_root = project_root.replace('/', '\\')
+                
+                logger.info(f"🔧 规范化嵌套路径: {path} -> {project_root}")
+                return project_root
+        
+        return path
     
     def _extract_api_path_keyword(self, api_path: str) -> str:
         """从API路径中提取关键字（倒数第二个路径片段）"""
@@ -2822,8 +2867,15 @@ public class {class_name} {{
             contextual_package_path = base_package.replace('.', '/')
             logger.info(f"🏗️ 使用默认包路径: {base_package}")
         
-        # 检查当前路径是否已经在src目录中
-        is_already_in_src = 'src/main/java' in project_path
+        # 检查当前路径是否已经在src目录中 - 使用更精确的检查
+        from pathlib import Path
+        project_path_obj = Path(project_path)
+        
+        # 规范化项目路径，确保我们使用的是项目根路径
+        normalized_project_path = self._normalize_project_path(project_path)
+        is_already_in_src = str(normalized_project_path) != str(project_path_obj)
+        
+        logger.info(f"🔍 路径检查: 原路径={project_path}, 规范化路径={normalized_project_path}, 在src中={is_already_in_src}")
         
         # 🆕 DDD分层架构路径配置
         if is_already_in_src:
@@ -2897,6 +2949,11 @@ Controller -> Application Service -> Domain Service 或 Domain Mapper
         # 先验证和修正代码内容，确保类名一致性
         corrected_code = self._ensure_class_name_consistency(generated_code)
         
+        # 从代码中提取接口名称
+        interface_name = self._extract_interface_name_from_code(corrected_code)
+        if not interface_name:
+            interface_name = "Example"
+        
         # 确定输出路径
         if self.llm_client:
             output_paths = self._determine_output_paths_with_llm(corrected_code, project_path, service_name, project_context)
@@ -2908,6 +2965,10 @@ Controller -> Application Service -> Domain Service 或 Domain Mapper
         for code_type, code_content in corrected_code.items():
             if code_type in output_paths:
                 file_path = output_paths[code_type]
+                
+                # 打印代码内容
+                logger.info(f"📄 代码内容 ({code_type}):\n{code_content}")
+
                 
                 # 检查是否已存在且包含目标接口/方法
                 skip_write = False
@@ -3176,13 +3237,99 @@ public interface {class_name} {{
                         'interface_method': interface_name
                     })
                 elif action == 'create_new':
-                    # 记录需要创建新Service的信息
-                    generated_files.append({
-                        'type': 'service_creation_needed',
-                        'service_name': f'{interface_name}Service',
-                        'action': 'create_new',
-                        'interface_method': interface_name
-                    })
+                    # 🔧 修复：当决策是创建新Service时，实际生成完整代码
+                    logger.info(f"🎨 开始生成新的Service、Mapper等代码...")
+                    
+                    # 使用智能文件复用管理器生成完整代码
+                    try:
+                        from ...code_generator.intelligent_file_reuse_manager import IntelligentFileReuseManager
+                        
+                        file_manager = IntelligentFileReuseManager(self.llm_client)
+                        
+                        # 设置设计文档内容
+                        design_document = project_context.get('design_document', '') or \
+                                         project_context.get('document_content', '') or \
+                                         description
+                        if design_document:
+                            file_manager.set_document_content(design_document)
+                        
+                        # 获取项目路径
+                        project_path = project_context.get('optimized_project_path', '')
+                        if not project_path:
+                            # 尝试从controller_result中获取项目路径
+                            if controller_result.get('results'):
+                                for result in controller_result['results']:
+                                    if 'controller_file' in result:
+                                        controller_file = result['controller_file']
+                                        # 从Controller文件路径推导项目根路径
+                                        import os
+                                        # 找到src/main/java之前的路径作为项目根路径
+                                        if 'src/main/java' in controller_file:
+                                            project_path = controller_file.split('src/main/java')[0]
+                                            break
+                        
+                        if project_path:
+                            # 分析项目结构
+                            file_manager.analyze_project_structure(project_path)
+                            
+                            # 决策文件复用策略
+                            api_path = project_context.get('current_api_path', '')
+                            reuse_strategy = file_manager.decide_file_reuse_strategy(
+                                api_path, interface_name, description
+                            )
+                            
+                            # 生成完整调用链代码
+                            complete_calling_chain = file_manager.generate_complete_calling_chain(
+                                interface_name, reuse_strategy, input_params, output_params, description
+                            )
+                            
+                            if complete_calling_chain:
+                                logger.info(f"✅ 成功生成 {len(complete_calling_chain)} 个组件的代码")
+                                
+                                # 写入生成的代码文件
+                                for component_type, generated_code in complete_calling_chain.items():
+                                    if component_type in ['domain_service', 'domain_service_impl', 'mapper', 'xml_mapping']:
+                                        # 确定文件路径和名称
+                                        file_path = self._determine_file_path(
+                                            component_type, interface_name, project_path, project_context
+                                        )
+                                        
+                                        if file_path:
+                                            # 写入文件
+                                            try:
+                                                import os
+                                                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                                                with open(file_path, 'w', encoding='utf-8') as f:
+                                                    f.write(generated_code)
+                                                
+                                                generated_files.append({
+                                                    'type': component_type,
+                                                    'file_path': file_path,
+                                                    'interface_name': interface_name,
+                                                    'action': 'created'
+                                                })
+                                                
+                                                logger.info(f"✅ 成功生成文件: {file_path}")
+                                                
+                                            except Exception as e:
+                                                logger.error(f"❌ 写入文件失败 {file_path}: {e}")
+                                
+                            else:
+                                logger.warning("⚠️ 智能文件复用管理器未生成代码")
+                                
+                        else:
+                            logger.warning("⚠️ 无法确定项目路径")
+                            
+                    except Exception as e:
+                        logger.error(f"❌ 智能文件复用管理器生成代码失败: {e}")
+                        # 回退到记录需求的方式
+                        generated_files.append({
+                            'type': 'service_creation_needed',
+                            'service_name': f'{interface_name}Service',
+                            'action': 'create_new',
+                            'interface_method': interface_name,
+                            'note': f'智能生成失败，原因: {str(e)}'
+                        })
                 
                 # 如果项目使用MyBatis Plus，记录需要处理Mapper
                 if project_context.get('project_info', {}).get('is_mybatis_plus'):
@@ -3221,6 +3368,128 @@ public interface {class_name} {{
                 'message': f'Service和Mapper分析失败: {str(e)}',
                 'error': str(e)
             }
+
+    def _determine_file_path(self, component_type: str, interface_name: str, 
+                           project_path: str, project_context: Dict[str, Any]) -> str:
+        """
+        确定生成文件的路径
+        
+        Args:
+            component_type: 组件类型 (domain_service, domain_service_impl, mapper, xml_mapping)
+            interface_name: 接口名称
+            project_path: 项目路径
+            project_context: 项目上下文
+            
+        Returns:
+            文件路径
+        """
+        from pathlib import Path
+        
+        # 获取基础包路径
+        package_patterns = project_context.get('package_patterns', {})
+        base_package = package_patterns.get('base_package', 'com.yljr.crcl')
+        package_path = base_package.replace('.', '/')
+        
+        # 🔧 修复：规范化项目路径，避免嵌套路径问题
+        project_root = self._normalize_project_path(project_path)
+        
+        # 根据组件类型确定相对路径和文件名
+        if component_type == 'domain_service':
+            # 领域服务接口
+            relative_path = f'src/main/java/{package_path}/domain/service'
+            file_name = f'{interface_name}Service.java'
+        elif component_type == 'domain_service_impl':
+            # 领域服务实现
+            relative_path = f'src/main/java/{package_path}/domain/service/impl'
+            file_name = f'{interface_name}ServiceImpl.java'
+        elif component_type == 'mapper':
+            # Mapper接口
+            relative_path = f'src/main/java/{package_path}/domain/mapper'
+            file_name = f'{interface_name}Mapper.java'
+        elif component_type == 'xml_mapping':
+            # XML映射文件
+            relative_path = 'src/main/resources/mapper'
+            file_name = f'{interface_name}Mapper.xml'
+        else:
+            logger.warning(f"⚠️ 未知组件类型: {component_type}")
+            return None
+            
+        # 构建完整路径
+        full_path = project_root / relative_path / file_name
+        
+        logger.info(f"📍 确定文件路径 {component_type}: {full_path}")
+        return str(full_path)
+    
+    def _normalize_project_path(self, project_path: str) -> Path:
+        """
+        规范化项目路径，提取项目根路径
+        
+        Args:
+            project_path: 原始项目路径
+            
+        Returns:
+            规范化后的项目根路径
+        """
+        from pathlib import Path
+        
+        project_path_obj = Path(project_path)
+        
+        # 检查路径是否已经包含src结构
+        if 'src/main/java' in str(project_path_obj):
+            # 提取项目根路径（src/main/java之前的部分）
+            path_parts = project_path_obj.parts
+            src_index = -1
+            
+            # 找到src在路径中的位置
+            for i, part in enumerate(path_parts):
+                if part == 'src':
+                    # 检查是否是src/main/java结构
+                    if (i + 2 < len(path_parts) and 
+                        path_parts[i + 1] == 'main' and 
+                        path_parts[i + 2] == 'java'):
+                        src_index = i
+                        break
+            
+            if src_index >= 0:
+                # 提取src之前的所有部分作为项目根路径
+                root_parts = path_parts[:src_index]
+                if root_parts:
+                    project_root = Path(*root_parts)
+                else:
+                    # 如果src在根目录，使用当前目录
+                    project_root = Path('.')
+                logger.info(f"🔧 规范化项目路径: {project_path} -> {project_root}")
+                return project_root
+        
+        elif 'src/main/resources' in str(project_path_obj):
+            # 提取项目根路径（src/main/resources之前的部分）
+            path_parts = project_path_obj.parts
+            src_index = -1
+            
+            # 找到src在路径中的位置
+            for i, part in enumerate(path_parts):
+                if part == 'src':
+                    # 检查是否是src/main/resources结构
+                    if (i + 2 < len(path_parts) and 
+                        path_parts[i + 1] == 'main' and 
+                        path_parts[i + 2] == 'resources'):
+                        src_index = i
+                        break
+            
+            if src_index >= 0:
+                # 提取src之前的所有部分作为项目根路径
+                root_parts = path_parts[:src_index]
+                if root_parts:
+                    project_root = Path(*root_parts)
+                else:
+                    # 如果src在根目录，使用当前目录
+                    project_root = Path('.')
+                logger.info(f"🔧 规范化项目路径: {project_path} -> {project_root}")
+                return project_root
+        
+        # 如果路径不包含src结构，直接使用原路径
+        logger.info(f"ℹ️ 路径已是项目根路径: {project_path}")
+        return project_path_obj
 
     def _analyze_api_domain_similarity(self, api_path: str, existing_controllers: List[Dict]) -> Dict[str, Any]:
         """
@@ -3374,6 +3643,141 @@ Java文件数量: {java_files_count}
         # 回退到基础计算
         return java_files_count + len(Path(path).parts) * 10
 
+    def _determine_project_strategy(self, project_path: str, service_name: str, api_keyword: str, project_context: Dict[str, Any]) -> Dict[str, str]:
+        """
+        智能判断项目策略：决定是在现有Controller添加方法还是创建新文件，需要结合目录路径和已经分析的项目内容来判断
+        
+        Args:
+            project_path: 项目路径
+            service_name: 服务名称
+            api_keyword: API关键字
+            project_context: 项目上下文信息
+            
+        Returns:
+            策略决策结果
+        """
+        try:
+            if not self.llm_client:
+                logger.warning("⚠️ LLM客户端未初始化，使用默认策略")
+                return {
+                    'strategy': 'create_new',
+                    'reason': 'LLM客户端未初始化，默认创建新文件',
+                    'confidence': 0.5
+                }
+            
+            # 提取关键信息
+            project_info = project_context.get('project_info', {})
+            component_patterns = project_context.get('component_patterns', {})
+            current_api_path = project_context.get('current_api_path', '')
+            
+            # 🔧 修复：获取正确的Controller数量，尝试多个可能的字段
+            controller_count = 0
+            
+            # 方法1：从component_usage获取
+            controller_count = component_patterns.get('component_usage', {}).get('rest_controllers', 0)
+            
+            # 方法2：如果为0，尝试从service_patterns获取
+            if controller_count == 0:
+                has_controllers = component_patterns.get('service_patterns', {}).get('has_rest_controllers', False)
+                if isinstance(has_controllers, bool):
+                    controller_count = 1 if has_controllers else 0
+                elif isinstance(has_controllers, int):
+                    controller_count = has_controllers
+            
+            # 方法3：如果仍然为0，尝试从summary或其他字段获取
+            if controller_count == 0:
+                # 从components_detected获取
+                components_detected = project_context.get('components_detected', {})
+                if 'rest_controllers' in components_detected:
+                    controller_count = components_detected['rest_controllers']
+                elif 'controllers' in components_detected:
+                    controller_count = components_detected['controllers']
+                
+                # 从architecture_patterns获取
+                if controller_count == 0:
+                    arch_patterns = project_context.get('architecture_patterns', {})
+                    layer_distribution = arch_patterns.get('layer_distribution', {})
+                    if 'interfaces' in layer_distribution:
+                        controller_count = layer_distribution['interfaces']
+            
+            # 方法4：如果还是为0，尝试从原始analysis_result获取
+            if controller_count == 0:
+                # 这是最后的备选方案，可能需要从原始分析结果中获取
+                logger.warning("⚠️ 无法从标准字段获取Controller数量，使用备选方案")
+                controller_count = 0
+            
+            logger.info(f"🔍 项目策略分析 - Java文件数: {project_info.get('total_java_files', 0)}, Controller数: {controller_count}")
+            
+            # 构建简化的分析提示
+            prompt = f"""
+分析Java项目策略：
+
+项目信息：
+- 路径: {project_path}
+- 服务名: {service_name}
+- API关键字: {api_keyword}
+- API路径: {current_api_path}
+- Spring Boot: {project_info.get('is_spring_boot', False)}
+- Java文件数: {project_info.get('total_java_files', 0)}
+- 现有Controller数: {controller_count}
+
+请判断应该采用什么策略：
+1. enhance_existing - 在现有Controller中添加方法 (当有现有Controller且API相关时)
+2. create_new - 创建新的文件 (当无现有Controller或需要新模块时)
+
+🔧 重要提示：如果现有Controller数 > 0 且Java文件数 > 0，应该优先考虑enhance_existing策略！
+
+返回JSON格式：
+{{"strategy": "enhance_existing或create_new", "reason": "判断原因"}}
+"""
+            
+            logger.info(f"🤖 调用{self.llm_provider}分析项目策略...发送的prompt信息: Java文件数={project_info.get('total_java_files', 0)}, Controller数={controller_count}")
+            
+            response = self.llm_client.chat(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=500
+            )
+            
+            # 解析响应
+            import json
+            import re
+            
+            json_match = re.search(r'\{.*?\}', response, re.DOTALL)
+            if json_match:
+                result = json.loads(json_match.group())
+                strategy = result.get('strategy', 'create_new')
+                reason = result.get('reason', 'LLM分析结果')
+                
+                return {
+                    'strategy': strategy,
+                    'reason': reason,
+                    'confidence': 0.8
+                }
+            else:
+                # 简单文本解析
+                if 'enhance_existing' in response.lower():
+                    return {
+                        'strategy': 'enhance_existing',
+                        'reason': 'LLM建议增强现有Controller',
+                        'confidence': 0.7
+                    }
+                else:
+                    return {
+                        'strategy': 'create_new',
+                        'reason': 'LLM建议创建新文件',
+                        'confidence': 0.7
+                    }
+                    
+        except Exception as e:
+            logger.error(f"❌ LLM项目策略分析失败: {e}")
+            return {
+                'strategy': 'create_new',
+                'reason': f'策略分析异常，默认创建新文件: {str(e)}',
+                'confidence': 0.3
+            }
+
+
 
 async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """智能编码节点 - 支持任务驱动的代码生成"""
@@ -3394,7 +3798,7 @@ async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
         if retry_count > 0:
             logger.info(f"🔄 智能编码节点重试，当前重试次数: {retry_count}")
         
-        # 执行数据库中的任务
+        # 执行数据库中的任务，对langgraph上一步分解的任务进行执行
         task_results = coding_agent.execute_task_from_database()
         
         # 将任务执行结果添加到状态中
@@ -3437,7 +3841,7 @@ async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
         
         logger.info(f"✅ 智能编码节点完成，处理了 {len(task_results)} 个任务")
         return updated_state
-        
+
     except Exception as e:
         logger.error(f"❌ 智能编码节点执行失败: {e}")
         updated_state = state.copy()
@@ -3447,3 +3851,5 @@ async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
             'retry_count': state.get("retry_count", 0) + 1
         })
         return updated_state
+        
+

@@ -73,28 +73,62 @@ class ControllerAnalyzer:
             if not self.controller_pattern.search(content):
                 return None
             
-            # 查找@RequestMapping
-            mapping_matches = self.request_mapping_pattern.findall(content)
+            # 🔧 修复：改进匹配逻辑，支持多种匹配方式
+            is_match = False
+            request_mapping = ""
             
+            # 方式1：检查@RequestMapping中是否包含关键字
+            mapping_matches = self.request_mapping_pattern.findall(content)
             for mapping_value in mapping_matches:
-                # 检查是否包含关键字
                 if keyword in mapping_value:
-                    logger.info(f"🎯 在 {file_path} 中找到匹配的@RequestMapping: {mapping_value}")
-                    
-                    # 提取类名
-                    class_match = self.class_pattern.search(content)
-                    class_name = class_match.group(1) if class_match else "Unknown"
-                    
-                    # 分析依赖的Service
-                    services = self._extract_services_from_controller(content)
-                    
-                    return {
-                        'file_path': file_path,
-                        'class_name': class_name,
-                        'request_mapping': mapping_value,
-                        'services': services,
-                        'content': content
-                    }
+                    is_match = True
+                    request_mapping = mapping_value
+                    logger.info(f"🎯 在 {file_path} 的@RequestMapping中找到匹配: {mapping_value}")
+                    break
+            
+            # 方式2：如果@RequestMapping不匹配，检查文件名和类名是否包含关键字
+            if not is_match:
+                file_name = os.path.basename(file_path).replace('.java', '')
+                class_match = self.class_pattern.search(content)
+                class_name = class_match.group(1) if class_match else ""
+                
+                # 检查文件名或类名是否包含关键字（忽略大小写）
+                keyword_lower = keyword.lower()
+                if (keyword_lower in file_name.lower() or 
+                    keyword_lower in class_name.lower()):
+                    is_match = True
+                    # 如果有@RequestMapping，使用第一个；否则使用空字符串
+                    request_mapping = mapping_matches[0] if mapping_matches else ""
+                    logger.info(f"🎯 在 {file_path} 的文件名/类名中找到匹配: {file_name}/{class_name}")
+            
+            # 方式3：如果前两种都不匹配，检查是否是相关的Controller（如LimitController匹配limit关键字）
+            if not is_match and keyword:
+                # 重用之前提取的file_name，如果不存在则重新提取
+                if 'file_name' not in locals():
+                    file_name = os.path.basename(file_path).replace('.java', '')
+                # 检查是否是相关的Controller（例如LimitController包含limit）
+                if ('controller' in file_name.lower() and 
+                    any(keyword_part.lower() in file_name.lower() 
+                        for keyword_part in keyword.split('_') + keyword.split('-'))):
+                    is_match = True
+                    request_mapping = mapping_matches[0] if mapping_matches else ""
+                    logger.info(f"🎯 在 {file_path} 中找到相关Controller匹配: {file_name}")
+            
+            if is_match:
+                # 提取类名
+                class_match = self.class_pattern.search(content)
+                class_name = class_match.group(1) if class_match else "Unknown"
+                
+                # 分析依赖的Service
+                services = self._extract_services_from_controller(content)
+                
+                return {
+                    'file_path': file_path,
+                    'class_name': class_name,
+                    'request_mapping': request_mapping,
+                    'services': services,
+                    'content': content
+                }
             
             return None
             
@@ -144,17 +178,38 @@ class ControllerAnalyzer:
         从API路径中提取接口名称
         
         Args:
-            api_path: 完整API路径，如 /crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport
+            api_path: 完整API路径，如 /general/multiorgManage/queryCompanyUnitList
             
         Returns:
-            接口名称，如 listUnitLimitByCompanyIdExport
+            接口名称，如 queryCompanyUnitList
         """
-        # 获取路径的最后一部分
+        # 获取路径的最后一部分作为接口名称
         path_parts = api_path.strip('/').split('/')
         interface_name = path_parts[-1] if path_parts else ""
         
         logger.info(f"🔧 从API路径 '{api_path}' 提取接口名称: '{interface_name}'")
         return interface_name
+    
+    def extract_controller_base_path_from_api_path(self, api_path: str) -> str:
+        """
+        从API路径中提取Controller基础路径
+        
+        Args:
+            api_path: 完整API路径，如 /general/multiorgManage/queryCompanyUnitList
+            
+        Returns:
+            Controller基础路径，如 /general/multiorgManage
+        """
+        # 移除最后一段（接口名称），保留基础路径
+        path_parts = api_path.strip('/').split('/')
+        if len(path_parts) > 1:
+            base_path = '/' + '/'.join(path_parts[:-1])
+        else:
+            # 如果只有一段，使用默认的api前缀
+            base_path = '/api'
+        
+        logger.info(f"🔧 从API路径 '{api_path}' 提取Controller基础路径: '{base_path}'")
+        return base_path
     
     def determine_http_method_from_interface_name(self, interface_name: str) -> str:
         """
@@ -180,24 +235,31 @@ class ControllerAnalyzer:
             # 默认GET
             return "GET"
     
-    def generate_mapping_annotation(self, interface_name: str, http_method: str) -> str:
+    def generate_mapping_annotation(self, interface_name: str, http_method: str, api_path: str = None) -> str:
         """
         生成映射注解
         
         Args:
             interface_name: 接口名称
             http_method: HTTP方法
+            api_path: 完整API路径（可选）
             
         Returns:
             映射注解字符串
         """
-        if http_method == "GET":
-            return f'@GetMapping("/{interface_name}")'
-        elif http_method == "POST":
-            return f'@PostMapping("/{interface_name}")'
-        elif http_method == "PUT":
-            return f'@PutMapping("/{interface_name}")'
-        elif http_method == "DELETE":
-            return f'@DeleteMapping("/{interface_name}")'
+        # 如果提供了完整API路径，只使用接口名称部分
+        if api_path:
+            method_path = f"/{interface_name}"
         else:
-            return f'@RequestMapping(value = "/{interface_name}", method = RequestMethod.{http_method})' 
+            method_path = f"/{interface_name}"
+        
+        if http_method == "GET":
+            return f'@GetMapping("{method_path}")'
+        elif http_method == "POST":
+            return f'@PostMapping("{method_path}")'
+        elif http_method == "PUT":
+            return f'@PutMapping("{method_path}")'
+        elif http_method == "DELETE":
+            return f'@DeleteMapping("{method_path}")'
+        else:
+            return f'@RequestMapping(value = "{method_path}", method = RequestMethod.{http_method})' 

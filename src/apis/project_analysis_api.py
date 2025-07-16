@@ -23,6 +23,24 @@ class ProjectAnalysisAPI:
         self.java_analyzer = JavaCodeAnalyzer()
         self.analysis_cache = {}  # 缓存分析结果
     
+    def clear_analysis_cache(self, project_path: str = None, service_name: str = None):
+        """清除分析缓存"""
+        if project_path and service_name:
+            cache_key = f"{project_path}_{service_name or 'default'}"
+            if cache_key in self.analysis_cache:
+                del self.analysis_cache[cache_key]
+                logger.info(f"🗑️ 已清除缓存: {cache_key}")
+        elif project_path:
+            # 清除所有与该项目路径相关的缓存
+            keys_to_remove = [key for key in self.analysis_cache.keys() if key.startswith(f"{project_path}_")]
+            for key in keys_to_remove:
+                del self.analysis_cache[key]
+                logger.info(f"🗑️ 已清除缓存: {key}")
+        else:
+            # 清除所有缓存
+            self.analysis_cache.clear()
+            logger.info("🗑️ 已清除所有分析缓存")
+    
     def analyze_project_for_code_generation(self, project_path: str, service_name: str = None) -> Dict[str, Any]:
         """
         为代码生成分析项目结构
@@ -30,14 +48,30 @@ class ProjectAnalysisAPI:
         """
         logger.info(f"🔍 开始分析项目用于代码生成: {project_path}")
         
-        # 检查缓存
+        # 检查缓存 - 🔧 修复：考虑项目文件变化，避免过度缓存
         cache_key = f"{project_path}_{service_name or 'default'}"
+        
+        # 🆕 检查项目是否有新的Java文件生成（简单的文件数量检查）
+        current_java_files_count = 0
+        if os.path.exists(project_path):
+            try:
+                for root, dirs, files in os.walk(project_path):
+                    current_java_files_count += len([f for f in files if f.endswith('.java')])
+            except Exception as e:
+                logger.warning(f"⚠️ 检查Java文件数量时出错: {e}")
+        
+        # 如果缓存存在，检查Java文件数量是否有变化
         if cache_key in self.analysis_cache:
-            logger.info("📋 使用缓存的分析结果")
-            return self.analysis_cache[cache_key]
+            cached_java_count = self.analysis_cache[cache_key].get('project_info', {}).get('cached_java_files_count', 0)
+            if cached_java_count != current_java_files_count:
+                logger.info(f"🔄 检测到Java文件数量变化 ({cached_java_count} -> {current_java_files_count})，清除缓存")
+                del self.analysis_cache[cache_key]
+            else:
+                logger.info("📋 使用缓存的分析结果")
+                return self.analysis_cache[cache_key]
         
         try:
-            # 首先查找最佳的Java项目路径
+            # 首先查找最佳的Java项目路径，找到了 D:\gitlab\create_project\链数中建一局_1752646813\crcl-open\src\main\java\com\yljr\crcl\limit领域
             actual_project_path = self._find_best_java_project_path(project_path, service_name)
             logger.info(f"📂 实际分析路径: {actual_project_path}")
             
@@ -47,8 +81,13 @@ class ProjectAnalysisAPI:
             # 更新project_path为实际路径
             analysis_result['project_path'] = actual_project_path
             
+          
+            
             # 提取代码生成所需的关键信息
             code_generation_context = self._extract_code_generation_context(analysis_result)
+            
+            # 🆕 在缓存中添加Java文件数量信息，用于检测文件变化
+            code_generation_context['project_info']['cached_java_files_count'] = current_java_files_count
             
             # 缓存结果
             self.analysis_cache[cache_key] = code_generation_context
@@ -63,13 +102,16 @@ class ProjectAnalysisAPI:
     def _find_best_java_project_path(self, base_path: str, service_name: str = None) -> str:
         """查找最佳的Java项目路径，支持递归查找深层结构"""
         
-        logger.info(f"🔍 在 {base_path} 中查找最佳Java项目路径...")
+        # 🔧 修复：规范化路径，避免嵌套的src/main/java结构
+        normalized_base_path = self._normalize_nested_project_path(base_path)
+        
+        logger.info(f"🔍 在 {normalized_base_path} 中查找最佳Java项目路径...")
         logger.info(f"🎯 目标服务名: {service_name}")
         
         potential_paths = []
         
         # 方法1：递归查找所有包含src/main/java的目录
-        for root, dirs, files in os.walk(base_path):
+        for root, dirs, files in os.walk(normalized_base_path):
             # 跳过不相关的目录以提高搜索效率
             dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['target', 'build', 'out', 'bin', 'logs', 'tmp']]
             
@@ -85,14 +127,14 @@ class ProjectAnalysisAPI:
                     
                     if java_files_count > 0:
                         priority = self._calculate_path_priority(root, service_name, java_files_count)
-                        relative_depth = len(Path(root).relative_to(Path(base_path)).parts)
+                        relative_depth = len(Path(root).relative_to(Path(normalized_base_path)).parts)
                         
                         potential_paths.append({
                             'path': root,
                             'java_files': java_files_count,
                             'priority': priority,
                             'depth': relative_depth,
-                            'relative_path': str(Path(root).relative_to(Path(base_path)))
+                            'relative_path': str(Path(root).relative_to(Path(normalized_base_path)))
                         })
                         
                         logger.info(f"   📁 发现Java项目: {Path(root).name}")
@@ -102,8 +144,8 @@ class ProjectAnalysisAPI:
                         logger.info(f"      🏆 优先级分数: {priority}")
         
         if not potential_paths:
-            logger.warning(f"⚠️ 在 {base_path} 中未找到包含Java文件的src/main/java结构")
-            return base_path
+            logger.warning(f"⚠️ 在 {normalized_base_path} 中未找到包含Java文件的src/main/java结构")
+            return normalized_base_path
         
         # 排序并选择最佳路径
         potential_paths.sort(key=lambda x: x['priority'], reverse=True)
@@ -121,6 +163,39 @@ class ProjectAnalysisAPI:
         logger.info(f"   🏆 最终优先级: {best_path['priority']}")
         
         return best_path['path']
+    
+    def _normalize_nested_project_path(self, path: str) -> str:
+        """规范化嵌套的项目路径，避免多层src/main/java结构"""
+        
+        # 检查路径中是否包含嵌套的src/main/java结构
+        if path.count('src/main/java') > 1 or path.count('src\\main\\java') > 1:
+            logger.warning(f"⚠️ 检测到嵌套的src/main/java路径: {path}")
+            
+            # 找到第一个src/main/java的位置，截取到其根目录
+            import re
+            # 处理Windows和Linux路径分隔符
+            normalized_path = path.replace('\\', '/')
+            
+            # 找到第一个src/main/java结构的位置
+            src_pattern = r'(.*?)src/main/java'
+            match = re.search(src_pattern, normalized_path)
+            
+            if match:
+                # 提取项目根目录（第一个src/main/java之前的部分）
+                project_root = match.group(1).rstrip('/')
+                
+                # 如果项目根目录为空，使用当前目录
+                if not project_root:
+                    project_root = '.'
+                
+                # 转换回原始路径格式
+                if '\\' in path:
+                    project_root = project_root.replace('/', '\\')
+                
+                logger.info(f"🔧 规范化嵌套路径: {path} -> {project_root}")
+                return project_root
+        
+        return path
     
     def _calculate_path_priority(self, path: str, service_name: str, java_files_count: int) -> int:
         """计算路径优先级 - 增强版，修复路径选择问题"""
@@ -228,7 +303,8 @@ class ProjectAnalysisAPI:
             'project_path': analysis_result.get('project_path'),
             'architecture_type': analysis_result['summary'].get('architecture_type'),
             'is_spring_boot': analysis_result['summary'].get('is_spring_boot'),
-            'is_mybatis_plus': analysis_result['summary'].get('is_mybatis_plus')
+            'is_mybatis_plus': analysis_result['summary'].get('is_mybatis_plus'),
+            'total_java_files': analysis_result['summary'].get('total_java_files', 0)  # 🔧 修复：添加Java文件数量
         }
         
         # 包命名规范
@@ -624,81 +700,6 @@ public class {{EntityName}} {{
         
         return guidelines
 
-# Flask API路由
-def create_project_analysis_routes(app: Flask):
-    """创建项目分析API路由"""
-    
-    analysis_api = ProjectAnalysisAPI()
-    
-    @app.route('/api/project/analyze', methods=['POST'])
-    def analyze_project():
-        """分析项目结构API"""
-        try:
-            data = request.get_json()
-            project_path = data.get('project_path')
-            service_name = data.get('service_name')
-            
-            if not project_path:
-                return jsonify({
-                    'success': False,
-                    'message': 'project_path参数必填'
-                }), 400
-            
-            if not os.path.exists(project_path):
-                return jsonify({
-                    'success': False,
-                    'message': f'项目路径不存在: {project_path}'
-                }), 400
-            
-            # 执行项目分析
-            context = analysis_api.analyze_project_for_code_generation(project_path, service_name)
-            
-            return jsonify({
-                'success': True,
-                'message': '项目分析完成',
-                'context': context
-            })
-            
-        except Exception as e:
-            logger.error(f"❌ 项目分析API失败: {e}")
-            return jsonify({
-                'success': False,
-                'message': f'项目分析失败: {str(e)}'
-            }), 500
-    
-    @app.route('/api/project/context/<path:project_path>', methods=['GET'])
-    def get_project_context(project_path: str):
-        """获取项目上下文（用于代码生成）"""
-        try:
-            # URL解码路径
-            project_path = project_path.replace('%2F', '/').replace('%5C', '\\')
-            
-            if not os.path.exists(project_path):
-                return jsonify({
-                    'success': False,
-                    'message': f'项目路径不存在: {project_path}'
-                }), 404
-            
-            # 获取缓存的分析结果
-            cache_key = f"{project_path}_default"
-            if cache_key in analysis_api.analysis_cache:
-                context = analysis_api.analysis_cache[cache_key]
-                return jsonify({
-                    'success': True,
-                    'context': context
-                })
-            else:
-                return jsonify({
-                    'success': False,
-                    'message': '项目尚未分析，请先调用分析接口'
-                }), 404
-                
-        except Exception as e:
-            logger.error(f"❌ 获取项目上下文失败: {e}")
-            return jsonify({
-                'success': False,
-                'message': f'获取上下文失败: {str(e)}'
-            }), 500
 
 if __name__ == "__main__":
     # 测试用法
