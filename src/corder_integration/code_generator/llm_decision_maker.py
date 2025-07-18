@@ -19,10 +19,11 @@ class LLMDecisionMaker:
     
     def __init__(self, llm_client=None):
         self.llm_client = llm_client
-        self.prompts_dir = Path(__file__).parent.parent / "prompts"
+        self.prompts_dir = Path(__file__).parent.parent / "langgraph" / "prompts" / "code_generator"
     
     def decide_implementation_classes(self, project_structure: Dict[str, Any], 
-                                    api_keyword: str, business_logic: str) -> Dict[str, Any]:
+                                    api_keyword: str, business_logic: str,
+                                    task_parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         决策在哪些类下实现接口功能
         
@@ -30,7 +31,7 @@ class LLMDecisionMaker:
             project_structure: 项目结构信息
             api_keyword: API关键字
             business_logic: 业务逻辑描述
-            
+            task_parameters : 完整的任务参数（包含request_params、response_params等）
         Returns:
             决策结果
         """
@@ -42,7 +43,7 @@ class LLMDecisionMaker:
         
         try:
             # 1. 准备输入数据
-            input_data = self._prepare_input_data(project_structure, api_keyword, business_logic)
+            input_data = self._prepare_input_data(project_structure, api_keyword, business_logic, task_parameters)
             
             # 2. 加载提示词模板
             prompt_template = self._load_prompt_template("strategy1_implementation_decision.jinja2")
@@ -50,6 +51,9 @@ class LLMDecisionMaker:
             # 3. 生成完整提示词
             prompt = self._generate_prompt(prompt_template, input_data)
             
+            # 打印完整提示词日志
+            logger.info(f"🔍 LLM决策提示词:{prompt}")
+
             # 4. 调用大模型
             response = self._call_llm(prompt)
             
@@ -64,7 +68,8 @@ class LLMDecisionMaker:
             return self._get_default_decision()
     
     def _prepare_input_data(self, project_structure: Dict[str, Any], 
-                           api_keyword: str, business_logic: str) -> Dict[str, Any]:
+                           api_keyword: str, business_logic: str,
+                           task_parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """准备输入数据"""
         
         # 提取各层信息
@@ -89,13 +94,15 @@ class LLMDecisionMaker:
             else:
                 # 默认归类到application service
                 application_services[service_name] = service_info
-        
+     
         # 构造输入数据
         input_data = {
             'api_keyword': api_keyword,
             'business_logic': business_logic,
             'base_package': project_structure.get('base_package', ''),
             'project_path': project_structure.get('project_path', ''),
+            'directory_tree': project_structure.get('directory_tree', ''),  # 🔧 添加完整项目结构
+            'task_details': self._format_task_details(task_parameters),  # 🔧 添加任务详情
             'controllers': self._format_class_info(controllers),
             'services': self._format_class_info(application_services),  # 兼容原有命名
             'application_services': self._format_class_info(application_services),
@@ -123,6 +130,37 @@ class LLMDecisionMaker:
         
         return formatted
     
+    def _format_task_details(self, task_parameters: Optional[Dict[str, Any]]) -> str:
+        """格式化任务详情"""
+        if not task_parameters:
+            return "基础API开发任务，请根据API关键字和业务逻辑进行分析。"
+        
+        details = f"""
+**API路径**: {task_parameters.get('api_path', 'N/A')}
+**HTTP方法**: {task_parameters.get('http_method', 'GET')}
+**Content-Type**: {task_parameters.get('content_type', 'application/json')}
+
+**请求参数**:
+"""
+        request_params = task_parameters.get('request_params', {})
+        for param_name, param_desc in request_params.items():
+            details += f"  - {param_name}: {param_desc}\n"
+        
+        details += "\n**响应参数**:\n"
+        response_params = task_parameters.get('response_params', {})
+        for param_name, param_desc in response_params.items():
+            details += f"  - {param_name}: {param_desc}\n"
+        
+        details += f"\n**数据来源**: {task_parameters.get('data_source', 'N/A')}"
+        details += f"\n**外部服务调用**: {task_parameters.get('external_call', '无')}"
+        
+        details += "\n**验证规则**:\n"
+        validation_rules = task_parameters.get('validation_rules', {})
+        for param_name, rule_desc in validation_rules.items():
+            details += f"  - {param_name}: {rule_desc}\n"
+        
+        return details.strip()
+    
     def _load_prompt_template(self, template_name: str) -> str:
         """加载提示词模板"""
         template_path = self.prompts_dir / template_name
@@ -141,15 +179,22 @@ class LLMDecisionMaker:
         """获取默认提示词模板"""
         return """你是一个Java Spring Boot项目的DDD架构师，需要分析项目结构并决定如何实现新的API接口功能。
 
-## 项目信息
+## 🎯 本次任务详情
 - API关键字: {{ api_keyword }}
 - 业务逻辑: {{ business_logic }}
 - 基础包名: {{ base_package }}
+- 项目路径: {{ project_path }}
+
+### 📋 详细的API任务需求
+{{ task_details }}
+
+## 📁 完整项目结构
+{{ directory_tree }}
 
 ## DDD架构分层要求
 当前后端采用DDD（领域驱动设计）架构，请严格遵循以下分层结构：
 
-1. **Controller层** (interfaces/rest): 对外REST接口，负责接收HTTP请求和参数校验
+1. **Controller层** (interfaces/facade): 对外REST接口，负责接收HTTP请求和参数校验
 2. **Application Service层** (application/service): 应用服务，协调业务流程，不包含业务逻辑
 3. **Domain Service层** (domain/service): 领域服务，核心业务逻辑的实现
 4. **Domain Mapper层** (domain/mapper): 数据访问层接口，定义数据库操作方法
@@ -160,7 +205,7 @@ class LLMDecisionMaker:
 
 ## 现有项目结构分析
 
-### Controller层 (interfaces/rest)
+### Controller层 (interfaces/facade)
 {% if controllers %}
 {% for controller in controllers %}
 - {{ controller.class_name }}
@@ -304,37 +349,165 @@ class LLMDecisionMaker:
     def _generate_prompt(self, template: str, input_data: Dict[str, Any]) -> str:
         """生成完整提示词"""
         try:
-            # 简单的模板替换（如果需要更复杂的模板引擎，可以使用Jinja2）
+            # 使用 Jinja2 模板引擎
+            from jinja2 import Template
+            
+            jinja_template = Template(template)
+            prompt = jinja_template.render(**input_data)
+            
+            logger.info(f"🔧 生成的LLM决策提示词长度: {len(prompt)} 字符")
+            
+            return prompt
+            
+        except ImportError:
+            logger.warning("⚠️ Jinja2 未安装，使用简单替换")
+            return self._simple_template_replace(template, input_data)
+        except Exception as e:
+            logger.error(f"❌ 生成提示词失败: {e}")
+            return self._simple_template_replace(template, input_data)
+    
+    def _simple_template_replace(self, template: str, input_data: Dict[str, Any]) -> str:
+        """简单模板替换（备选方案）"""
+        try:
             prompt = template
             
-            # 替换变量
-            for key, value in input_data.items():
-                if isinstance(value, str):
-                    prompt = prompt.replace(f"{{{{ {key} }}}}", value)
-                elif isinstance(value, list):
-                    # 简单处理列表
-                    if value and isinstance(value[0], dict):
-                        # 格式化类信息
-                        formatted_list = []
-                        for item in value:
-                            if key in ['controllers', 'services', 'mappers']:
-                                formatted_list.append(f"- {item.get('class_name', '')}")
-                                formatted_list.append(f"  包名: {item.get('package', '')}")
-                                formatted_list.append(f"  现有方法: {', '.join(item.get('methods', []))}")
-                        prompt = prompt.replace(f"{{{{ {key} }}}}", '\n'.join(formatted_list))
+            # 替换基础变量
+            basic_vars = ['api_keyword', 'business_logic', 'base_package', 'project_path', 'directory_tree', 'task_details']
+            for key in basic_vars:
+                value = input_data.get(key, '')
+                prompt = prompt.replace(f"{{{{ {key} }}}}", str(value))
+            
+            # 🔧 格式化Controllers信息
+            controllers = input_data.get('controllers', [])
+            if controllers:
+                controllers_text = ""
+                for controller in controllers:
+                    controllers_text += f"- {controller.get('class_name', '未知')}\n"
+                    controllers_text += f"  - 包名: {controller.get('package', '未知')}\n"
+                    controllers_text += f"  - 文件路径: {controller.get('file_path', '未知')}\n"
+                    methods = controller.get('methods', [])
+                    if methods:
+                        controllers_text += f"  - 现有方法: {', '.join(methods)}\n"
+                    else:
+                        controllers_text += f"  - 现有方法: 暂无\n"
+                    controllers_text += "\n"
+                prompt = prompt.replace("暂无Controller类", controllers_text.strip())
+            
+            # 🔧 格式化Application Services信息  
+            application_services = input_data.get('application_services', [])
+            if application_services:
+                services_text = ""
+                for service in application_services:
+                    services_text += f"- {service.get('class_name', '未知')}\n"
+                    services_text += f"  - 包名: {service.get('package', '未知')}\n"
+                    services_text += f"  - 文件路径: {service.get('file_path', '未知')}\n"
+                    methods = service.get('methods', [])
+                    if methods:
+                        services_text += f"  - 现有方法: {', '.join(methods)}\n"
+                    else:
+                        services_text += f"  - 现有方法: 暂无\n"
+                    services_text += "\n"
+                prompt = prompt.replace("暂无Application Service类", services_text.strip())
+            
+            # 🔧 格式化Domain Services信息
+            domain_services = input_data.get('domain_services', [])
+            if domain_services:
+                domain_services_text = ""
+                for service in domain_services:
+                    domain_services_text += f"- {service.get('class_name', '未知')}\n"
+                    domain_services_text += f"  - 包名: {service.get('package', '未知')}\n"
+                    domain_services_text += f"  - 文件路径: {service.get('file_path', '未知')}\n"
+                    methods = service.get('methods', [])
+                    if methods:
+                        domain_services_text += f"  - 现有方法: {', '.join(methods)}\n"
+                    else:
+                        domain_services_text += f"  - 现有方法: 暂无\n"
+                    domain_services_text += "\n"
+                prompt = prompt.replace("暂无Domain Service类", domain_services_text.strip())
+            
+            # 🔧 格式化Mappers信息
+            mappers = input_data.get('mappers', [])
+            if mappers:
+                mappers_text = ""
+                for mapper in mappers:
+                    mappers_text += f"- {mapper.get('class_name', '未知')}\n"
+                    mappers_text += f"  - 包名: {mapper.get('package', '未知')}\n"
+                    mappers_text += f"  - 文件路径: {mapper.get('file_path', '未知')}\n"
+                    methods = mapper.get('methods', [])
+                    if methods:
+                        mappers_text += f"  - 现有方法: {', '.join(methods)}\n"
+                    else:
+                        mappers_text += f"  - 现有方法: 暂无\n"
+                    mappers_text += "\n"
+                prompt = prompt.replace("暂无Mapper类", mappers_text.strip())
+            
+            # 🔧 格式化Feign Clients信息
+            feign_clients = input_data.get('feign_clients', [])
+            if feign_clients:
+                feign_text = ""
+                for feign in feign_clients:
+                    feign_text += f"- {feign.get('class_name', '未知')}\n"
+                    feign_text += f"  - 包名: {feign.get('package', '未知')}\n"
+                    feign_text += f"  - 文件路径: {feign.get('file_path', '未知')}\n"
+                    methods = feign.get('methods', [])
+                    if methods:
+                        feign_text += f"  - 现有方法: {', '.join(methods)}\n"
+                    else:
+                        feign_text += f"  - 现有方法: 暂无\n"
+                    feign_text += "\n"
+                prompt = prompt.replace("暂无Feign Client类", feign_text.strip())
+            
+            # 🔧 格式化Entities信息
+            entities = input_data.get('entities', [])
+            if entities:
+                entities_text = ""
+                for entity in entities:
+                    entities_text += f"- {entity.get('class_name', '未知')}\n"
+                    entities_text += f"  - 包名: {entity.get('package', '未知')}\n"
+                    entities_text += f"  - 文件路径: {entity.get('file_path', '未知')}\n"
+                    annotations = entity.get('annotations', [])
+                    if annotations:
+                        entities_text += f"  - 注解: {', '.join(annotations)}\n"
+                    entities_text += "\n"
+                prompt = prompt.replace("暂无Entity类", entities_text.strip())
+            
+            # 清理模板语法
+            prompt = self._clean_template_syntax(prompt)
+            
+            logger.info(f"🔧 生成的LLM决策提示词长度: {len(prompt)} 字符")
+            logger.debug(f"🔧 LLM决策提示词内容预览:\n{prompt[:1000]}...")
             
             return prompt
             
         except Exception as e:
-            logger.error(f"❌ 生成提示词失败: {e}")
+            logger.error(f"❌ 简单模板替换失败: {e}")
             return f"分析项目结构并决策实现方案：API关键字={input_data.get('api_keyword', '')}, 业务逻辑={input_data.get('business_logic', '')}"
+    
+    def _clean_template_syntax(self, prompt: str) -> str:
+        """清理模板语法"""
+        import re
+        
+        # 移除 Jinja2 控制结构
+        prompt = re.sub(r'{%\s*if\s+[^%]+\s*%}', '', prompt)
+        prompt = re.sub(r'{%\s*else\s*%}', '', prompt)
+        prompt = re.sub(r'{%\s*endif\s*%}', '', prompt)
+        prompt = re.sub(r'{%\s*for\s+[^%]+\s*%}', '', prompt)
+        prompt = re.sub(r'{%\s*endfor\s*%}', '', prompt)
+        
+        # 移除剩余的 Jinja2 变量引用
+        prompt = re.sub(r'{{\s*[^}]+\s*}}', '', prompt)
+        
+        # 清理多余的空行
+        prompt = re.sub(r'\n\s*\n\s*\n', '\n\n', prompt)
+        
+        return prompt.strip()
     
     def _call_llm(self, prompt: str) -> str:
         """调用大模型"""
         try:
             messages = [{"role": "user", "content": prompt}]
             response = self.llm_client.chat(messages)
-            logger.debug(f"🤖 LLM响应: {response}")
+            logger.info(f"🤖 LLM响应: {response}")
             return response
         except Exception as e:
             logger.error(f"❌ 调用LLM失败: {e}")
@@ -343,83 +516,45 @@ class LLMDecisionMaker:
     def _parse_llm_response(self, response: str) -> Dict[str, Any]:
         """解析LLM响应"""
         try:
-            # 尝试提取JSON
-            json_match = re.search(r'\\{[^}]+\\}', response, re.DOTALL)
+            # 尝试提取JSON块（支持```json包装）
+            json_match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
             if json_match:
-                json_str = json_match.group()
+                json_str = json_match.group(1)
+                logger.info(f"🔍 提取到JSON: {json_str[:200]}...")
                 decision = json.loads(json_str)
                 return self._validate_decision(decision)
             
-            # 如果没有找到JSON，尝试简单解析
-            return self._parse_simple_response(response)
+            # 尝试直接解析JSON（无包装）
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group()
+                logger.info(f"🔍 提取到裸JSON: {json_str[:200]}...")
+                decision = json.loads(json_str)
+                return self._validate_decision(decision)
             
+            logger.warning(f"⚠️ 未找到JSON格式，响应内容: {response[:500]}...")
+            return self._get_default_decision()
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ JSON解析失败: {e}")
+            logger.error(f"📄 响应内容: {response}")
         except Exception as e:
             logger.error(f"❌ 解析LLM响应失败: {e}")
-            return self._get_default_decision()
     
-    def _parse_simple_response(self, response: str) -> Dict[str, Any]:
-        """简单解析响应"""
-        decision = self._get_default_decision()
-        
-        # 简单的关键词匹配
-        if "enhance_existing" in response.lower():
-            decision['controller']['action'] = 'enhance_existing'
-            decision['service']['action'] = 'enhance_existing'
-        
-        return decision
+
     
     def _validate_decision(self, decision: Dict[str, Any]) -> Dict[str, Any]:
-        """验证决策结果"""
-        required_keys = ['controller', 'application_service', 'domain_service', 'mapper', 'feign_client', 'dto', 'entity']
+        """验证决策结果 - 轻量级验证，主要添加兼容字段"""
+        logger.info(f"✅ LLM决策结果验证通过，包含字段: {list(decision.keys())}")
         
-        for key in required_keys:
-            if key not in decision:
-                if key == 'dto':
-                    decision[key] = {
-                        'action': 'create_new',
-                        'request_dto': f'{decision.get("api_keyword", "Api")}Req',
-                        'response_dto': f'{decision.get("api_keyword", "Api")}Resp',
-                        'package_path': 'interfaces.dto',
-                        'reason': 'DTO通常需要为每个接口单独创建'
-                    }
-                else:
-                    decision[key] = {
-                        'action': 'create_new',
-                        'target_class': '',
-                        'package_path': self._get_default_package_path(key),
-                        'reason': f'默认创建新{key}'
-                    }
-            else:
-                # 验证action值
-                if decision[key].get('action') not in ['enhance_existing', 'create_new']:
-                    decision[key]['action'] = 'create_new'
-                
-                # 确保必要字段存在
-                if 'target_class' not in decision[key]:
-                    decision[key]['target_class'] = ''
-                if 'package_path' not in decision[key]:
-                    decision[key]['package_path'] = self._get_default_package_path(key)
-                if 'reason' not in decision[key]:
-                    decision[key]['reason'] = '默认决策'
-        
-        # 兼容原有的service字段
+        # 兼容原有的service字段（向后兼容）
         if 'service' not in decision and 'application_service' in decision:
             decision['service'] = decision['application_service']
+            logger.info("🔧 添加service字段以保持向后兼容")
         
         return decision
     
-    def _get_default_package_path(self, layer_type: str) -> str:
-        """获取默认包路径"""
-        package_mapping = {
-            'controller': 'interfaces.rest',
-            'application_service': 'application.service',
-            'domain_service': 'domain.service',
-            'mapper': 'domain.mapper',
-            'feign_client': 'application.feign',
-            'dto': 'interfaces.dto',
-            'entity': 'domain.entity'
-        }
-        return package_mapping.get(layer_type, 'unknown')
+
     
     def _get_default_decision(self) -> Dict[str, Any]:
         """获取默认决策"""
@@ -427,7 +562,7 @@ class LLMDecisionMaker:
             'controller': {
                 'action': 'create_new',
                 'target_class': '',
-                'package_path': 'interfaces.rest',
+                'package_path': 'interfaces.facade',
                 'reason': '默认创建新Controller'
             },
             'application_service': {

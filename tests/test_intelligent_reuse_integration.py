@@ -37,7 +37,7 @@ class TestIntelligentReuseIntegration(unittest.TestCase):
             'src/main/java/com/yljr/crcl': {
                 'application/feign': {},
                 'application/service': {},
-                'interfaces/rest': {},
+                'interfaces/facade': {},
                 'interfaces/dto': {},
                 'domain/entity': {},
                 'domain/mapper': {}
@@ -92,7 +92,7 @@ public interface {class_name} {{
     def _create_sample_controller(self, class_name: str, business_domain: str) -> str:
         """创建示例Controller"""
         content = f"""
-package com.yljr.crcl.{business_domain.lower()}.interfaces.rest;
+package com.yljr.crcl.{business_domain.lower()}.interfaces.facade;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -119,7 +119,7 @@ public class {class_name} {{
 }}
 """
         
-        controller_dir = os.path.join(self.temp_dir, 'src/main/java/com/yljr/crcl/interfaces/rest')
+        controller_dir = os.path.join(self.temp_dir, 'src/main/java/com/yljr/crcl/interfaces/facade')
         file_path = os.path.join(controller_dir, f'{class_name}.java')
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
@@ -358,7 +358,7 @@ public class {class_name} {{
         
         # 准备原始Controller内容
         original_content = """
-package com.yljr.crcl.limit.interfaces.rest;
+package com.yljr.crcl.limit.interfaces.facade;
 
 import org.springframework.web.bind.annotation.*;
 

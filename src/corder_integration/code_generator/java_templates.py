@@ -287,7 +287,7 @@ class JavaTemplateManager:
     
     def _get_controller_template(self) -> str:
         """获取Controller模板"""
-        return '''package {{PACKAGE_NAME}}.interfaces.rest;
+        return '''package {{PACKAGE_NAME}}.interfaces.facade;
 
 import {{PACKAGE_NAME}}.application.service.{{SERVICE_NAME}};
 import {{PACKAGE_NAME}}.interfaces.dto.{{REQUEST_DTO_NAME}};

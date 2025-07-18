@@ -240,7 +240,7 @@ class ProjectAnalysisAPI:
         # 具体服务模块目录名匹配
         service_module_indicators = [
             'user-basic-service', 'user-basic-general', 'basic-service', 'basic-general', 
-            'service', 'api', 'web', 'rest', 'main', 'core'
+            'service', 'api', 'web', 'facade', 'main', 'core'
         ]
         for indicator in service_module_indicators:
             if indicator in path_lower:
@@ -576,7 +576,7 @@ class ProjectAnalysisAPI:
         templates = {}
         
         # Controller模板
-        templates['controller'] = f"""package {base_package}.interfaces.rest;
+        templates['controller'] = f"""package {base_package}.interfaces.facade;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -682,7 +682,7 @@ public class {{EntityName}} {{
         
         # 分层指导
         if len(layer_analysis.get('interfaces', [])) > 0:
-            guidelines.append("将Controller放在interfaces.rest包下")
+            guidelines.append("将Controller放在interfaces.facade包下")
         if len(layer_analysis.get('application', [])) > 0:
             guidelines.append("将Service放在application.service包下")
         if len(layer_analysis.get('domain', [])) > 0:

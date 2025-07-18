@@ -1,12 +1,12 @@
 {
   "document_length": 5204,
   "execute_immediately": true,
-  "execution_id": "exec_1752667441",
+  "execution_id": "exec_1752723196",
   "message": "文档处理完成（使用LangGraph工作流）",
   "output_path": "D:\\gitlab\\create_project",
-  "project_name": "链数中建一局_1752667425",
+  "project_name": "链数中建一局_1752723066",
   "status": "success",
-  "timestamp": "2025-07-16T20:04:01.708625",
+  "timestamp": "2025-07-17T11:33:16.190833",
   "workflow_result": {
     "execution_summary": {
       "commit_hashes": {},
@@ -14,7 +14,6 @@
       "execution_phase": "git_management",
       "failed_services": 0,
       "generated_services": [
-        "用户服务",
         "确权开立服务"
       ],
       "pr_urls": {},
@@ -31,7 +30,6 @@
       "failed_services": [],
       "generated_apis": {},
       "generated_services": [
-        "用户服务",
         "确权开立服务"
       ],
       "generated_sql": {},
@@ -41,7 +39,7 @@
       "output_path": "D:\\gitlab\\create_project",
       "parallel_tasks": [],
       "pr_urls": {},
-      "project_name": "链数中建一局_1752667425",
+      "project_name": "链数中建一局_1752723066",
       "project_paths": {},
       "push_results": {},
       "repo_initialized": false,
@@ -50,13 +48,13 @@
       "service_dependencies": {},
       "service_interconnections": {},
       "static_analysis_results": {},
-      "target_branch": "D_20250716_链数中建一局_1752667425",
+      "target_branch": "D_20250717_链数中建一局_1752723066",
       "task_execution_plan": {},
       "test_coverage": {},
       "unit_test_results": {}
     },
     "output_path": "D:\\gitlab\\create_project",
-    "project_name": "链数中建一局_1752667425",
+    "project_name": "链数中建一局_1752723066",
     "status": "success"
   },
   "workflow_type": "langgraph"

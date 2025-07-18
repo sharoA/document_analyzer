@@ -1,12 +1,12 @@
 {
   "document_length": 5204,
   "execute_immediately": true,
-  "execution_id": "exec_1752667278",
+  "execution_id": "exec_1752757013",
   "message": "文档处理完成（使用LangGraph工作流）",
   "output_path": "D:\\gitlab\\create_project",
-  "project_name": "链数中建一局_1752667266",
+  "project_name": "链数中建一局_1752757009",
   "status": "success",
-  "timestamp": "2025-07-16T20:01:18.580225",
+  "timestamp": "2025-07-17T20:56:53.237480",
   "workflow_result": {
     "execution_summary": {
       "commit_hashes": {},
@@ -41,10 +41,10 @@
       "output_path": "D:\\gitlab\\create_project",
       "parallel_tasks": [],
       "pr_urls": {},
-      "project_name": "链数中建一局_1752667266",
+      "project_name": "链数中建一局_1752757009",
       "project_paths": {
-        "crcl_open": "D:\\gitlab\\create_project/链数中建一局_1752667266/crcl-open",
-        "zqyl_user_center_service": "D:\\gitlab\\create_project/链数中建一局_1752667266/zqyl-user-center-service"
+        "crcl_open": "D:\\gitlab\\create_project/链数中建一局_1752757009/crcl-open",
+        "zqyl_user_center_service": "D:\\gitlab\\create_project/链数中建一局_1752757009/zqyl-user-center-service"
       },
       "push_results": {},
       "repo_initialized": true,
@@ -53,13 +53,13 @@
       "service_dependencies": {},
       "service_interconnections": {},
       "static_analysis_results": {},
-      "target_branch": "D_20250716_链数中建一局_1752667266",
+      "target_branch": "D_20250717_链数中建一局_1752757009",
       "task_execution_plan": {},
       "test_coverage": {},
       "unit_test_results": {}
     },
     "output_path": "D:\\gitlab\\create_project",
-    "project_name": "链数中建一局_1752667266",
+    "project_name": "链数中建一局_1752757009",
     "status": "success"
   },
   "workflow_type": "langgraph"

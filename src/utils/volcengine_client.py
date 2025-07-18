@@ -94,8 +94,10 @@ class VolcengineClient:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         stream: bool = False,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[str] = None,
         **kwargs
-    ) -> str:
+    ) -> Any:
         """
         聊天对话
         
@@ -104,10 +106,12 @@ class VolcengineClient:
             temperature: 温度参数
             max_tokens: 最大token数
             stream: 是否流式输出
+            tools: Function calling工具列表
+            tool_choice: 工具选择策略
             **kwargs: 其他参数
             
         Returns:
-            AI回复内容
+            AI回复内容或完整响应对象（支持Function Calling时）
         """
         # 准备请求参数
         request_params = {
@@ -116,6 +120,12 @@ class VolcengineClient:
             "stream": stream,
             **kwargs
         }
+        
+        # 🔧 添加Function Calling参数
+        if tools:
+            request_params["tools"] = tools
+            if tool_choice:
+                request_params["tool_choice"] = tool_choice
         
         # 记录请求日志
         request_id = log_llm_request(
@@ -146,7 +156,26 @@ class VolcengineClient:
                 )
                 return response
             else:
-                response_content = response.choices[0].message.content
+                # 🔧 处理Function Calling响应
+                message = response.choices[0].message
+                
+                # 如果有工具调用，返回完整响应对象
+                if tools and hasattr(message, 'tool_calls') and message.tool_calls:
+                    response_content = f"[FUNCTION_CALL] {len(message.tool_calls)} tool calls"
+                    
+                    # 记录响应日志
+                    log_llm_response(
+                        request_id=request_id,
+                        response_content=response_content,
+                        response_time=response_time,
+                        token_usage=getattr(response, 'usage', None)
+                    )
+                    
+                    # 返回完整响应对象，支持Function Calling
+                    return response
+                
+                # 普通文本响应
+                response_content = message.content
                 
                 # 提取token使用情况
                 token_usage = None

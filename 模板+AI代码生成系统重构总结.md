@@ -48,7 +48,7 @@
 
 ### 模板系统
 - **7种完整的Java代码模板**：
-  - Controller: REST API控制器
+  - Controller: facade API控制器
   - Service Interface: 业务服务接口
   - Service Implementation: 业务服务实现
   - Request DTO: 请求数据传输对象

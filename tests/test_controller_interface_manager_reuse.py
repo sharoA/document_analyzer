@@ -28,7 +28,7 @@ class TestControllerInterfaceManagerReuse(unittest.TestCase):
         
         # 模拟Controller内容
         self.sample_controller_content = """
-package com.yljr.crcl.limit.interfaces.rest;
+package com.yljr.crcl.limit.interfaces.facade;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -379,7 +379,7 @@ public interface ZqylUserAuthFeignClient {
             f.write(feign_content)
         
         # 创建测试用的Controller文件
-        controller_dir = os.path.join(self.temp_dir, "src", "main", "java", "com", "yljr", "crcl", "interfaces", "rest")
+        controller_dir = os.path.join(self.temp_dir, "src", "main", "java", "com", "yljr", "crcl", "interfaces", "facade")
         os.makedirs(controller_dir, exist_ok=True)
         
         controller_path = os.path.join(controller_dir, "CompanyUnitLimitController.java")

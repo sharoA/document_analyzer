@@ -24,14 +24,6 @@ except ImportError as e:
     LangGraphWorkflowOrchestrator = None
     LANGGRAPH_AVAILABLE = False
 
-# 导入统一代码生成器
-try:
-    from ..corder_integration.code_generator import UnifiedCodeGenerator
-    CODE_GENERATOR_AVAILABLE = True
-except ImportError as e:
-    logging.warning(f"代码生成器不可用: {e}")
-    UnifiedCodeGenerator = None
-    CODE_GENERATOR_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -53,14 +45,6 @@ def get_workflow_orchestrator():
     return _workflow_orchestrator
 
 
-def get_code_generator():
-    """获取统一代码生成器实例"""
-    global _code_generator
-    if not CODE_GENERATOR_AVAILABLE:
-        return None
-    if _code_generator is None:
-        _code_generator = UnifiedCodeGenerator()
-    return _code_generator
 
 
 @coder_agent_api.route('/process-document', methods=['POST'])
@@ -121,65 +105,8 @@ def process_design_document():
             })
             
         else:
-            # 🔄 使用传统工作流作为降级方案
-            if use_langgraph and not LANGGRAPH_AVAILABLE:
-                logger.warning("请求使用LangGraph但不可用，降级到传统工作流")
-            
-            logger.info(f"使用传统工作流处理项目: {project_name}")
-            
-            # 🎯 调用代码生成服务
-            generator = get_code_generator()
-            if generator is None:
-                raise Exception("代码生成器不可用")
-            
-            # 异步调用代码生成
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            try:
-                generation_result = loop.run_until_complete(
-                    generator.generate_project_code(
-                        document_content=document_content,
-                        project_name=project_name,
-                        output_path=output_path,
-                        use_ai=True  # 🚀 传统工作流也使用AI大模型！
-                    )
-                )
-            finally:
-                loop.close()
-            
-            # 简单的文档分析
-            lines = document_content.strip().split('\n')
-            non_empty_lines = [line for line in lines if line.strip()]
-            
-            # 估算任务和工时
-            tasks_created = len(generation_result.get("services", []))
-            estimated_hours = tasks_created * 1.6  # 每个任务平均1.6小时
-            
-            workflow_result = {
-                "tasks_created": tasks_created,
-                "estimated_hours": round(estimated_hours, 1),
-                "status": "completed" if generation_result["success"] else "partially_completed",
-                "document_sections": len(non_empty_lines),
-                "processing_method": generation_result["generation_method"],
-                "code_generated": generation_result["success"],
-                "services": generation_result["services"],
-                "failed_services": generation_result.get("failed_services", []),
-                "output_path": generation_result["output_path"]
-            }
-            
-            return jsonify({
-                "status": "success",
-                "project_name": project_name,
-                "execution_id": f"exec_{int(datetime.now().timestamp())}",
-                "message": f"文档处理完成（使用传统智能体）{'，代码已生成' if generation_result['success'] else ''}",
-                "document_length": len(document_content),
-                "execute_immediately": execute_immediately,
-                "output_path": generation_result["output_path"],
-                "timestamp": datetime.now().isoformat(),
-                "workflow_result": workflow_result,
-                "workflow_type": "traditional"
-            })
+            # 🔄 发生错误
+            logger.error(f"发生错误: {e}")
         
     except BadRequest as e:
         return jsonify({

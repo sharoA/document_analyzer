@@ -10,7 +10,7 @@ import re
 import logging
 from pathlib import Path
 from typing import Dict, List, Any, Optional
-from utils.java_code_analyzer import JavaCodeAnalyzer
+from src.utils.java_code_analyzer import JavaCodeAnalyzer
 logger = logging.getLogger(__name__)
 
 
@@ -51,41 +51,19 @@ class ProjectStructureAnalyzer:
             logger.error(f"❌ 项目路径不存在: {project_path}")
             return structure
         
-        # 生成目录树结构用于后续分析
+        # 使用目录树结构进行智能分析
         java_code_analyzer = JavaCodeAnalyzer()
+        
+        # 生成目录树结构并基于此进行分析
         directory_tree = java_code_analyzer.generate_directory_tree(Path(project_path), max_depth=10)
         structure['directory_tree'] = directory_tree
-        logger.info(f"📁 目录树结构生成完成，总体结构:")
-        logger.info(f"\n{directory_tree}")
+        logger.info(f"📁 目录树结构生成完成")
         
-        # 寻找所有可能的Java源码目录
-        java_src_paths = self._find_java_source_paths(project_path)
-        logger.info(f"🔍 找到 {len(java_src_paths)} 个Java源码路径:")
-        for path in java_src_paths:
-            logger.info(f"   - {path}")
+        # 基于目录树解析项目结构信息
+        structure.update(self._parse_structure_from_directory_tree(directory_tree, project_path))
         
-        # 分析每个Java源码目录
-        for java_src_path in java_src_paths:
-            logger.info(f"📊 分析Java源码目录: {java_src_path}")
-            src_result = self._analyze_java_sources(java_src_path)
-            
-            # 合并结果
-            structure['java_files'].extend(src_result['java_files'])
-            structure['controllers'].update(src_result['controllers'])
-            structure['services'].update(src_result['services'])
-            structure['mappers'].update(src_result['mappers'])
-            structure['entities'].update(src_result['entities'])
-            structure['dtos'].update(src_result['dtos'])
-        
-        # 分析资源目录
-        resources_paths = self._find_resources_paths(project_path)
-        for resources_path in resources_paths:
-            logger.info(f"📊 分析资源目录: {resources_path}")
-            res_result = self._analyze_resources(resources_path)
-            structure['xml_files'].extend(res_result['xml_files'])
-        
-        # 推断基础包名
-        structure['base_package'] = self._infer_base_package(structure['java_files'])
+        # 推断基础包名（如果需要详细包名信息，可以扫描几个关键文件）
+        structure['base_package'] = self._infer_base_package_from_tree(directory_tree)
         
         logger.info(f"✅ 项目结构分析完成")
         logger.info(f"   基础包名: {structure['base_package']}")
@@ -98,6 +76,203 @@ class ProjectStructureAnalyzer:
         
         self.project_structure = structure
         return structure
+    
+    def _parse_structure_from_directory_tree(self, directory_tree: str, project_path: str) -> Dict[str, Any]:
+        """
+        基于目录树字符串解析项目结构信息
+        
+        Args:
+            directory_tree: 目录树字符串
+            project_path: 项目根路径
+            
+        Returns:
+            解析出的项目结构信息
+        """
+        structure = {
+            'controllers': {},
+            'services': {},
+            'mappers': {},
+            'entities': {},
+            'dtos': {},
+            'java_files': [],
+            'xml_files': []
+        }
+        
+        logger.info(f"🔍 开始解析目录树结构...")
+        
+        # 解析目录树中的Java文件
+        java_file_pattern = r'☕ (\w+\.java)'
+        xml_file_pattern = r'📋 (\w+\.xml)'
+        
+        lines = directory_tree.split('\n')
+        current_path = []
+        
+        for line in lines:
+            # 分析目录层级
+            level = self._get_tree_level(line)
+            
+            # 调整当前路径
+            if level < len(current_path):
+                current_path = current_path[:level]
+            
+            # 检查Java文件
+            java_match = re.search(java_file_pattern, line)
+            if java_match:
+                java_filename = java_match.group(1)
+                class_name = java_filename.replace('.java', '')
+                
+                # 基于路径和文件名推断类型
+                current_dir_path = '/'.join(current_path).lower()
+                file_type = self._infer_type_from_path_and_name(current_dir_path, class_name)
+                
+                # 构造文件信息
+                file_info = {
+                    'file_path': f"{project_path}/{'/'.join(current_path)}/{java_filename}",
+                    'class_name': class_name,
+                    'package': self._infer_package_from_path(current_path),
+                    'type': file_type,
+                    'annotations': self._infer_annotations_from_type(file_type),
+                    'methods': [],
+                    'imports': [],
+                    'interfaces': [],
+                    'extends': ''
+                }
+                
+                structure['java_files'].append(file_info)
+                
+                # 按类型分类
+                if file_type == 'controller':
+                    structure['controllers'][class_name] = file_info
+                elif file_type == 'service':
+                    structure['services'][class_name] = file_info
+                elif file_type == 'mapper':
+                    structure['mappers'][class_name] = file_info
+                elif file_type == 'entity':
+                    structure['entities'][class_name] = file_info
+                elif file_type == 'dto':
+                    structure['dtos'][class_name] = file_info
+            
+            # 检查XML文件
+            xml_match = re.search(xml_file_pattern, line)
+            if xml_match:
+                xml_filename = xml_match.group(1)
+                xml_info = {
+                    'file_path': f"{project_path}/{'/'.join(current_path)}/{xml_filename}",
+                    'namespace': '',
+                    'sql_statements': []
+                }
+                structure['xml_files'].append(xml_info)
+            
+            # 检查目录
+            if '📁' in line and '(' in line:
+                dir_match = re.search(r'📁 ([^/]+)/', line)
+                if dir_match:
+                    dir_name = dir_match.group(1)
+                    if level == len(current_path):
+                        current_path.append(dir_name)
+                    else:
+                        current_path[level] = dir_name
+        
+        logger.info(f"📊 从目录树解析完成:")
+        logger.info(f"   Controllers: {len(structure['controllers'])}")
+        logger.info(f"   Services: {len(structure['services'])}")
+        logger.info(f"   Mappers: {len(structure['mappers'])}")
+        logger.info(f"   Entities: {len(structure['entities'])}")
+        logger.info(f"   DTOs: {len(structure['dtos'])}")
+        logger.info(f"   总Java文件: {len(structure['java_files'])}")
+        
+        return structure
+    
+    def _get_tree_level(self, line: str) -> int:
+        """获取目录树行的层级"""
+        if '└──' in line or '├──' in line:
+            return line.count('│   ') + line.count('    ')
+        return 0
+    
+    def _infer_type_from_path_and_name(self, path: str, class_name: str) -> str:
+        """基于路径和类名推断文件类型"""
+        # 路径判断
+        if 'controller' in path or 'web' in path:
+            return 'controller'
+        elif 'service' in path:
+            return 'service'
+        elif 'mapper' in path or 'dao' in path:
+            return 'mapper'
+        elif 'entity' in path or 'model' in path or 'po' in path:
+            return 'entity'
+        elif 'dto' in path or 'vo' in path:
+            return 'dto'
+        
+        # 类名判断
+        class_lower = class_name.lower()
+        if class_lower.endswith('controller'):
+            return 'controller'
+        elif class_lower.endswith('service') or class_lower.endswith('serviceimpl'):
+            return 'service'
+        elif class_lower.endswith('mapper') or class_lower.endswith('dao'):
+            return 'mapper'
+        elif class_lower.endswith('entity') or class_lower.endswith('po'):
+            return 'entity'
+        elif any(suffix in class_lower for suffix in ['dto', 'req', 'resp', 'request', 'response', 'vo']):
+            return 'dto'
+        
+        return 'unknown'
+    
+    def _infer_package_from_path(self, path_parts: List[str]) -> str:
+        """基于路径推断包名"""
+        # 查找java目录后的路径部分
+        try:
+            java_index = path_parts.index('java')
+            package_parts = path_parts[java_index + 1:]
+            return '.'.join(package_parts) if package_parts else 'com.yljr.crcl'
+        except ValueError:
+            return 'com.yljr.crcl'
+    
+    def _infer_annotations_from_type(self, file_type: str) -> List[str]:
+        """基于文件类型推断可能的注解"""
+        annotation_map = {
+            'controller': ['Controller', 'RestController'],
+            'service': ['Service'],
+            'mapper': ['Mapper'],
+            'entity': ['Entity', 'Table'],
+            'dto': [],
+            'config': ['Configuration'],
+            'component': ['Component']
+        }
+        return annotation_map.get(file_type, [])
+    
+    def _infer_base_package_from_tree(self, directory_tree: str) -> str:
+        """从目录树推断基础包名"""
+        # 查找最深层的包路径模式
+        lines = directory_tree.split('\n')
+        package_candidates = set()
+        
+        for line in lines:
+            if 'src/main/java/' in line:
+                # 提取src/main/java/之后的路径
+                java_index = line.find('src/main/java/')
+                if java_index != -1:
+                    after_java = line[java_index + len('src/main/java/'):]
+                    # 移除文件名，只保留包路径
+                    if '/' in after_java:
+                        package_path = '/'.join(after_java.split('/')[:-1]) if '.' in after_java else after_java
+                        if package_path:
+                            # 转换为包名格式
+                            package_name = package_path.replace('/', '.')
+                            package_candidates.add(package_name)
+        
+        # 寻找最具体的包名（层级最深的）
+        if package_candidates:
+            # 按长度排序，取最长的（最具体的）包名
+            sorted_packages = sorted(package_candidates, key=len, reverse=True)
+            for pkg in sorted_packages:
+                if 'com.yljr.crcl' in pkg:
+                    logger.info(f"🔍 从目录树推断基础包名: {pkg}")
+                    return pkg
+        
+        # 回退到默认值
+        logger.warning("⚠️ 无法从目录树推断包名，使用默认值")
+        return 'com.yljr.crcl.limit'
     
     def _analyze_java_sources(self, java_src_path: Path) -> Dict[str, Any]:
         """分析Java源码文件"""

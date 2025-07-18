@@ -36,7 +36,7 @@ class TestIntelligentComponentReuseManager(unittest.TestCase):
         """测试Controller组件依赖分析"""
         # 准备测试数据
         controller_content = """
-package com.yljr.crcl.limit.interfaces.rest;
+package com.yljr.crcl.limit.interfaces.facade;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -304,7 +304,7 @@ public interface ZqylUserAuthFeignClient {
         """测试更新Controller支持组件复用"""
         # 准备测试数据
         controller_content = """
-package com.yljr.crcl.limit.interfaces.rest;
+package com.yljr.crcl.limit.interfaces.facade;
 
 import org.springframework.web.bind.annotation.*;
 

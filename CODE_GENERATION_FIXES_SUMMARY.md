@@ -15,7 +15,7 @@
 
 #### 🏗️ 新增DDD分层架构
 ```
-- Controller层: interfaces/rest (对外REST接口)
+- Controller层: interfaces/facade (对外REST接口)
 - Application Service层: application/service (应用服务，协调业务流程)
 - Feign Client层: application/feign (外部服务调用接口)
 - Domain Service层: domain/service (领域服务，核心业务逻辑)
@@ -84,7 +84,7 @@ python test_code_generation_fixes.py
    ```python
    # 自动生成符合DDD架构的分层结构
    layer_paths = {
-       'controller': 'src/main/java/com/yljr/crcl/limit/interfaces/rest',
+       'controller': 'src/main/java/com/yljr/crcl/limit/interfaces/facade',
        'application_service': 'src/main/java/com/yljr/crcl/limit/application/service',
        'domain_service': 'src/main/java/com/yljr/crcl/limit/domain/service',
        'mapper': 'src/main/java/com/yljr/crcl/limit/domain/mapper',
@@ -118,7 +118,7 @@ python test_code_generation_fixes.py
 ```
 crcl-open/
 ├── src/main/java/com/yljr/crcl/limit/
-│   ├── interfaces/rest/
+│   ├── interfaces/facade/
 │   │   └── LsLimitController.java
 │   ├── application/service/
 │   │   └── LsLimitApplicationService.java

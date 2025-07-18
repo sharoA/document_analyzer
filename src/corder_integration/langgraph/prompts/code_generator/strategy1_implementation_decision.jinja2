@@ -6,10 +6,16 @@
 - 基础包名: {{ base_package }}
 - 项目路径: {{ project_path }}
 
+### 📋 详细的API任务需求
+{{ task_details }}
+
+## 📁 完整项目结构
+{{ directory_tree }}
+
 ## DDD架构分层要求
 当前后端采用DDD（领域驱动设计）架构，请严格遵循以下分层结构：
 
-1. **Controller层** (interfaces/rest): 对外REST接口，负责接收HTTP请求和参数校验
+1. **Controller层** (interfaces/facade): 对外REST接口，负责接收HTTP请求和参数校验
 2. **Application Service层** (application/service): 应用服务，协调业务流程，不包含业务逻辑
 3. **Domain Service层** (domain/service): 领域服务，核心业务逻辑的实现
 4. **Domain Mapper层** (domain/mapper): 数据访问层接口，定义数据库操作方法
@@ -20,7 +26,7 @@
 
 ## 现有项目结构分析
 
-### Controller层 (interfaces/rest)
+### Controller层 (interfaces/facade)
 {% if controllers %}
 {% for controller in controllers %}
 - {{ controller.class_name }}

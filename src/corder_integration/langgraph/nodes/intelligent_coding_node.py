@@ -713,13 +713,25 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
                     # 初始化策略1管理器
                     strategy1_manager = Strategy1Manager(self.llm_client)
                     
+                    # 🔧 准备完整的任务参数
+                    task_parameters = {
+                        'http_method': http_method,
+                        'content_type': parameters.get('content_type', 'application/json'),
+                        'request_params': parameters.get('request_params', {}),
+                        'response_params': parameters.get('response_params', {}),
+                        'business_logic': business_logic,
+                        'data_source': parameters.get('data_source', ''),
+                        'external_call': parameters.get('external_call', ''),
+                        'validation_rules': parameters.get('validation_rules', {})
+                    }
+                    
                     # 执行策略1完整流程
                     strategy1_result = strategy1_manager.execute_strategy1(
-                        optimized_project_path, api_keyword, api_path, business_logic
+                        optimized_project_path, api_keyword, api_path, business_logic, task_parameters
                     )
                     
                     if strategy1_result['success']:
-                        # 🆕 新增：策略1完成后清理项目分析缓存
+                        # 策略1完成后清理项目分析缓存
                         try:
                             self.project_analysis_api.clear_analysis_cache(optimized_project_path, service_name)
                             logger.info(f"🗑️ 策略1完成后已清理项目分析缓存")
@@ -882,7 +894,7 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
 - 严格遵循DDD（领域驱动设计）分层架构
 
 **DDD架构分层要求**:
-1. **Controller层** (interfaces/rest): 对外REST接口，负责接收HTTP请求
+1. **Controller层** (interfaces/facade): 对外REST接口，负责接收HTTP请求
 2. **Application Service层** (application/service): 应用服务，协调业务流程
 3. **Domain Service层** (domain/service): 领域服务，核心业务逻辑
 4. **Domain Mapper层** (domain/mapper): 数据访问层接口
@@ -1971,7 +1983,7 @@ public interface {service_interface_name} {{
             if not code_content.startswith('package'):
                 # 添加包名
                 if code_type == 'controller':
-                    code_content = f"package {base_package}.interfaces.rest;\n\n{code_content}"
+                    code_content = f"package {base_package}.interfaces.facade;\n\n{code_content}"
                 elif code_type == 'service':
                     code_content = f"package {base_package}.application.service;\n\n{code_content}"
                 elif code_type in ['request_dto', 'response_dto']:
@@ -2002,7 +2014,7 @@ public interface {service_interface_name} {{
         fallback_code = {}
         
         # 简化的Controller
-        fallback_code['controller'] = f"""package {base_package}.interfaces.rest;
+        fallback_code['controller'] = f"""package {base_package}.interfaces.facade;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -2231,9 +2243,9 @@ public class {class_name} {{
 示例输出格式：
 {{
     "controller": {{
-        "relative_path": "src/main/java/{base_package.replace('.', '/')}/interfaces/rest", 
+        "relative_path": "src/main/java/{base_package.replace('.', '/')}/interfaces/facade", 
         "filename": "{interface_name}Controller.java",
-        "full_path": "src/main/java/{base_package.replace('.', '/')}/interfaces/rest/{interface_name}Controller.java"
+        "full_path": "src/main/java/{base_package.replace('.', '/')}/interfaces/facade/{interface_name}Controller.java"
     }},
     "service": {{
         "relative_path": "src/main/java/{base_package.replace('.', '/')}/application/service", 
@@ -2316,7 +2328,7 @@ public class {class_name} {{
             content_lower = content.lower()
             
             # 直接映射标准类型
-            if code_type in ['controller', 'service', 'service_impl', 'request_dto', 'response_dto', 'entity', 'mapper']:
+            if code_type in ['controller', 'service', 'service_impl', 'service_interface', 'request_dto', 'response_dto', 'entity', 'mapper', 'mapper_xml']:
                 normalized[code_type] = content
                 continue
             
@@ -2350,6 +2362,10 @@ public class {class_name} {{
                 # Mapper检测
                 elif '@Mapper' in content or ('interface' in content and 'mapper' in content_lower):
                     mapped_type = 'mapper'
+                
+                # XML文件检测
+                elif content.strip().startswith('<?xml') and 'mapper' in content_lower:
+                    mapped_type = 'mapper_xml'
                 
                 # 如果成功映射，使用映射类型；否则保持原名
                 if mapped_type:
@@ -2564,7 +2580,7 @@ public class {class_name} {{
             package_path = base_package.replace('.', '/')
             
             layer_paths = {
-                'controller': f'src/main/java/{package_path}/interfaces/rest',
+                'controller': f'src/main/java/{package_path}/interfaces/facade',
                 'service': f'src/main/java/{package_path}/application/service', 
                 'service_impl': f'src/main/java/{package_path}/application/service/impl',
                 'feign_client': f'src/main/java/{package_path}/application/feign',  # 🆕 Feign接口
@@ -2574,7 +2590,7 @@ public class {class_name} {{
                 'response_dto': f'src/main/java/{package_path}/interfaces/dto',
                 'entity': f'src/main/java/{package_path}/domain/entity',
                 'mapper': f'src/main/java/{package_path}/domain/mapper',
-                'mapper_xml': f'src/main/resources/mapper'  # 🔧 修复：正确的XML路径
+                'mapper_xml': f'src/main/resources/mapper'  
             }
             
             logger.info(f"📦 使用默认包结构")
@@ -2582,6 +2598,7 @@ public class {class_name} {{
         # 打印标准化后的代码类型以便调试
         standardized_types = list(normalized_code.keys())
         logger.info(f"📋 标准化后的代码类型: {standardized_types}")
+        logger.info(f"🔍 可用的层级路径类型: {list(layer_paths.keys())}")
         
         # 为每个生成的代码确定输出路径
         output_paths = {}
@@ -2594,6 +2611,12 @@ public class {class_name} {{
                 if std_content == content:
                     standard_type = std_type
                     break
+            
+            if not standard_type:
+                logger.warning(f"⚠️ 无法为代码类型 {original_code_type} 找到标准化映射")
+                continue
+            
+            logger.info(f"🔀 映射: {original_code_type} -> {standard_type}")
             
             # 如果没找到标准化类型，尝试通过内容分析
             if not standard_type:
@@ -2800,8 +2823,17 @@ public class {class_name} {{
         search_path = Path(project_path)
         matching_paths = []
         
+        # 🔧 修复：避免重复嵌套，限制搜索深度
+        max_depth = 10  # 最大搜索深度，避免无限嵌套
+        current_depth = 0
+        
         # 递归搜索包含关键字的目录
         for root, dirs, files in os.walk(search_path):
+            # 计算当前搜索深度
+            current_depth = len(Path(root).parts) - len(search_path.parts)
+            if current_depth > max_depth:
+                continue
+            
             # 跳过隐藏目录和构建目录
             dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['target', 'build', 'out', 'bin']]
             
@@ -2812,6 +2844,15 @@ public class {class_name} {{
                 
                 # 检查目录名是否包含关键字
                 if keyword_lower in dir_name_lower or dir_name_lower in keyword_lower:
+                    # 🔧 修复：避免返回重复嵌套的路径
+                    dir_path_str = str(dir_path)
+                    
+                    # 检查路径中是否有重复的src/main/java结构
+                    src_main_java_count = dir_path_str.count('src/main/java')
+                    if src_main_java_count > 1:
+                        logger.warning(f"⚠️ 跳过重复嵌套路径: {dir_path_str}")
+                        continue
+                    
                     # 检查这个目录下是否有Java文件
                     java_files_found = False
                     for java_file in dir_path.rglob('*.java'):
@@ -2824,14 +2865,27 @@ public class {class_name} {{
                         contains_match = keyword_lower in dir_name_lower
                         score = 100 if exact_match else (50 if contains_match else 25)
                         
-                        matching_paths.append({
-                            'path': str(dir_path),
-                            'dir_name': dir_name,
-                            'score': score,
-                            'relative_path': str(dir_path.relative_to(search_path))
-                        })
+                        # 🔧 修复：检查路径是否合理（不包含重复嵌套）
+                        is_valid_path = True
+                        try:
+                            relative_path = str(dir_path.relative_to(search_path))
+                            # 检查相对路径是否包含重复结构
+                            if relative_path.count(keyword_lower) > 1:
+                                logger.warning(f"⚠️ 路径包含重复关键字，可能是嵌套路径: {relative_path}")
+                                score -= 50  # 降低重复路径的得分
+                                
+                        except ValueError:
+                            is_valid_path = False
                         
-                        logger.info(f"   📁 找到匹配目录: {dir_name} (得分: {score})")
+                        if is_valid_path:
+                            matching_paths.append({
+                                'path': str(dir_path),
+                                'dir_name': dir_name,
+                                'score': score,
+                                'relative_path': str(dir_path.relative_to(search_path))
+                            })
+                            
+                            logger.info(f"   📁 找到匹配目录: {dir_name} (得分: {score})")
         
         if not matching_paths:
             logger.info(f"   ❌ 未找到包含关键字 '{keyword}' 的相关目录")
@@ -2841,8 +2895,15 @@ public class {class_name} {{
         matching_paths.sort(key=lambda x: x['score'], reverse=True)
         best_match = matching_paths[0]
         
+        # 🔧 修复：最终验证返回的路径是否合理
+        returned_path = best_match['path']
+        if returned_path.count('src/main/java') > 1:
+            logger.warning(f"⚠️ 检测到重复嵌套路径，回退到项目根路径: {returned_path}")
+            # 回退到项目根路径，避免嵌套
+            return str(self._normalize_project_path(project_path))
+        
         logger.info(f"   ✅ 选择最佳匹配目录: {best_match['dir_name']} (路径: {best_match['relative_path']})")
-        return best_match['path']
+        return returned_path
 
     def _get_contextual_package_structure(self, project_path: str, api_path: str, project_context: Dict[str, Any]) -> Dict[str, str]:
         """基于API路径获取符合DDD架构的包结构"""
@@ -2881,7 +2942,7 @@ public class {class_name} {{
         if is_already_in_src:
             # 如果已经在src目录中，使用相对路径
             layer_paths = {
-                'controller': f'{contextual_package_path}/interfaces/rest',
+                'controller': f'{contextual_package_path}/interfaces/facade',
                 'service': f'{contextual_package_path}/application/service',
                 'service_impl': f'{contextual_package_path}/application/service/impl', 
                 'feign_client': f'{contextual_package_path}/application/feign',  # 🆕 Feign接口
@@ -2896,7 +2957,7 @@ public class {class_name} {{
         else:
             # 如果不在src目录中，使用完整路径
             layer_paths = {
-                'controller': f'src/main/java/{contextual_package_path}/interfaces/rest',
+                'controller': f'src/main/java/{contextual_package_path}/interfaces/facade',
                 'service': f'src/main/java/{contextual_package_path}/application/service',
                 'service_impl': f'src/main/java/{contextual_package_path}/application/service/impl',
                 'feign_client': f'src/main/java/{contextual_package_path}/application/feign',  # 🆕 Feign接口
@@ -2924,7 +2985,7 @@ public class {class_name} {{
 - 架构风格: DDD (Domain-Driven Design)
 
 ### 目录结构说明
-- Controller层: interfaces/rest (对外REST接口)
+- Controller层: interfaces/facade (对外REST接口)
 - Application Service层: application/service (应用服务，协调业务流程)
 - Feign Client层: application/feign (外部服务调用接口)
 - Domain Service层: domain/service (领域服务，核心业务逻辑)
@@ -2970,17 +3031,35 @@ Controller -> Application Service -> Domain Service 或 Domain Mapper
                 logger.info(f"📄 代码内容 ({code_type}):\n{code_content}")
 
                 
-                # 检查是否已存在且包含目标接口/方法
+                # 检查是否已存在且包含目标接口/方法 - 优化跳过逻辑
                 skip_write = False
                 if os.path.exists(file_path):
                     with open(file_path, 'r', encoding='utf-8') as f:
                         existing_content = f.read()
                     import re
-                    class_matches = re.findall(r'public\s+(?:class|interface)\s+(\w+)', existing_content)
-                    method_matches = re.findall(r'public\s+[^\{]+\s+(\w+)\s*\([^)]*\)\s*\{', existing_content)
-                    if interface_name in class_matches or any(interface_name in m for m in method_matches):
-                        logger.info(f"⏩ 跳过已存在且包含目标接口/方法的文件: {file_path}")
-                        skip_write = True
+                    
+                    # 更精确的类名匹配，避免过度跳过
+                    # 提取当前要生成的类名
+                    new_class_matches = re.findall(r'public\s+(?:class|interface)\s+(\w+)', code_content)
+                    existing_class_matches = re.findall(r'public\s+(?:class|interface)\s+(\w+)', existing_content)
+                    
+                    # 只有当完全相同的类名已存在时才跳过
+                    if new_class_matches and existing_class_matches:
+                        new_class_name = new_class_matches[0]
+                        if new_class_name in existing_class_matches:
+                            logger.info(f"⏩ 跳过已存在的类: {new_class_name} in {file_path}")
+                            skip_write = True
+                        else:
+                            logger.info(f"✅ 类名不同，继续写入: {new_class_name} (现有: {existing_class_matches})")
+                    
+                    # 对于Controller，检查是否有相同的方法签名
+                    if not skip_write and 'controller' in code_type.lower():
+                        new_methods = re.findall(r'@\w+Mapping[^}]*public\s+[^{]+\s+(\w+)\s*\([^)]*\)', code_content)
+                        existing_methods = re.findall(r'@\w+Mapping[^}]*public\s+[^{]+\s+(\w+)\s*\([^)]*\)', existing_content)
+                        
+                        if new_methods and any(method in existing_methods for method in new_methods):
+                            logger.info(f"⏩ 跳过已存在相同方法的Controller: {file_path}")
+                            skip_write = True
                 if skip_write:
                     continue
                 
@@ -3643,6 +3722,172 @@ Java文件数量: {java_files_count}
         # 回退到基础计算
         return java_files_count + len(Path(path).parts) * 10
 
+    def _analyze_controller_relevance(self, project_context: Dict[str, Any], api_keyword: str, 
+                                     current_api_path: str, service_name: str) -> Dict[str, Any]:
+        """
+        分析Controller关联性，基于业务相关度而非简单计数
+        
+        Args:
+            project_context: 项目上下文信息
+            api_keyword: API关键字
+            current_api_path: 当前API路径
+            service_name: 服务名称
+            
+        Returns:
+            Controller关联性分析结果
+        """
+        try:
+            # 获取项目中的Controller信息
+            components_detected = project_context.get('components_detected', {})
+            controllers_info = components_detected.get('controllers', [])
+            
+            if not controllers_info:
+                logger.info("📋 项目中未检测到Controller")
+                return {
+                    'total_count': 0,
+                    'relevant_controllers': [],
+                    'relevance_score': 0.0,
+                    'analysis_details': 'No controllers found in project'
+                }
+            
+            total_controllers = len(controllers_info)
+            relevant_controllers = []
+            
+            # 分析每个Controller与当前API的相关度
+            for controller in controllers_info:
+                relevance_info = self._calculate_controller_relevance(
+                    controller, api_keyword, current_api_path, service_name
+                )
+                
+                # 如果相关度超过阈值，加入相关Controller列表
+                if relevance_info['score'] > 0.3:  # 30%以上相关度才考虑
+                    relevant_controllers.append({
+                        'name': controller.get('class_name', 'Unknown'),
+                        'path': controller.get('request_mapping', ''),
+                        'relevance_score': relevance_info['score'],
+                        'relevance_reasons': relevance_info['reasons'],
+                        'controller_info': controller
+                    })
+            
+            # 按相关度排序
+            relevant_controllers.sort(key=lambda x: x['relevance_score'], reverse=True)
+            
+            # 计算整体关联度得分
+            if relevant_controllers:
+                # 使用最高相关度作为整体得分
+                overall_relevance = relevant_controllers[0]['relevance_score']
+            else:
+                overall_relevance = 0.0
+            
+            logger.info(f"🔍 Controller关联性分析完成:")
+            logger.info(f"   - 总Controller数: {total_controllers}")
+            logger.info(f"   - 相关Controller数: {len(relevant_controllers)}")
+            logger.info(f"   - 最高关联度: {overall_relevance:.2f}")
+            
+            return {
+                'total_count': total_controllers,
+                'relevant_controllers': relevant_controllers,
+                'relevance_score': overall_relevance,
+                'analysis_details': f'Analyzed {total_controllers} controllers, found {len(relevant_controllers)} relevant'
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Controller关联性分析失败: {e}")
+            return {
+                'total_count': 0,
+                'relevant_controllers': [],
+                'relevance_score': 0.0,
+                'analysis_details': f'Analysis failed: {str(e)}'
+            }
+    
+    def _calculate_controller_relevance(self, controller: Dict[str, Any], api_keyword: str, 
+                                      current_api_path: str, service_name: str) -> Dict[str, Any]:
+        """
+        计算单个Controller与当前API的相关度
+        
+        Args:
+            controller: Controller信息
+            api_keyword: API关键字
+            current_api_path: 当前API路径
+            service_name: 服务名称
+            
+        Returns:
+            相关度计算结果
+        """
+        score = 0.0
+        reasons = []
+        
+        controller_name = controller.get('class_name', '').lower()
+        request_mapping = controller.get('request_mapping', '').lower()
+        controller_package = controller.get('package_name', '').lower()
+        
+        # 1. API关键字匹配 (权重: 40%)
+        if api_keyword and api_keyword.lower() in controller_name:
+            score += 0.4
+            reasons.append(f"Controller名称包含API关键字 '{api_keyword}'")
+        elif api_keyword and api_keyword.lower() in request_mapping:
+            score += 0.3
+            reasons.append(f"Controller路径包含API关键字 '{api_keyword}'")
+        
+        # 2. API路径匹配 (权重: 30%)
+        if current_api_path:
+            api_path_parts = [p.lower() for p in current_api_path.split('/') if p]
+            request_mapping_parts = [p.lower() for p in request_mapping.split('/') if p]
+            
+            # 计算路径片段匹配度
+            common_parts = set(api_path_parts) & set(request_mapping_parts)
+            if api_path_parts and common_parts:
+                path_match_ratio = len(common_parts) / len(api_path_parts)
+                path_score = path_match_ratio * 0.3
+                score += path_score
+                reasons.append(f"API路径匹配度: {path_match_ratio:.2f} ({len(common_parts)}/{len(api_path_parts)} 片段匹配)")
+        
+        # 3. 包名业务领域匹配 (权重: 20%)
+        if service_name and service_name.lower() in controller_package:
+            score += 0.2
+            reasons.append(f"包名包含服务名 '{service_name}'")
+        
+        # 4. 业务关键词匹配 (权重: 10%)
+        business_keywords = ['limit', 'manage', 'query', 'company', 'unit', 'organization', 'user', 'auth']
+        for keyword in business_keywords:
+            if keyword in controller_name or keyword in request_mapping:
+                score += 0.05  # 每个关键词加5%，最多10%
+                reasons.append(f"包含业务关键词 '{keyword}'")
+                break
+        
+        # 确保分数不超过1.0
+        score = min(score, 1.0)
+        
+        return {
+            'score': score,
+            'reasons': reasons,
+            'controller_name': controller.get('class_name', 'Unknown')
+        }
+    
+    def _format_relevant_controllers(self, relevant_controllers: List[Dict]) -> str:
+        """
+        格式化相关Controller信息
+        
+        Args:
+            relevant_controllers: 相关Controller列表
+            
+        Returns:
+            格式化的Controller信息字符串
+        """
+        if not relevant_controllers:
+            return "未找到相关的Controller"
+        
+        formatted_info = []
+        for i, controller in enumerate(relevant_controllers[:5], 1):  # 最多显示前5个
+            info = f"""
+{i}. Controller: {controller['name']}
+   - 路径: {controller['path']}
+   - 关联度: {controller['relevance_score']:.2f}
+   - 关联原因: {'; '.join(controller['relevance_reasons'])}"""
+            formatted_info.append(info)
+        
+        return '\n'.join(formatted_info)
+
     def _determine_project_strategy(self, project_path: str, service_name: str, api_keyword: str, project_context: Dict[str, Any]) -> Dict[str, str]:
         """
         智能判断项目策略：决定是在现有Controller添加方法还是创建新文件，需要结合目录路径和已经分析的项目内容来判断
@@ -3670,65 +3915,59 @@ Java文件数量: {java_files_count}
             component_patterns = project_context.get('component_patterns', {})
             current_api_path = project_context.get('current_api_path', '')
             
-            # 🔧 修复：获取正确的Controller数量，尝试多个可能的字段
-            controller_count = 0
+            # 🔧 改进：精确分析Controller关联性而不是简单计数
+            controller_analysis = self._analyze_controller_relevance(
+                project_context, api_keyword, current_api_path, service_name
+            )
             
-            # 方法1：从component_usage获取
-            controller_count = component_patterns.get('component_usage', {}).get('rest_controllers', 0)
+            controller_count = controller_analysis.get('total_count', 0)
+            relevant_controllers = controller_analysis.get('relevant_controllers', [])
+            relevance_score = controller_analysis.get('relevance_score', 0.0)
             
-            # 方法2：如果为0，尝试从service_patterns获取
-            if controller_count == 0:
-                has_controllers = component_patterns.get('service_patterns', {}).get('has_rest_controllers', False)
-                if isinstance(has_controllers, bool):
-                    controller_count = 1 if has_controllers else 0
-                elif isinstance(has_controllers, int):
-                    controller_count = has_controllers
+            logger.info(f"🔍 Controller关联性分析:")
+            logger.info(f"   - 总Controller数: {controller_count}")
+            logger.info(f"   - 相关Controller数: {len(relevant_controllers)}")
+            logger.info(f"   - 关联度得分: {relevance_score:.2f}")
             
-            # 方法3：如果仍然为0，尝试从summary或其他字段获取
-            if controller_count == 0:
-                # 从components_detected获取
-                components_detected = project_context.get('components_detected', {})
-                if 'rest_controllers' in components_detected:
-                    controller_count = components_detected['rest_controllers']
-                elif 'controllers' in components_detected:
-                    controller_count = components_detected['controllers']
-                
-                # 从architecture_patterns获取
-                if controller_count == 0:
-                    arch_patterns = project_context.get('architecture_patterns', {})
-                    layer_distribution = arch_patterns.get('layer_distribution', {})
-                    if 'interfaces' in layer_distribution:
-                        controller_count = layer_distribution['interfaces']
+            if relevant_controllers:
+                logger.info(f"   - 相关Controllers: {[c['name'] for c in relevant_controllers]}")
             
-            # 方法4：如果还是为0，尝试从原始analysis_result获取
-            if controller_count == 0:
-                # 这是最后的备选方案，可能需要从原始分析结果中获取
-                logger.warning("⚠️ 无法从标准字段获取Controller数量，使用备选方案")
-                controller_count = 0
-            
-            logger.info(f"🔍 项目策略分析 - Java文件数: {project_info.get('total_java_files', 0)}, Controller数: {controller_count}")
-            
-            # 构建简化的分析提示
+            # 构建增强的分析提示
             prompt = f"""
-分析Java项目策略：
+分析Java项目Controller复用策略：
 
-项目信息：
-- 路径: {project_path}
-- 服务名: {service_name}
+## 项目基础信息
+- 项目路径: {project_path}
+- 服务名: {service_name} 
 - API关键字: {api_keyword}
 - API路径: {current_api_path}
-- Spring Boot: {project_info.get('is_spring_boot', False)}
-- Java文件数: {project_info.get('total_java_files', 0)}
-- 现有Controller数: {controller_count}
+- Spring Boot项目: {project_info.get('is_spring_boot', False)}
+- Java文件总数: {project_info.get('total_java_files', 0)}
 
-请判断应该采用什么策略：
-1. enhance_existing - 在现有Controller中添加方法 (当有现有Controller且API相关时)
-2. create_new - 创建新的文件 (当无现有Controller或需要新模块时)
+## Controller关联性分析
+- Controller总数: {controller_count}
+- 相关Controller数: {len(relevant_controllers)}
+- 业务关联度: {relevance_score:.2f}
 
-🔧 重要提示：如果现有Controller数 > 0 且Java文件数 > 0，应该优先考虑enhance_existing策略！
+## 相关Controller详情
+{self._format_relevant_controllers(relevant_controllers)}
 
-返回JSON格式：
-{{"strategy": "enhance_existing或create_new", "reason": "判断原因"}}
+## 策略判断标准
+1. **enhance_existing** - 满足以下条件之一：
+   - 存在业务相关的Controller (关联度 > 0.6)
+   - API路径与现有Controller路径模式匹配
+   - 相同业务领域的Controller存在
+
+2. **create_new** - 满足以下条件：
+   - 无相关Controller或关联度较低 (< 0.6)
+   - 全新的业务领域
+   - 项目为空或Controller数为0
+
+## 重要提示
+🎯 关键判断依据：**业务关联性** > **简单数量统计**
+
+请基于上述分析返回JSON格式决策：
+{{"strategy": "enhance_existing或create_new", "reason": "详细判断原因", "target_controller": "如果是enhance_existing，指定目标Controller名称"}}
 """
             
             logger.info(f"🤖 调用{self.llm_provider}分析项目策略...发送的prompt信息: Java文件数={project_info.get('total_java_files', 0)}, Controller数={controller_count}")
@@ -3851,5 +4090,18 @@ async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
             'retry_count': state.get("retry_count", 0) + 1
         })
         return updated_state
+
+    def _extract_project_root_path(self, project_path: str) -> str:
+        """
+        从给定路径中提取真正的项目根路径
+        特别处理包含src/main/java的深层路径
         
+        Args:
+            project_path: 可能包含包路径的项目路径
+            
+        Returns:
+            项目根路径字符串
+        """
+        normalized_path = self._normalize_project_path(project_path)
+        return str(normalized_path)
 
