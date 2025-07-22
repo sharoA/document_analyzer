@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const tooltipV2TriggerProps: {
     readonly onBlur: {
         readonly type: import("vue").PropType<(e: Event) => boolean | void>;
@@ -38,3 +38,4 @@ export declare const tooltipV2TriggerProps: {
     };
 };
 export type TooltipV2TriggerProps = ExtractPropTypes<typeof tooltipV2TriggerProps>;
+export type TooltipV2TriggerPropsPublic = __ExtractPublicPropTypes<typeof tooltipV2TriggerProps>;

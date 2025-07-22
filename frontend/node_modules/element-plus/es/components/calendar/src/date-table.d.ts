@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { Dayjs } from 'dayjs';
 export type CalendarDateCellType = 'next' | 'prev' | 'current';
 export type CalendarDateCell = {
@@ -35,6 +35,7 @@ export declare const dateTableProps: {
     };
 };
 export type DateTableProps = ExtractPropTypes<typeof dateTableProps>;
+export type DateTablePropsPublic = __ExtractPublicPropTypes<typeof dateTableProps>;
 export declare const dateTableEmits: {
     pick: (value: Dayjs) => boolean;
 };

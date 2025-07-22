@@ -4,17 +4,17 @@ import type { FakeNode, TreeKey, TreeNodeChildState, TreeNodeData, TreeNodeLoade
 export declare const getChildState: (node: Node[]) => TreeNodeChildState;
 declare class Node {
     id: number;
-    text: string;
+    text: string | null;
     checked: boolean;
     indeterminate: boolean;
     data: TreeNodeData;
     expanded: boolean;
-    parent: Node;
+    parent: Node | null;
     visible: boolean;
     isCurrent: boolean;
     store: TreeStore;
-    isLeafByUser: boolean;
-    isLeaf: boolean;
+    isLeafByUser: boolean | undefined;
+    isLeaf: boolean | undefined;
     canFocus: boolean;
     level: number;
     loaded: boolean;
@@ -24,7 +24,7 @@ declare class Node {
     initialize(): void;
     setData(data: TreeNodeData): void;
     get label(): string;
-    get key(): TreeKey;
+    get key(): TreeKey | null | undefined;
     get disabled(): boolean;
     get nextSibling(): Nullable<Node>;
     get previousSibling(): Nullable<Node>;
@@ -34,16 +34,16 @@ declare class Node {
     insertBefore(child: FakeNode | Node, ref: Node): void;
     insertAfter(child: FakeNode | Node, ref: Node): void;
     removeChild(child: Node): void;
-    removeChildByData(data: TreeNodeData): void;
-    expand(callback?: () => void, expandParent?: boolean): void;
+    removeChildByData(data: TreeNodeData | null): void;
+    expand(callback?: (() => void) | null, expandParent?: boolean): void;
     doCreateChildren(array: TreeNodeData[], defaultProps?: TreeNodeLoadedDefaultProps): void;
     collapse(): void;
     shouldLoadData(): boolean;
     updateLeafState(): void;
     setChecked(value?: boolean | string, deep?: boolean, recursion?: boolean, passValue?: boolean): void;
-    getChildren(forceInit?: boolean): TreeNodeData | TreeNodeData[];
+    getChildren(forceInit?: boolean): TreeNodeData | TreeNodeData[] | null;
     updateChildren(): void;
-    loadData(callback: (node: Node) => void, defaultProps?: TreeNodeLoadedDefaultProps): void;
+    loadData(callback: (data?: TreeNodeData[]) => void, defaultProps?: TreeNodeLoadedDefaultProps): void;
     eachNode(callback: (node: Node) => void): void;
     reInitChecked(): void;
 }

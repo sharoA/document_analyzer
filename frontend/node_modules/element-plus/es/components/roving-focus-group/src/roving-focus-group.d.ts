@@ -1,4 +1,4 @@
-import type { ExtractPropTypes, StyleValue } from 'vue';
+import type { ExtractPropTypes, StyleValue, __ExtractPublicPropTypes } from 'vue';
 export declare const rovingFocusGroupProps: {
     style: {
         readonly type: import("vue").PropType<import("element-plus/es/utils").EpPropMergeType<(new (...args: any[]) => string | import("vue").CSSProperties | StyleValue[]) | (() => StyleValue) | ((new (...args: any[]) => string | import("vue").CSSProperties | StyleValue[]) | (() => StyleValue))[], unknown, unknown>>;
@@ -26,6 +26,7 @@ export declare const rovingFocusGroupProps: {
     onMousedown: FunctionConstructor;
 };
 export type ElRovingFocusGroupProps = ExtractPropTypes<typeof rovingFocusGroupProps>;
+export type ElRovingFocusGroupPropsPublic = __ExtractPublicPropTypes<typeof rovingFocusGroupProps>;
 declare const ElCollection: {
     name: string;
     setup(): void;

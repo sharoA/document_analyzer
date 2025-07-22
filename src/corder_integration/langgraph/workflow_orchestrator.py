@@ -35,7 +35,7 @@ SQLITE_CHECKPOINTER_AVAILABLE = SYNC_SQLITE_AVAILABLE or ASYNC_SQLITE_AVAILABLE
 if not SQLITE_CHECKPOINTER_AVAILABLE:
     logging.warning("SQLite检查点不可用，将仅使用内存检查点")
 
-# from .nodes.task_splitting_node import task_splitting_node  # 任务拆分节点 先注释
+# from .nodes.task_splitting_node import task_splitting_node  # 任务拆分节点
 from .nodes.git_management_node import git_management_node
 from .nodes.intelligent_coding_node import intelligent_coding_node
 from .nodes.code_review_node import code_review_node
@@ -110,7 +110,7 @@ class LangGraphWorkflowOrchestrator:
         if self.use_sqlite and SQLITE_CHECKPOINTER_AVAILABLE:
             try:
                 # 🔧 优先使用异步SQLite检查点（与ainvoke兼容）
-                if ASYNC_SQLITE_AVAILABLE:
+                if ASYNC_SQLITE_AVAILABLE and AsyncSqliteSaver is not None:
                     if self.db_path == ":memory:":
                         conn_string = ":memory:"
                     else:
@@ -123,7 +123,7 @@ class LangGraphWorkflowOrchestrator:
                     return AsyncSqliteSaver.from_conn_string(conn_string)
                 
                 # 🔧 备选：同步SQLite检查点（需要同步调用）
-                elif SYNC_SQLITE_AVAILABLE:
+                elif SYNC_SQLITE_AVAILABLE and SqliteSaver is not None:
                     # 格式化连接字符串 - LangGraph使用简单格式，不需要sqlite://前缀
                     if self.db_path == ":memory:":
                         conn_string = ":memory:"
@@ -327,22 +327,25 @@ class LangGraphWorkflowOrchestrator:
         
         # 🎯 设置默认输出路径
         if output_path is None:
-            output_path = r"D:\gitlab"
+            output_path = r"/Users/renyu/Documents/create_project"
         
         # 🔄 获取检查点管理器
         checkpointer_context = self._get_checkpointer_context()
         
-        # 根据检查点类型使用适当的上下文管理器
-        if hasattr(checkpointer_context, '__aenter__'):
-            # 异步上下文管理器
+        # 🔧 修复：特别处理 MemorySaver 的上下文管理器问题
+        if isinstance(checkpointer_context, MemorySaver):
+            # MemorySaver 的异步上下文管理器实现有问题，直接使用对象
+            return await self._execute_with_checkpointer(checkpointer_context, design_doc, project_name, output_path)
+        elif hasattr(checkpointer_context, '__aenter__'):
+            # 异步上下文管理器 (AsyncSqliteSaver)
             async with checkpointer_context as checkpointer:
                 return await self._execute_with_checkpointer(checkpointer, design_doc, project_name, output_path)
         elif hasattr(checkpointer_context, '__enter__'):
-            # 同步上下文管理器
+            # 同步上下文管理器 (SqliteSaver)
             with checkpointer_context as checkpointer:
                 return await self._execute_with_checkpointer(checkpointer, design_doc, project_name, output_path)
         else:
-            # 直接的检查点对象（如MemorySaver）
+            # 直接的检查点对象
             return await self._execute_with_checkpointer(checkpointer_context, design_doc, project_name, output_path)
     
     def _generate_target_branch(self, project_name: str) -> str:

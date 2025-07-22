@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { Placement, Strategy, VirtualElement } from '@floating-ui/dom';
 export declare const tourStrategies: readonly ["absolute", "fixed"];
 export declare const tourPlacements: readonly ["top-start", "top-end", "top", "bottom-start", "bottom-end", "bottom", "left-start", "left-end", "left", "right-start", "right-end", "right"];
@@ -11,6 +11,7 @@ export declare const tourContentProps: {
     zIndex: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, number, boolean>;
 };
 export type TourContentProps = ExtractPropTypes<typeof tourContentProps>;
+export type TourContentPropsPublic = __ExtractPublicPropTypes<typeof tourContentProps>;
 export declare const tourContentEmits: {
     close: () => boolean;
 };

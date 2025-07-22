@@ -1,21 +1,16 @@
-declare const _default: import("vue").DefineComponent<{}, {
-    ns: {
-        namespace: import("vue").ComputedRef<string>;
-        b: (blockSuffix?: string) => string;
-        e: (element?: string) => string;
-        m: (modifier?: string) => string;
-        be: (blockSuffix?: string, element?: string) => string;
-        em: (element?: string, modifier?: string) => string;
-        bm: (blockSuffix?: string, modifier?: string) => string;
-        bem: (blockSuffix?: string, element?: string, modifier?: string) => string;
-        is: {
-            (name: string, state: boolean | undefined): string;
-            (name: string): string;
-        };
-        cssVar: (object: Record<string, string>) => Record<string, string>;
-        cssVarName: (name: string) => string;
-        cssVarBlock: (object: Record<string, string>) => Record<string, string>;
-        cssVarBlockName: (name: string) => string;
+import type { PropType } from 'vue';
+import type { CascaderNode, RenderLabel } from './types';
+declare const _default: import("vue").DefineComponent<{
+    node: {
+        type: PropType<CascaderNode>;
+        required: true;
     };
-}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, import("vue").EmitsOptions, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{}>>, {}>;
+    renderLabelFn: PropType<RenderLabel>;
+}, () => JSX.Element, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, Record<string, any>, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{
+    node: {
+        type: PropType<CascaderNode>;
+        required: true;
+    };
+    renderLabelFn: PropType<RenderLabel>;
+}>>, {}>;
 export default _default;

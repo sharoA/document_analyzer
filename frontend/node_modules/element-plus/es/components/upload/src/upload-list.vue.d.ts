@@ -8,7 +8,7 @@ declare function __VLS_template(): {
 };
 declare const __VLS_component: import("vue").DefineComponent<{
     readonly files: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => import("./upload").UploadFiles) | (() => import("./upload").UploadFiles) | ((new (...args: any[]) => import("./upload").UploadFiles) | (() => import("./upload").UploadFiles))[], unknown, unknown, () => never[], boolean>;
-    readonly disabled: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly disabled: BooleanConstructor;
     readonly handlePreview: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => (uploadFile: UploadFile) => void) | (() => (uploadFile: UploadFile) => void) | {
         (): (uploadFile: UploadFile) => void;
         new (): any;
@@ -29,7 +29,7 @@ declare const __VLS_component: import("vue").DefineComponent<{
     remove: (file: UploadFile) => void;
 }, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{
     readonly files: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => import("./upload").UploadFiles) | (() => import("./upload").UploadFiles) | ((new (...args: any[]) => import("./upload").UploadFiles) | (() => import("./upload").UploadFiles))[], unknown, unknown, () => never[], boolean>;
-    readonly disabled: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly disabled: BooleanConstructor;
     readonly handlePreview: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => (uploadFile: UploadFile) => void) | (() => (uploadFile: UploadFile) => void) | {
         (): (uploadFile: UploadFile) => void;
         new (): any;
@@ -49,7 +49,7 @@ declare const __VLS_component: import("vue").DefineComponent<{
 }>> & {
     onRemove?: ((file: UploadFile) => any) | undefined;
 }, {
-    readonly disabled: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
+    readonly disabled: boolean;
     readonly listType: import("element-plus/es/utils").EpPropMergeType<StringConstructor, "picture" | "text" | "picture-card", unknown>;
     readonly files: import("./upload").UploadFiles;
     readonly handlePreview: (uploadFile: UploadFile) => void;

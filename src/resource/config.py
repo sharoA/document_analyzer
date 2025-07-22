@@ -319,7 +319,7 @@ class Config:
         """获取编码智能体配置"""
         return self.get('coder_agent', {
             "ai_provider": "volcengine",
-            "project_root": "D:/new_project",
+            "project_root": "/Users/renyu/Documents/ai_project",
             "backend_version": "2.7.14",
             "backend_java_version": "8",
             "frontend_framework": "Vue2",

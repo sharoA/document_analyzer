@@ -14,26 +14,33 @@ from concurrent.futures import ThreadPoolExecutor
 
 def check_environment():
     """检查环境配置"""
-    # 检查虚拟环境
-    venv_python = Path("venv/Scripts/python.exe")
-    if not venv_python.exists():
+    # 检查虚拟环境（兼容 Windows 和 macOS/Linux）
+    venv_python_win = Path("venv/Scripts/python.exe")
+    venv_python_unix = Path("venv/bin/python")
+    if venv_python_unix.exists():
+        venv_python = venv_python_unix
+    elif venv_python_win.exists():
+        venv_python = venv_python_win
+    else:
         print("❌ 虚拟环境不存在")
-        print("请先运行 python -m venv venv 创建虚拟环境")
+        print("请先运行 python3 -m venv venv 创建虚拟环境")
         return False, None
-    
+
     # 检查当前是否已在虚拟环境中
     current_python = Path(sys.executable).resolve()
     venv_python_resolved = venv_python.resolve()
-    
+
     # 添加调试信息
     print(f"🔍 调试信息:")
     print(f"   当前Python: {current_python}")
     print(f"   虚拟环境Python: {venv_python_resolved}")
     print(f"   路径相等: {current_python == venv_python_resolved}")
-    
+
     # 检查是否已经在虚拟环境中运行
-    # 使用更宽松的检查方式，避免路径解析问题
-    if "venv" in str(current_python).lower() and "Scripts" in str(current_python):
+    if (
+        ("venv" in str(current_python).lower() and "bin" in str(current_python)) or
+        ("venv" in str(current_python).lower() and "scripts" in str(current_python).lower())
+    ):
         print("✅ 已在虚拟环境中")
     elif current_python != venv_python_resolved:
         print("⚠️ 当前未使用虚拟环境")
@@ -43,23 +50,23 @@ def check_environment():
         return True, str(venv_python_resolved)
     else:
         print("✅ 已在虚拟环境中")
-    
+
     # 检查必要的目录
     directories = ["uploads", "templates", "outputs", "logs"]
     for directory in directories:
         Path(directory).mkdir(exist_ok=True)
-    
+
     # 确保uploads子目录存在
     upload_subdirs = ["uploads/temp", "uploads/analysis_results", "uploads/cache"]
     for directory in upload_subdirs:
         Path(directory).mkdir(exist_ok=True)
-    
+
     # 检查配置文件
     config_file = Path("src/resource/config.py")
     if not config_file.exists():
         print("⚠️ 配置文件不存在: src/config.py")
         print("请检查配置文件")
-    
+
     print("✅ 环境检查完成")
     return True, None
 
@@ -93,10 +100,14 @@ def start_api_server():
             print(f"❌ API服务器脚本不存在: {api_script}")
             return
         
-        # 优先使用虚拟环境中的Python
-        venv_python = Path("venv/Scripts/python.exe")
-        if venv_python.exists():
-            python_executable = str(venv_python)
+        # 优先使用虚拟环境中的Python（兼容多平台）
+        venv_python_win = Path("venv/Scripts/python.exe")
+        venv_python_unix = Path("venv/bin/python")
+        if venv_python_unix.exists():
+            python_executable = str(venv_python_unix)
+            print(f"✅ 使用虚拟环境Python: {python_executable}")
+        elif venv_python_win.exists():
+            python_executable = str(venv_python_win)
             print(f"✅ 使用虚拟环境Python: {python_executable}")
         else:
             python_executable = sys.executable
@@ -128,10 +139,14 @@ def start_websocket_server():
             print(f"❌ WebSocket服务器脚本不存在: {ws_script}")
             return
         
-        # 优先使用虚拟环境中的Python
-        venv_python = Path("venv/Scripts/python.exe")
-        if venv_python.exists():
-            python_executable = str(venv_python)
+        # 优先使用虚拟环境中的Python（兼容多平台）
+        venv_python_win = Path("venv/Scripts/python.exe")
+        venv_python_unix = Path("venv/bin/python")
+        if venv_python_unix.exists():
+            python_executable = str(venv_python_unix)
+            print(f"✅ 使用虚拟环境Python: {python_executable}")
+        elif venv_python_win.exists():
+            python_executable = str(venv_python_win)
             print(f"✅ 使用虚拟环境Python: {python_executable}")
         else:
             python_executable = sys.executable

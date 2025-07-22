@@ -1,4 +1,4 @@
-import { inject, getCurrentInstance, ref, unref, onMounted, reactive, onUnmounted } from 'vue';
+import { inject, getCurrentInstance, ref, unref, reactive, onBeforeUnmount } from 'vue';
 import { carouselContextKey, CAROUSEL_ITEM_NAME } from './constants.mjs';
 import { debugWarn } from '../../../utils/error.mjs';
 import { isUndefined } from '../../../utils/types.mjs';
@@ -86,24 +86,24 @@ const useCarouselItem = (props) => {
       carouselContext.setActiveItem(index);
     }
   }
-  onMounted(() => {
-    carouselContext.addItem({
-      props,
-      states: reactive({
-        hover,
-        translate,
-        scale,
-        active,
-        ready,
-        inStage,
-        animating
-      }),
-      uid: instance.uid,
-      translateItem
-    });
-  });
-  onUnmounted(() => {
-    carouselContext.removeItem(instance.uid);
+  const carouselItemContext = {
+    props,
+    states: reactive({
+      hover,
+      translate,
+      scale,
+      active,
+      ready,
+      inStage,
+      animating
+    }),
+    uid: instance.uid,
+    getVnode: () => instance.vnode,
+    translateItem
+  };
+  carouselContext.addItem(carouselItemContext);
+  onBeforeUnmount(() => {
+    carouselContext.removeItem(carouselItemContext);
   });
   return {
     carouselItemRef,

@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const basicMonthTableProps: {
     selectionMode: import("element-plus/es/utils").EpPropFinalized<StringConstructor, string, unknown, string, boolean>;
     disabledDate: {
@@ -37,3 +37,4 @@ export declare const basicMonthTableProps: {
     }, boolean>;
 };
 export type BasicMonthTableProps = ExtractPropTypes<typeof basicMonthTableProps>;
+export type BasicMonthTablePropsPublic = __ExtractPublicPropTypes<typeof basicMonthTableProps>;

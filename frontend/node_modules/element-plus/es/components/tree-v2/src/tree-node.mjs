@@ -119,7 +119,9 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
             onClick: withModifiers(() => {
             }, ["stop"])
           }, null, 8, ["model-value", "indeterminate", "disabled", "onClick"])) : createCommentVNode("v-if", true),
-          createVNode(unref(ElNodeContent), { node: _ctx.node }, null, 8, ["node"])
+          createVNode(unref(ElNodeContent), {
+            node: { ..._ctx.node, expanded: _ctx.expanded }
+          }, null, 8, ["node"])
         ], 6)
       ], 42, ["aria-expanded", "aria-disabled", "aria-checked", "data-key", "onClick", "onDragover", "onDragenter", "onDrop"]);
     };

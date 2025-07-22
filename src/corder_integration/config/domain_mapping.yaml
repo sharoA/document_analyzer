@@ -1,0 +1,80 @@
+# 业务领域映射配置
+# API关键字 -> 业务领域的映射规则
+
+# 映射规则说明：
+# - api_keyword: API路径中提取的关键字
+# - domain: 对应的业务领域（目录名）
+# - description: 映射说明
+# - priority: 优先级（数字越大优先级越高）
+
+domain_mappings:
+  # limit 相关映射
+  - api_keyword: "lsLimit"
+    domain: "lsLimit"
+    description: "ls前缀的limit相关接口映射到额度领域"
+    priority: 100
+    
+  - api_keyword: "lslimit"
+    domain: "lsLimit"
+    description: "ls前缀的limit相关接口映射到额度领域（小写）"
+    priority: 100
+    
+  - api_keyword: "limit"
+    domain: "limit"
+    description: "直接的limit关键字映射到额度领域"
+    priority: 90
+    
+  # open 相关映射
+  - api_keyword: "open"
+    domain: "open"
+    description: "开放相关接口映射到开立领域"
+    priority: 90
+    
+  - api_keyword: "opening"
+    domain: "open"
+    description: "开户相关接口映射到开立领域"
+    priority: 80
+    
+  # general 相关映射
+  - api_keyword: "multiorgManage"
+    domain: "multiorgManage"
+    description: "企业多组织管理相关接口映射到通用领域"
+    priority: 80
+    
+  - api_keyword: "multiorg"
+    domain: "multiorgManage"
+    description: "企业多组织相关接口映射到通用领域"
+    priority: 70
+    
+  - api_keyword: "general"
+    domain: "general"
+    description: "通用接口映射到通用领域"
+    priority: 60
+    
+  # credit 相关映射
+  - api_keyword: "credit"
+    domain: "credit"
+    description: "授信相关接口映射到授信领域"
+    priority: 90
+    
+  # user 相关映射
+  - api_keyword: "user"
+    domain: "user"
+    description: "用户相关接口映射到用户领域"
+    priority: 90
+    
+  - api_keyword: "company"
+    domain: "company"
+    description: "公司相关接口映射到公司领域"
+    priority: 80
+
+
+  
+# 业务领域优先级（用于冲突时的选择）
+domain_priority:
+  limit: 100
+  credit: 90
+  open: 80
+  general: 70
+  user: 60
+  company: 50

@@ -6,13 +6,13 @@ declare const _default: import("vue").DefineComponent<{
         readonly level: -1;
         readonly data: {};
     }>, boolean>;
-    readonly expanded: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly checked: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly indeterminate: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly showCheckbox: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly disabled: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly current: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly hiddenExpandIcon: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly expanded: BooleanConstructor;
+    readonly checked: BooleanConstructor;
+    readonly indeterminate: BooleanConstructor;
+    readonly showCheckbox: BooleanConstructor;
+    readonly disabled: BooleanConstructor;
+    readonly current: BooleanConstructor;
+    readonly hiddenExpandIcon: BooleanConstructor;
     readonly itemSize: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, number, boolean>;
 }, {}, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
     click: (node: TreeNode, e: MouseEvent) => void;
@@ -25,13 +25,13 @@ declare const _default: import("vue").DefineComponent<{
         readonly level: -1;
         readonly data: {};
     }>, boolean>;
-    readonly expanded: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly checked: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly indeterminate: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly showCheckbox: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly disabled: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly current: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
-    readonly hiddenExpandIcon: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly expanded: BooleanConstructor;
+    readonly checked: BooleanConstructor;
+    readonly indeterminate: BooleanConstructor;
+    readonly showCheckbox: BooleanConstructor;
+    readonly disabled: BooleanConstructor;
+    readonly current: BooleanConstructor;
+    readonly hiddenExpandIcon: BooleanConstructor;
     readonly itemSize: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, number, boolean>;
 }>> & {
     onDrop?: ((node: TreeNode, e: DragEvent) => any) | undefined;
@@ -39,14 +39,14 @@ declare const _default: import("vue").DefineComponent<{
     onToggle?: ((node: TreeNode) => any) | undefined;
     onCheck?: ((node: TreeNode, checked: CheckboxValueType) => any) | undefined;
 }, {
-    readonly disabled: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
-    readonly expanded: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
-    readonly current: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
-    readonly indeterminate: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
-    readonly checked: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
+    readonly disabled: boolean;
+    readonly expanded: boolean;
+    readonly current: boolean;
+    readonly indeterminate: boolean;
+    readonly checked: boolean;
     readonly node: TreeNode;
     readonly itemSize: number;
-    readonly showCheckbox: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
-    readonly hiddenExpandIcon: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
+    readonly showCheckbox: boolean;
+    readonly hiddenExpandIcon: boolean;
 }>;
 export default _default;

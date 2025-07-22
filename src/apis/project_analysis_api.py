@@ -113,7 +113,7 @@ class ProjectAnalysisAPI:
         # 方法1：递归查找所有包含src/main/java的目录
         for root, dirs, files in os.walk(normalized_base_path):
             # 跳过不相关的目录以提高搜索效率
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['target', 'build', 'out', 'bin', 'logs', 'tmp']]
+            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['target', 'build', 'out', 'bin', 'logs', 'tmp', 'backup']]
             
             if 'src' in dirs:
                 src_path = os.path.join(root, 'src')
@@ -147,8 +147,8 @@ class ProjectAnalysisAPI:
             logger.warning(f"⚠️ 在 {normalized_base_path} 中未找到包含Java文件的src/main/java结构")
             return normalized_base_path
         
-        # 排序并选择最佳路径
-        potential_paths.sort(key=lambda x: x['priority'], reverse=True)
+        # 排序并选择最佳路径 - 优先级相同时按Java文件数量排序
+        potential_paths.sort(key=lambda x: (x['priority'], x['java_files']), reverse=True)
         
         # 记录前3个候选路径
         logger.info(f"📋 排序后的候选路径（前3个）:")
@@ -352,6 +352,9 @@ class ProjectAnalysisAPI:
         # 代码模板和示例
         code_templates = self._generate_code_templates(analysis_result)
         
+        # 提取详细的Controller信息用于关联性分析
+        detailed_controllers = self._extract_detailed_controllers(analysis_result)
+        
         return {
             'project_info': project_info,
             'package_patterns': package_patterns,
@@ -361,7 +364,8 @@ class ProjectAnalysisAPI:
             'technology_stack': technology_stack,
             'code_templates': code_templates,
             'analysis_summary': self._create_generation_summary(analysis_result),
-            'generation_guidelines': self._create_generation_guidelines(analysis_result)
+            'generation_guidelines': self._create_generation_guidelines(analysis_result),
+            'detailed_controllers': detailed_controllers  # 新增：详细的Controller信息
         }
     
     def _extract_base_package(self, analysis_result: Dict[str, Any]) -> str:
@@ -699,10 +703,66 @@ public class {{EntityName}} {{
         guidelines.append(f"使用包前缀: {base_package}")
         
         return guidelines
+    
+    def _extract_detailed_controllers(self, analysis_result: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """提取详细的Controller信息用于关联性分析"""
+        detailed_controllers = []
+        
+        for file_info in analysis_result.get('java_files', []):
+            file_path = file_info.get('file_path', '')
+            
+            # 只处理Controller文件
+            if 'Controller' in file_path:
+                for class_info in file_info.get('classes', []):
+                    class_name = class_info.get('name', '')
+                    class_annotations = class_info.get('annotations', [])
+                    
+                    # 检查是否是Controller类
+                    if any('@RestController' in ann or '@Controller' in ann for ann in class_annotations):
+                        # 提取@RequestMapping路径
+                        request_mapping = ''
+                        for annotation in class_annotations:
+                            if '@RequestMapping' in annotation:
+                                # 尝试从注解中提取路径信息
+                                # 简化处理，实际可能需要更复杂的解析
+                                request_mapping = annotation
+                                break
+                        
+                        # 提取方法信息
+                        methods = []
+                        for method_info in class_info.get('methods', []):
+                            method_annotations = method_info.get('annotations', [])
+                            mapping_annotations = [ann for ann in method_annotations 
+                                                 if any(mapping in ann for mapping in 
+                                                       ['@GetMapping', '@PostMapping', '@PutMapping', '@DeleteMapping', '@RequestMapping'])]
+                            
+                            if mapping_annotations:  # 只记录有映射注解的方法
+                                methods.append({
+                                    'name': method_info.get('name', ''),
+                                    'return_type': method_info.get('return_type', ''),
+                                    'annotations': method_annotations,
+                                    'parameters': method_info.get('parameters', []),
+                                    'mapping_annotations': mapping_annotations
+                                })
+                        
+                        controller_detail = {
+                            'class_name': class_name,
+                            'file_path': file_path,
+                            'package': file_info.get('package', ''),
+                            'annotations': class_annotations,
+                            'request_mapping': request_mapping,
+                            'methods': methods,
+                            'method_count': len(methods)
+                        }
+                        
+                        detailed_controllers.append(controller_detail)
+        
+        logger.info(f"📋 提取到{len(detailed_controllers)}个Controller的详细信息")
+        return detailed_controllers
 
 
 if __name__ == "__main__":
     # 测试用法
     api = ProjectAnalysisAPI()
-    context = api.analyze_project_for_code_generation("D:/example/java_project", "user")
+    context = api.analyze_project_for_code_generation("/Users/renyu/Documents/create_project", "user")
     print(json.dumps(context, indent=2, ensure_ascii=False)) 

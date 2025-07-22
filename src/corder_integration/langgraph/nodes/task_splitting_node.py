@@ -508,8 +508,11 @@ class TaskStorageManager:
                 logger.error(f"❌ 数据库操作失败: {e}")
                 raise e
         
-        logger.error(f"❌ 数据库操作重试{self.max_retries}次后仍然失败: {last_error}")
-        raise last_error
+        logger.error(f"❌ 数据库操作重试{self.max_retries}次后仍然失败")
+        if last_error is not None:
+            raise last_error
+        else:
+            raise RuntimeError(f"数据库操作重试{self.max_retries}次后失败")
     
     def force_unlock_database(self):
         """强制解锁数据库（Windows环境特殊处理）"""
@@ -715,7 +718,7 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
     logger.info(f"🔄 当前阶段: {state.get('current_phase', 'unknown')}")
     
     # 🔧 计算项目路径，与git_management_node保持一致
-    output_path = state.get('output_path', 'D:/gitlab')
+    output_path = state.get('output_path', '/Users/renyu/Documents/create_project')
     project_name = state.get('project_name', 'unknown_project')
     base_project_path = f"{output_path}/{project_name}"
     logger.info(f"📁 计算的基础项目路径: {base_project_path}")

@@ -14,10 +14,7 @@ declare const _default: import("vue").DefineComponent<{
     accordion: BooleanConstructor;
     renderContent: FunctionConstructor;
     renderAfterExpand: BooleanConstructor;
-    showCheckbox: {
-        type: BooleanConstructor;
-        default: boolean;
-    };
+    showCheckbox: BooleanConstructor;
 }, {
     ns: {
         namespace: import("vue").ComputedRef<string>;
@@ -70,10 +67,7 @@ declare const _default: import("vue").DefineComponent<{
     accordion: BooleanConstructor;
     renderContent: FunctionConstructor;
     renderAfterExpand: BooleanConstructor;
-    showCheckbox: {
-        type: BooleanConstructor;
-        default: boolean;
-    };
+    showCheckbox: BooleanConstructor;
 }>> & {
     "onNode-expand"?: ((...args: any[]) => any) | undefined;
 }, {

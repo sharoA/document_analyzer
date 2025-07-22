@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { ZIndexProperty } from 'csstype';
 export declare const overlayProps: {
     readonly mask: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, true, boolean>;
@@ -17,6 +17,7 @@ export declare const overlayProps: {
     };
 };
 export type OverlayProps = ExtractPropTypes<typeof overlayProps>;
+export type OverlayPropsPublic = __ExtractPublicPropTypes<typeof overlayProps>;
 export declare const overlayEmits: {
     click: (evt: MouseEvent) => boolean;
 };

@@ -10,6 +10,7 @@ declare function __VLS_template(): {
 };
 declare const __VLS_component: import("vue").DefineComponent<{
     readonly unlinkPanels: BooleanConstructor;
+    readonly visible: BooleanConstructor;
     readonly parsedValue: {
         readonly type: import("vue").PropType<dayjs.Dayjs[]>;
         readonly required: false;
@@ -20,6 +21,7 @@ declare const __VLS_component: import("vue").DefineComponent<{
     [x: string]: (...args: any[]) => void;
 }, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{
     readonly unlinkPanels: BooleanConstructor;
+    readonly visible: BooleanConstructor;
     readonly parsedValue: {
         readonly type: import("vue").PropType<dayjs.Dayjs[]>;
         readonly required: false;
@@ -27,6 +29,7 @@ declare const __VLS_component: import("vue").DefineComponent<{
         __epPropKey: true;
     };
 }>>, {
+    readonly visible: boolean;
     readonly unlinkPanels: boolean;
 }>;
 declare const _default: __VLS_WithTemplateSlots<typeof __VLS_component, ReturnType<typeof __VLS_template>>;

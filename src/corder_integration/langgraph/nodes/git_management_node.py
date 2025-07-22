@@ -41,7 +41,7 @@ class GitManagerAgent:
             r'http://gitlab\.local/[\w\-\./]+\.git',
             r'git@gitlab\.local:[\w\-\./]+\.git',
             # 🔧 通用Git URL模式
-            r'https?://[\w\-\.]+/[\w\-\./]+\.git',
+            r'https?://[\w\-\.]+(?::\d+)?/[\w\-\./]+\.git',
             r'git@[\w\-\.]+:[\w\-\./]+\.git',
         ]
         
@@ -278,7 +278,7 @@ class GitManagerAgent:
         if not target_dir:
             # 自动生成目标目录
             repo_name = repo_url.split('/')[-1].replace('.git', '')
-            output_path = parameters.get('output_path', 'D:/gitlab')
+            output_path = parameters.get('output_path', '/Users/renyu/Documents/create_project')
             project_name = parameters.get('project_name', 'default_project')
             target_dir = f"{output_path}/{project_name}/{repo_name}"
         
@@ -286,11 +286,13 @@ class GitManagerAgent:
         clone_result = self.clone_repository(repo_url, target_dir)
         
         if clone_result['success']:
+            # 🔧 修复路径映射：实际的项目根目录就是target_dir，不需要再加repo_name
+            actual_project_path = target_dir
             return {
                 'success': True,
-                'message': f'仓库克隆成功: {target_dir}',
+                'message': f'仓库克隆成功: {actual_project_path}',
                 'repo_url': repo_url,
-                'local_path': target_dir,
+                'local_path': actual_project_path,
                 'repo_name': repo_url.split('/')[-1].replace('.git', '')
             }
         else:
@@ -397,7 +399,7 @@ async def git_management_node(state: Dict[str, Any]) -> Dict[str, Any]:
             logger.info(f"🚀 基于提取结果自动克隆 {len(successful_extractions)} 个仓库...")
             
             # 从状态获取输出路径和项目名称
-            output_path = state.get('output_path', 'D:/gitlab')
+            output_path = state.get('output_path', '/Users/renyu/Documents/create_project')
             project_name = state.get('project_name', 'unknown_project')
             
             # 获取未完成的git_clone任务，准备标记为完成

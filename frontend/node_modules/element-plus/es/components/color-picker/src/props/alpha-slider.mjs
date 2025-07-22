@@ -5,10 +5,7 @@ const alphaSliderProps = buildProps({
     type: definePropType(Object),
     required: true
   },
-  vertical: {
-    type: Boolean,
-    default: false
-  }
+  vertical: Boolean
 });
 
 export { alphaSliderProps };

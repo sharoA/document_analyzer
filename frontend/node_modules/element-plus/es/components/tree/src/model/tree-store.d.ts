@@ -1,18 +1,18 @@
 import Node from './node';
 import type { FilterNodeMethodFunction, FilterValue, LoadFunction, TreeData, TreeKey, TreeNodeData, TreeOptionProps, TreeStoreNodesMap, TreeStoreOptions } from '../tree.type';
 export default class TreeStore {
-    currentNode: Node;
-    currentNodeKey: TreeKey;
+    currentNode: Node | null;
+    currentNodeKey: TreeKey | null;
     nodesMap: TreeStoreNodesMap;
     root: Node;
     data: TreeData;
     lazy: boolean;
-    load: LoadFunction;
-    filterNodeMethod: FilterNodeMethodFunction;
+    load?: LoadFunction;
+    filterNodeMethod?: FilterNodeMethodFunction;
     key: TreeKey;
-    defaultCheckedKeys: TreeKey[];
+    defaultCheckedKeys?: TreeKey[];
     checkStrictly: boolean;
-    defaultExpandedKeys: TreeKey[];
+    defaultExpandedKeys?: TreeKey[];
     autoExpandParent: boolean;
     defaultExpandAll: boolean;
     checkDescendants: boolean;
@@ -44,8 +44,8 @@ export default class TreeStore {
     setCheckedKeys(keys: TreeKey[], leafOnly?: boolean): void;
     setDefaultExpandedKeys(keys: TreeKey[]): void;
     setChecked(data: TreeKey | TreeNodeData, checked: boolean, deep: boolean): void;
-    getCurrentNode(): Node;
+    getCurrentNode(): Node | null;
     setCurrentNode(currentNode: Node): void;
     setUserCurrentNode(node: Node, shouldAutoExpandParent?: boolean): void;
-    setCurrentNodeKey(key?: TreeKey, shouldAutoExpandParent?: boolean): void;
+    setCurrentNodeKey(key: TreeKey | null, shouldAutoExpandParent?: boolean): void;
 }

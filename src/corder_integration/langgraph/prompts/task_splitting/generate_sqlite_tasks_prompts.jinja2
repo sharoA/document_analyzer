@@ -1,6 +1,6 @@
 {#- SQLite任务生成提示词模板 -#}
 
-{% macro generate_sqlite_tasks_prompt(execution_plan, services_summary, context_window=None, base_project_path="D:/gitlab/create_project") %}
+{% macro generate_sqlite_tasks_prompt(execution_plan, services_summary, context_window=None, base_project_path="/Users/renyu/Documents/create_project") %}
 你是任务管理专家，基于设计文档生成具体的开发任务。
 
 服务概要：{{ services_summary }}
@@ -102,7 +102,7 @@
   - deployment的path
 
 **设计文档关键信息：**
-- GitLab仓库：用户服务 http://gitlab.local/ls/zqyl-user-center-service.git，确权开立服务 http://gitlab.local/ls/crcl-open.git
+- GitLab仓库：用户服务 http://localhost:30000/ls/zqyl-user-center-service.git，确权开立服务 http://localhost:30000/ls/crcl-open.git
 - 接口路径：/general/multiorgManage/queryCompanyUnitList，/crcl-open-api/lsLimit/listUnitLimitByCompanyId，/crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport
 - 表名：t_cust_multiorg_unit
 - 数据库：jdbc:mysql://localhost:6446/dbwebappdb，用户名密码：dbwebapp/dbwebapp
@@ -122,7 +122,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
       "dependencies": [],
       "estimated_duration": "5分钟",
       "description": "从设计文档提取GitLab仓库地址",
-      "implementation_details": "解析设计文档，提取用户服务 http://gitlab.local/ls/zqyl-user-center-service.git 和确权开立服务 http://gitlab.local/ls/crcl-open.git 仓库地址",
+      "implementation_details": "解析设计文档，提取用户服务 http://localhost:30000/ls/zqyl-user-center-service.git 和确权开立服务 http://localhost:30000/ls/crcl-open.git 仓库地址",
       "deliverables": ["GitLab仓库地址清单", "仓库访问验证报告"],
       "completion_criteria": "成功提取并验证两个GitLab仓库地址可访问性",
       "parameters": {
@@ -141,7 +141,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
       "deliverables": ["用户服务源码目录"],
       "completion_criteria": "代码下载完成，项目目录存在且包含pom.xml文件",
       "parameters": {
-        "git_url": "http://gitlab.local/ls/zqyl-user-center-service.git",
+        "git_url": "http://localhost:30000/ls/zqyl-user-center-service.git",
         "local_path": "{{ base_project_path }}/zqyl-user-center-service"
       }
     },
@@ -157,7 +157,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
       "deliverables": ["确权开立服务源码目录"],
       "completion_criteria": "代码下载完成，项目目录存在且包含pom.xml文件",
       "parameters": {
-        "git_url": "http://gitlab.local/ls/crcl-open.git",
+        "git_url": "http://localhost:30000/ls/crcl-open.git",
         "local_path": "{{ base_project_path }}/crcl-open"
       }
     },

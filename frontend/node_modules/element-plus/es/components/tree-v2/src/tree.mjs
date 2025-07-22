@@ -35,7 +35,6 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
       isNotEmpty,
       listRef,
       toggleExpand,
-      isExpanded,
       isIndeterminate,
       isChecked,
       isDisabled,
@@ -97,14 +96,15 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
           total: unref(flattenTree).length,
           height: _ctx.height,
           "item-size": unref(treeNodeSize),
-          "perf-mode": _ctx.perfMode
+          "perf-mode": _ctx.perfMode,
+          "scrollbar-always-on": _ctx.scrollbarAlwaysOn
         }, {
           default: withCtx(({ data, index, style }) => [
             (openBlock(), createBlock(ElTreeNode, {
               key: data[index].key,
               style: normalizeStyle(style),
               node: data[index],
-              expanded: unref(isExpanded)(data[index]),
+              expanded: data[index].expanded,
               "show-checkbox": _ctx.showCheckbox,
               checked: unref(isChecked)(data[index]),
               indeterminate: unref(isIndeterminate)(data[index]),
@@ -119,7 +119,7 @@ const _sfc_main = /* @__PURE__ */ defineComponent({
             }, null, 8, ["style", "node", "expanded", "show-checkbox", "checked", "indeterminate", "item-size", "disabled", "current", "hidden-expand-icon", "onClick", "onToggle", "onCheck", "onDrop"]))
           ]),
           _: 1
-        }, 8, ["class-name", "data", "total", "height", "item-size", "perf-mode"])) : (openBlock(), createElementBlock("div", {
+        }, 8, ["class-name", "data", "total", "height", "item-size", "perf-mode", "scrollbar-always-on"])) : (openBlock(), createElementBlock("div", {
           key: 1,
           class: normalizeClass(unref(ns).e("empty-block"))
         }, [

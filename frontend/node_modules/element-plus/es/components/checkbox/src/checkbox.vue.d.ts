@@ -4,15 +4,15 @@ declare function __VLS_template(): {
 declare const __VLS_component: import("vue").DefineComponent<{
     ariaControls: StringConstructor;
     modelValue: {
-        type: (NumberConstructor | StringConstructor | BooleanConstructor)[];
+        type: (BooleanConstructor | NumberConstructor | StringConstructor)[];
         default: undefined;
     };
     label: {
-        type: (ObjectConstructor | NumberConstructor | StringConstructor | BooleanConstructor)[];
+        type: (ObjectConstructor | BooleanConstructor | NumberConstructor | StringConstructor)[];
         default: undefined;
     };
     value: {
-        type: (ObjectConstructor | NumberConstructor | StringConstructor | BooleanConstructor)[];
+        type: (ObjectConstructor | BooleanConstructor | NumberConstructor | StringConstructor)[];
         default: undefined;
     };
     indeterminate: BooleanConstructor;
@@ -60,15 +60,15 @@ declare const __VLS_component: import("vue").DefineComponent<{
 }, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{
     ariaControls: StringConstructor;
     modelValue: {
-        type: (NumberConstructor | StringConstructor | BooleanConstructor)[];
+        type: (BooleanConstructor | NumberConstructor | StringConstructor)[];
         default: undefined;
     };
     label: {
-        type: (ObjectConstructor | NumberConstructor | StringConstructor | BooleanConstructor)[];
+        type: (ObjectConstructor | BooleanConstructor | NumberConstructor | StringConstructor)[];
         default: undefined;
     };
     value: {
-        type: (ObjectConstructor | NumberConstructor | StringConstructor | BooleanConstructor)[];
+        type: (ObjectConstructor | BooleanConstructor | NumberConstructor | StringConstructor)[];
         default: undefined;
     };
     indeterminate: BooleanConstructor;

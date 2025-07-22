@@ -1,4 +1,3 @@
-import { capitalize } from '../../../utils/strings.mjs';
 import { isEmpty, isUndefined } from '../../../utils/types.mjs';
 import { isFunction, isArray } from '@vue/shared';
 
@@ -34,12 +33,13 @@ class Node {
     this.childrenData = childrenData;
     this.children = (childrenData || []).map((child) => new Node(child, config, this));
     this.loaded = !config.lazy || this.isLeaf || !isEmpty(childrenData);
+    this.text = "";
   }
   get isDisabled() {
     const { data, parent, config } = this;
     const { disabled, checkStrictly } = config;
     const isDisabled = isFunction(disabled) ? disabled(data, this) : !!data[disabled];
-    return isDisabled || !checkStrictly && (parent == null ? void 0 : parent.isDisabled);
+    return isDisabled || !checkStrictly && !!(parent == null ? void 0 : parent.isDisabled);
   }
   get isLeaf() {
     const { data, config, childrenData, loaded } = this;
@@ -66,21 +66,21 @@ class Node {
     this.text = text;
     return text;
   }
-  broadcast(event, ...args) {
-    const handlerName = `onParent${capitalize(event)}`;
+  broadcast(checked) {
     this.children.forEach((child) => {
+      var _a;
       if (child) {
-        child.broadcast(event, ...args);
-        child[handlerName] && child[handlerName](...args);
+        child.broadcast(checked);
+        (_a = child.onParentCheck) == null ? void 0 : _a.call(child, checked);
       }
     });
   }
-  emit(event, ...args) {
+  emit() {
+    var _a;
     const { parent } = this;
-    const handlerName = `onChild${capitalize(event)}`;
     if (parent) {
-      parent[handlerName] && parent[handlerName](...args);
-      parent.emit(event, ...args);
+      (_a = parent.onChildCheck) == null ? void 0 : _a.call(parent);
+      parent.emit();
     }
   }
   onParentCheck(checked) {
@@ -110,9 +110,9 @@ class Node {
     if (checkStrictly || !multiple) {
       this.checked = checked;
     } else {
-      this.broadcast("check", checked);
+      this.broadcast(checked);
       this.setCheckState(checked);
-      this.emit("check");
+      this.emit();
     }
   }
 }

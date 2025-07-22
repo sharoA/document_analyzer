@@ -43,7 +43,7 @@ class IntelligentFileReuseManager:
         }
         
         # 扫描项目目录
-        java_src_path = Path(project_path) / "src" / "main" / "java"
+        java_src_path = Path(project_path) 
         if not java_src_path.exists():
             logger.warning(f"⚠️ 未找到Java源码目录: {java_src_path}")
             return structure

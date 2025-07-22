@@ -1,0 +1,63 @@
+{
+  "document_length": 7325,
+  "execute_immediately": true,
+  "execution_id": "exec_1753174475",
+  "message": "文档处理完成（使用LangGraph工作流）",
+  "output_path": "/Users/renyu/Documents/create_project",
+  "project_name": "链数中建一局_1753174353",
+  "status": "success",
+  "timestamp": "2025-07-22T16:54:35.669638",
+  "workflow_result": {
+    "execution_summary": {
+      "commit_hashes": {},
+      "completed_services": 0,
+      "execution_phase": "git_management",
+      "failed_services": 0,
+      "generated_services": [
+        "用户服务",
+        "确权开立服务"
+      ],
+      "pr_urls": {},
+      "test_coverage": {},
+      "total_services": 0
+    },
+    "final_state": {
+      "code_review_results": {},
+      "commit_hashes": {},
+      "completed_services": [],
+      "current_phase": "git_management",
+      "design_doc": "设计文档 - 一局对接链数优化V0.1\n1. 系统架构设计\n1.1 项目介绍\n一局对接链数的项目上线后，核心企业反馈，希望就已推送至平台的数据，在核心企业内部系统内修改部分信息（如额度信息）后，使用原业务编号再次推送至平台。就目前的接口校验逻辑，相同业务编号的业务数据不可重复推送。因而，需要结合核心企业需求，对接口的校验逻辑进行调整。\n建设目标及路线。调整接口校验逻辑，兼容核心企业重推数据的场景。\n1.2 功能需求说明\n1.2.1 链数额度功能调整\n调整说明:本期，对原\"链数额度\"功能做如下调整：\n- 功能名称由\"链数额度\"变更为\"额度管理\"；\n- 页面右上方新增\"组织单元额度\"按钮，当且仅当当前登录企业为多组织企业时展示该按钮。用户点击\"组织单元额度\"按钮，则跳转至\"组织单元额度\"列表页。\n- 列表新增字段\"额度类型\"，置于\"额度名称\"之后，若为链数额度则取值为\"链数额度\"。\n1.2.2 新增组织单元额度功能\n调整说明:本期在核心企业侧链数额度功能下，新增\"组织单元额度\"列表页。支持用户查询当前登录企业下的具体组织单元的链数额度、云信额度明细。\na.筛选字段：\n序号\t字段名\t类型格式\t长度\t默认值\t必填\t规则\n1\t组织单元名称\t文本输入框\t-\t-\t-\t模糊搜索\n2\t额度名称\t文本输入框\t-\t-\t-\t模糊搜索\n3\t额度类型\t下拉列表\t-\t链数额度\t-\t下拉选项：链数额度、云信额度、全部\nb.汇总字段：\n序号\t字段名\t类型格式\t规则\n1\t总额度（元）\t数值\t满足筛选条件的列表数据的“已分配额度（元）”之和\n2\t已用额度（元）\t数值\t满足筛选条件的列表数据的“已用额度（元）”之和\n3\t可用额度（元）\t数值\t满足筛选条件的列表数据的“可用额度（元）”之和\n备注：筛选条件更新后，汇总值需要同步更新计算。\nc.列表字段：\n序号\t字段名\t类型格式\t规则\n1\t组织单元名称\t字符串\t无\n2\t额度名称\t字符串\t无\n3\t额度类型\t字符串\t无\n4\t已分配额度（元）\t数值\t无\n5\t已用额度（元）\t数值\t无\n6\t可用额度（元）\t数值\t无\n备注：列表默认按照组织单元名称为主要关键字、额度类型为次要关键字降序排列。\n\n1.3 总体架构\n采用微服务架构模式，实现松耦合、高可扩展的系统设计：\n- 涉及2个后端服务：\n1. 用户服务：zqyl-user-center-service\n2. 确权开立服务：crcl-open\n\n- 涉及2个数据库：\n1. 用户数据库：MySQL \n2. 缓存：Redis\n\n1.4 技术栈选型\n- 后端框架：Spring Boot 2.7.x + Spring Cloud 2021.x\n- 数据访问：MyBatis Plus 3.5.x\n- 数据库：MySQL 8.0\n- 缓存：Redis 6.0\n- 消息队列：RabbitMQ 3.8\n- 服务发现：Nacos\n- 配置中心：Nacos\n- 后端分页：pageHelper\n- 部署：将代码提交到git分支即可\n\n2. 服务设计\n\n2.1 用户服务 (zqyl-user-center-service)\n职责：用户管理、权限控制、角色管理\n\n2.1.1 核心模块：\n- 组织单元管理\n\n2.1.2 API设计：\n2.1.2.1 新增接口：\nuri : GET /general/multiorgManage/queryCompanyUnitList    \nmethod: GET\ndescription:查询企业组织单元列表\n入参示例：\n{\n  \"unitCode\": \"sdf1\",  #组织单元编号\n  \"openStatus\": 1 ,    #组织单元状态 1：正常；0：禁用 默认全部\n  \"unitList\" :[1,2,234]  #组织单元id 必传 \n}\n\n返参示例：\n{\n  \"data\": [\n    {\n      \"unitId\" : 234234 ,     #组织单元id 必传 \n      \"unitTypeDicType\" : 1 , #组织单元类型 1：开立，2：支付\n      \"unitTypeId\" : 12   ,   #组织单元类型表id \n      \"openStatus\" : 1   ,    #组织单元状态  1：正常；0：禁用 默认全部\n      \"unitCode\" : \"sdfsdfsd\",#组织编号\n      \"unitName\" : \"测试单元\" #组织单元名称\n    }\n  ]\n}\n\n2.1.3 数据库表设计：\nCREATE TABLE t_cust_multiorg_unit(\n  id bigint(20) NOT NULL COMMENT '主键id',\n  company_id bigint(20) NOT NULL COMMENT '企业id',\n  mutilorg_id bigint(10) NOT NULL COMMENT '多组织id',\n  unit_code varchar(50) NOT NULL COMMENT '组织单元编号',\n  unit_name varchar(255) NOT NULL COMMENT '组织单元名称',\n  remark varchar(500) DEFAULT NULL COMMENT '备注',\n  platform_type tinyint(2) NOT NULL COMMENT '平台类型(1云信2云租3云保)',\n  status tinyint(2) NOT NULL COMMENT '状态1正常0删除',\n  create_id bigint(20) NOT NULL COMMENT '创建人id',\n  oper_user_name varchar(255) DEFAULT NULL COMMENT '创建人用户名',\n  create_time datetime NOT NULL COMMENT '创建时间',\n  modify_id bigint(20) DEFAULT NULL COMMENT '修改人id',\n  modify_user_name varchar(255) DEFAULT NULL COMMENT '最后修改用户名',\n  modify_time datetime DEFAULT NULL COMMENT '修改时间',\n  PRIMARY KEY(id),\n  KEY pk_company_id(company_id) USING BTREE\n) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='多组织单元表';\n\n2.2 确权开立服务 (crcl-open)\n职责：确权开立、额度管理\n\n2.2.1 核心模块：\n- 确权开立模块\n- 额度管理模块\n\n2.2.2 API设计：\n2.2.2.1 新增接口：\nuri :  /crcl-open-api/lsLimit/listUnitLimitByCompanyId    \nmethod: GET\ndescription:组织单元额度列表\n\n入参示例：\n{\n  \"gwCompanyId\" : 1,   #当前登录企业id  ,必传\n  \"unitName\" : \"abs\",  #组织单元名称（模糊搜索）\n  \"limitSource\" : \"\",  #额度名称（模糊搜索）\n  \"bizType\" : 1,       #10：云信额度，80：链数额度（默认）\n  \"page\" : 1,          #页码，必传\n  \"pageRow\" : 10       #每页记录数，必传 \n}\n\n返参示例：\n{\n  \"totalLimitAmt\": 100 ,       #总额度\n  \"usedLimitAmt\" :1 ,          #已用额度\n  \"usableLimitAmt\" : 10,       #可用额度\n  \"unitLimitListDetail\" : [{   #额度信息\n    \"unitName\":\"sdfs\",         #组织单元名称\n    \"limitSource\" : \"232f\",    #额度名称\n    \"bizType\":1,               #额度类型：10：云信额度 80：链数额度\n    \"usedLimitAmt\" : 1,        #已分配额度\n    \"usableLimitAmt\" : 1,      #已用额度\n    \"totalLimitAmt\" :1         #可用额度\n  }]\n}\n\n特殊要求：\n1、采用pagehelper进行分页\n2、需要调用zqyl-user-center-service服务的/queryCompanyUnitList接口获取组织单元详细信息\n\n2.2.2.2 新增接口：\nuri : /crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport   \nmethod: GET\ndescription: 组织单元额度列表导出\n\n\n入参示例：\n{\n  \"gwCompanyId\" : 1,   #当前登录企业id  ,必传\n  \"unitName\" : \"abs\",  #组织单元名称（模糊搜索）\n  \"limitSource\" : \"\",  #额度名称（模糊搜索）\n  \"bizType\" : 1,       #10：云信额度，80：链数额度（默认）\n  \"page\" : 1,          #页码，必传\n  \"pageRow\" : 10       #每页记录数，必传 \n}\n\n返参示例：\n{\n  \"flag\" : 1,    #0文件生成失败，1文件生成成功\n  \"msg\": \"\",     #flag=0 提示内容\n  \"data\" :\" \"    #flag=1 文件下载地址 \n}\n\n特殊要求：\n1、文件生成在本地目录，采用本地链接形式返回路径。\n2、文件类型为Excel列表，文件类型：xlsx\n3、列表头列内容：组织单元名称、额度名称、额度类型、已分配额度（元）、已用额度（元）、可用额度（元）\n4、需要调用zqyl-user-center-service服务的/queryCompanyUnitList接口获取组织单元详细信息\n\n3 执行要求\n3.1 涉及服务范围\n本次没有新增服务，服务范围为：\n1. 用户服务：zqyl-user-center-service，git地址：http://localhost:30000/ls/zqyl-user-center-service.git\n2. 确权开立服务：crcl-open，git地址：http://localhost:30000/ls/crcl-open.git\n\n3.2 涉及数据库范围\n本次没有新增数据库，数据库范围为：\n3.2.1 用户数据库：MySQL \n数据库配置\n  url: jdbc:mysql://localhost:6446/dbwebappdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true\n    username: dbwebapp\n    password: dbwebapp\n    driver-class-name: com.mysql.cj.jdbc.Driver\n\n\n3.2.2 缓存：\nredis:\n  host: localhost\n  port: 6379\n  db: 0\n  password: ''\n\n3.3 涉及接口范围\n本次新增接口，已经按服务范围进行划分，详见设计文档2服务设计部分。\n\n{\n  \"project_name\": \"链数中建一局_1\",\n  \"project_path\": \"/Users/renyu/Documents/create_project/链数中建一局_1\",\n  \"technology_stack\": [],\n  \"services\": [],\n  \"source_files\": [\n    \"/Users/renyu/Documents/create_project/链数中建一局_1/zqyl-user-center-service/zqyl-user-center-service/user-basic-service/user-basic-general/src/main/java/com/yljr/user/basicgeneral/GeneralApplication.java\",\n    \"/Users/renyu/Documents/create_project/链数中建一局_1/zqyl-user-center-service/zqyl-user-center-service/user-basic-service/user-basic-general/src/main/java/com/yljr/user/basicgeneral/feign/FileManagerCenterAuthFeinRemote.java\",\n    \"/Users/renyu/Documents/create_project/链数中建一局_1/zqyl-user-center-service/zqyl-user-center-service/user-basic-service/user-basic-general/src/main/java/com/yljr/user/basicgeneral/config/TencentFaceConfig.java\",\n    \"/Users/renyu/Documents/create_project/链数中建一局_1/zqyl-user-center-service/zqyl-user-center-service/user-basic-service/user-basic-general/src/main/java/com/yljr/user/basicgeneral/config/file/FilePathAuthUtil.java\",\n    \"/Users/renyu/Documents/create_project/链数中建一局_1/zqyl-user-center-service/zqyl-user-center-service/user-basic-service/user-basic-general/src/main/java/com/yljr/user/basicgeneral/config/mq/TransferAmtListener.java\",\n    \"/Users/renyu/Documents/create_project/链数中建一局_1/zqyl-user-center-service/zqyl-user-center-service/user-basic-service/user-basic-general/src/main/java/com/yljr/user/basicgeneral/config/mq/MQProducerConfiguration.java\",\n    \"/Users/renyu/Documents/create_project/链数中建一局_1/zqyl-user-center-service/zqyl-user-center-service/user-basic-service/user-basic-general/src/main/java/com/yljr/user/basicgeneral/enums/TencentFaceAppCodeEnum.java\",\n    \"/Users/renyu/Documents/create_project/链数中建一局_1/zqyl-user-center-service/zqyl-user-center-service/user-basic-service/user-basic-general/src/main/java/com/yljr/user/basicgeneral/utils/ExcelReaderWriterUtil.java\",\n    \"/Users/renyu/Documents/create_project/链数中建一局_1/zqyl-user-center-service/zqyl-user-center-service/user-basic-service/user-basic-general/src/main/java/com/yljr/user/basicgeneral/utils/NumberValidatorUtils.java\",\n    \"/Users/renyu/Documents/create_project/链数中建一局_1/zqyl-user-center-service/zqyl-user-center-service/user-basic-service/user-basic-general/src/main/java/com/yljr/user/basicgeneral/utils/CertUtils.java\"\n  ],\n  \"config_files\": [],\n  \"git_info\": {\n    \"current_branch\": \"main\"\n  }\n}",
+      "execution_errors": [],
+      "failed_services": [],
+      "generated_apis": {},
+      "generated_services": [
+        "用户服务",
+        "确权开立服务"
+      ],
+      "generated_sql": {},
+      "git_repo_url": null,
+      "identified_services": [],
+      "interface_compatibility": {},
+      "output_path": "/Users/renyu/Documents/create_project",
+      "parallel_tasks": [],
+      "pr_urls": {},
+      "project_name": "链数中建一局_1753174353",
+      "project_paths": {},
+      "push_results": {},
+      "repo_initialized": false,
+      "retry_count": 1,
+      "security_scan_results": {},
+      "service_dependencies": {},
+      "service_interconnections": {},
+      "static_analysis_results": {},
+      "target_branch": "D_20250722_链数中建一局_1753174353",
+      "task_execution_plan": {},
+      "test_coverage": {},
+      "unit_test_results": {}
+    },
+    "output_path": "/Users/renyu/Documents/create_project",
+    "project_name": "链数中建一局_1753174353",
+    "status": "success"
+  },
+  "workflow_type": "langgraph"
+}

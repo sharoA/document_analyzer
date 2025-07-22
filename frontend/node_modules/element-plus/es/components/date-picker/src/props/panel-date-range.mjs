@@ -3,8 +3,7 @@ import { buildProps } from '../../../../utils/vue/props/runtime.mjs';
 
 const panelDateRangeProps = buildProps({
   ...panelSharedProps,
-  ...panelRangeSharedProps,
-  visible: Boolean
+  ...panelRangeSharedProps
 });
 
 export { panelDateRangeProps };

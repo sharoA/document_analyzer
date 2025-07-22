@@ -1,0 +1,150 @@
+2025-07-20 00:04:48 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 00:04:48 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 00:04:48 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 00:04:56 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 00:04:56 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 00:04:56 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 00:04:56 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 00:04:56 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 00:05:04 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 00:05:04 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 00:05:04 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 00:05:13 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 00:05:13 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 00:05:13 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 00:05:13 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 00:05:13 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 00:05:14 - api_server - INFO - ✅ POST coder_agent_api.process_design_document [200] (0.02s)
+2025-07-20 00:08:30 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 00:08:30 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 00:08:30 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 00:08:38 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 00:08:38 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 00:08:38 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 00:08:38 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 00:08:38 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 00:08:46 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 00:08:46 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 00:08:46 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 00:08:54 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 00:08:54 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 00:08:54 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 00:08:54 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 00:08:54 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 00:09:44 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 00:09:44 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 00:09:44 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 00:09:52 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 00:09:52 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 00:09:52 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 00:09:52 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 00:09:52 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 00:10:02 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 00:10:02 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 00:10:02 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 00:10:11 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 00:10:11 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 00:10:11 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 00:10:11 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 00:10:11 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 00:13:47 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 00:13:47 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 00:13:47 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 00:13:56 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 00:13:56 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 00:13:56 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 00:13:56 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 00:13:56 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 00:14:03 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 00:14:03 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 00:14:03 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 00:14:11 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 00:14:11 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 00:14:11 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 00:14:11 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 00:14:11 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 00:16:28 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 00:16:28 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 00:16:28 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 00:16:39 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 00:16:39 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 00:16:39 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 00:16:39 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 00:16:39 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 00:16:49 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 00:16:49 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 00:16:49 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 00:17:00 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 00:17:00 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 00:17:00 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 00:17:00 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 00:17:00 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 00:54:13 - api_server - INFO - ✅ POST coder_agent_api.process_design_document [200] (2232.74s)
+2025-07-20 20:23:32 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 20:23:32 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 20:23:32 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 20:23:39 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 20:23:39 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 20:23:39 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 20:23:39 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 20:23:39 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 20:23:47 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 20:23:47 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 20:23:47 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 20:23:53 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 20:23:53 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 20:23:53 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 20:23:53 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 20:23:53 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 20:37:53 - api_server - INFO - ✅ POST coder_agent_api.process_design_document [200] (809.42s)
+2025-07-20 21:22:03 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 21:22:03 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 21:22:03 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 21:22:10 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 21:22:10 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 21:22:10 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 21:22:10 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 21:22:10 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 21:22:21 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 21:22:21 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 21:22:21 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 21:22:27 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 21:22:27 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 21:22:27 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 21:22:27 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 21:22:27 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 21:23:16 - api_server - INFO - ✅ POST coder_agent_api.process_design_document [200] (0.03s)
+2025-07-20 21:24:32 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 21:24:32 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 21:24:32 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 21:24:38 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 21:24:38 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 21:24:38 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 21:24:38 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 21:24:38 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 21:24:46 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 21:24:47 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 21:24:47 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 21:24:53 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 21:24:53 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 21:24:53 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 21:24:53 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 21:24:53 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 21:24:54 - api_server - INFO - ✅ POST coder_agent_api.process_design_document [200] (0.78s)
+2025-07-20 21:36:22 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 21:36:22 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 21:36:22 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 21:36:28 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 21:36:28 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 21:36:28 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 21:36:28 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 21:36:28 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 21:36:36 - api_server - INFO - 从配置文件读取火山引擎配置: {'api_key': '7fcb3541-9363-4bfa-90aa-19e9f691bc25', 'endpoint': 'https://ark.cn-beijing.volces.com/api/v3', 'max_tokens': 4000, 'model': 'ep-20250605091804-wmw6w', 'temperature': 0.7}
+2025-07-20 21:36:36 - api_server - INFO - 火山引擎客户端初始化成功
+2025-07-20 21:36:36 - api_server - INFO - Weaviate配置: http://localhost:8080
+2025-07-20 21:36:42 - api_server - INFO - 分析服务管理器初始化成功
+2025-07-20 21:36:42 - api_server - INFO - 分析服务管理器已集成到API服务器
+2025-07-20 21:36:42 - api_server - INFO - 增强分析器初始化成功
+2025-07-20 21:36:42 - api_server - INFO - 初始化任务存储数据库...
+2025-07-20 21:36:42 - api_server - INFO - 任务存储数据库初始化成功
+2025-07-20 21:38:45 - api_server - INFO - ✅ POST coder_agent_api.process_design_document [200] (97.54s)

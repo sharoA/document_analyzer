@@ -5,6 +5,10 @@ const tabBarProps = buildProps({
   tabs: {
     type: definePropType(Array),
     default: () => mutable([])
+  },
+  tabRefs: {
+    type: definePropType(Object),
+    default: () => mutable({})
   }
 });
 

@@ -13,24 +13,25 @@ var TableBody = defineComponent({
   name: "ElTableBody",
   props: defaultProps,
   setup(props) {
+    var _a;
     const instance = getCurrentInstance();
     const parent = inject(TABLE_INJECTION_KEY);
     const ns = useNamespace("table");
     const { wrappedRowRender, tooltipContent, tooltipTrigger } = useRender(props);
     const { onColumnsChange, onScrollableChange } = useLayoutObserver(parent);
     const hoveredCellList = [];
-    watch(props.store.states.hoverRow, (newVal, oldVal) => {
-      var _a;
+    watch((_a = props.store) == null ? void 0 : _a.states.hoverRow, (newVal, oldVal) => {
+      var _a2, _b;
       const el = instance == null ? void 0 : instance.vnode.el;
       const rows = Array.from((el == null ? void 0 : el.children) || []).filter((e) => e == null ? void 0 : e.classList.contains(`${ns.e("row")}`));
       let rowNum = newVal;
-      const childNodes = (_a = rows[rowNum]) == null ? void 0 : _a.childNodes;
+      const childNodes = (_a2 = rows[rowNum]) == null ? void 0 : _a2.childNodes;
       if (childNodes == null ? void 0 : childNodes.length) {
         let control = 0;
         const indexes = Array.from(childNodes).reduce((acc, item, index) => {
-          var _a2, _b;
-          if (((_a2 = childNodes[index]) == null ? void 0 : _a2.colSpan) > 1) {
-            control = (_b = childNodes[index]) == null ? void 0 : _b.colSpan;
+          var _a3, _b2;
+          if (((_a3 = childNodes[index]) == null ? void 0 : _a3.colSpan) > 1) {
+            control = (_b2 = childNodes[index]) == null ? void 0 : _b2.colSpan;
           }
           if (item.nodeName !== "TD" && control === 0) {
             acc.push(index);
@@ -39,10 +40,10 @@ var TableBody = defineComponent({
           return acc;
         }, []);
         indexes.forEach((rowIndex) => {
-          var _a2;
+          var _a3;
           rowNum = newVal;
           while (rowNum > 0) {
-            const preChildNodes = (_a2 = rows[rowNum - 1]) == null ? void 0 : _a2.childNodes;
+            const preChildNodes = (_a3 = rows[rowNum - 1]) == null ? void 0 : _a3.childNodes;
             if (preChildNodes[rowIndex] && preChildNodes[rowIndex].nodeName === "TD" && preChildNodes[rowIndex].rowSpan > 1) {
               addClass(preChildNodes[rowIndex], "hover-cell");
               hoveredCellList.push(preChildNodes[rowIndex]);
@@ -55,7 +56,7 @@ var TableBody = defineComponent({
         hoveredCellList.forEach((item) => removeClass(item, "hover-cell"));
         hoveredCellList.length = 0;
       }
-      if (!props.store.states.isComplex.value || !isClient)
+      if (!((_b = props.store) == null ? void 0 : _b.states.isComplex.value) || !isClient)
         return;
       rAF(() => {
         const oldRow = rows[oldVal];
@@ -69,8 +70,8 @@ var TableBody = defineComponent({
       });
     });
     onUnmounted(() => {
-      var _a;
-      (_a = removePopper) == null ? void 0 : _a();
+      var _a2;
+      (_a2 = removePopper) == null ? void 0 : _a2();
     });
     return {
       ns,
@@ -83,7 +84,7 @@ var TableBody = defineComponent({
   },
   render() {
     const { wrappedRowRender, store } = this;
-    const data = store.states.data.value || [];
+    const data = (store == null ? void 0 : store.states.data.value) || [];
     return h("tbody", { tabIndex: -1 }, [
       data.reduce((acc, row) => {
         return acc.concat(wrappedRowRender(row, acc.length));

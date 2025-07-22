@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const carouselProps: {
     readonly initialIndex: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, 0, boolean>;
     readonly height: import("element-plus/es/utils").EpPropFinalized<StringConstructor, unknown, unknown, "", boolean>;
@@ -23,4 +23,5 @@ export declare const carouselEmits: {
     change: (current: number, prev: number) => boolean;
 };
 export type CarouselProps = ExtractPropTypes<typeof carouselProps>;
+export type CarouselPropsPublic = __ExtractPublicPropTypes<typeof carouselProps>;
 export type CarouselEmits = typeof carouselEmits;

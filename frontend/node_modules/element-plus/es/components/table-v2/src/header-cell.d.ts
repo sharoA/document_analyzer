@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const tableV2HeaderCell: {
     class: StringConstructor;
     columnIndex: NumberConstructor;
@@ -10,3 +10,4 @@ export declare const tableV2HeaderCell: {
     };
 };
 export type TableV2HeaderCell = ExtractPropTypes<typeof tableV2HeaderCell>;
+export type TableV2HeaderCellPublic = __ExtractPublicPropTypes<typeof tableV2HeaderCell>;

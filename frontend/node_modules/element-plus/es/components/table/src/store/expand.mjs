@@ -25,7 +25,7 @@ function useExpand(watcherData) {
     }
   };
   const toggleRowExpansion = (row, expanded) => {
-    const changed = toggleRowStatus(expandRows.value, row, expanded);
+    const changed = toggleRowStatus(expandRows.value, row, expanded, void 0, void 0, void 0, watcherData.rowKey.value);
     if (changed) {
       instance.emit("expand-change", row, expandRows.value.slice());
     }

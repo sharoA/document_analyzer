@@ -1,4 +1,4 @@
-import type { ComponentInternalInstance, ExtractPropTypes, SetupContext } from 'vue';
+import type { ComponentInternalInstance, ExtractPropTypes, SetupContext, __ExtractPublicPropTypes } from 'vue';
 import type { treeEmits, treeProps } from './virtual-tree';
 export type TreeNodeData = Record<string, any>;
 export type TreeData = TreeNodeData[];
@@ -13,6 +13,7 @@ export interface TreeOptionProps {
     };
 }
 export type TreeProps = ExtractPropTypes<typeof treeProps>;
+export type TreePropsPublic = __ExtractPublicPropTypes<typeof treeProps>;
 export interface TreeNode {
     key: TreeKey;
     level: number;
@@ -22,6 +23,7 @@ export interface TreeNode {
     disabled?: boolean;
     label?: string;
     isLeaf?: boolean;
+    expanded?: boolean;
 }
 export interface TreeContext {
     ctx: Omit<SetupContext<typeof treeEmits>, 'expose' | 'attrs'>;

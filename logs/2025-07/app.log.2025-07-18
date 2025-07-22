@@ -1,0 +1,571 @@
+2025-07-18 15:40:37 - system - INFO - ==================================================
+2025-07-18 15:40:37 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 15:40:37 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 15:40:37 - system - INFO - 📊 日志级别: INFO
+2025-07-18 15:40:37 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 15:40:37 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 15:40:37 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 15:40:37 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 15:40:37 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 15:40:37 - system - INFO - ==================================================
+2025-07-18 15:43:47 - system - INFO - ==================================================
+2025-07-18 15:43:47 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 15:43:47 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 15:43:47 - system - INFO - 📊 日志级别: INFO
+2025-07-18 15:43:47 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 15:43:47 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 15:43:47 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 15:43:47 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 15:43:47 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 15:43:47 - system - INFO - ==================================================
+2025-07-18 15:50:56 - system - INFO - ==================================================
+2025-07-18 15:50:56 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 15:50:56 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 15:50:56 - system - INFO - 📊 日志级别: INFO
+2025-07-18 15:50:56 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 15:50:56 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 15:50:56 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 15:50:56 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 15:50:56 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 15:50:56 - system - INFO - ==================================================
+2025-07-18 15:55:24 - system - INFO - ==================================================
+2025-07-18 15:55:24 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 15:55:24 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 15:55:24 - system - INFO - 📊 日志级别: INFO
+2025-07-18 15:55:24 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 15:55:24 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 15:55:24 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 15:55:24 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 15:55:24 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 15:55:24 - system - INFO - ==================================================
+2025-07-18 15:57:19 - system - INFO - ==================================================
+2025-07-18 15:57:19 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 15:57:19 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 15:57:19 - system - INFO - 📊 日志级别: INFO
+2025-07-18 15:57:19 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 15:57:19 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 15:57:19 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 15:57:19 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 15:57:19 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 15:57:19 - system - INFO - ==================================================
+2025-07-18 16:25:37 - system - INFO - ==================================================
+2025-07-18 16:25:37 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 16:25:37 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 16:25:37 - system - INFO - 📊 日志级别: INFO
+2025-07-18 16:25:37 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 16:25:37 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 16:25:37 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 16:25:37 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 16:25:37 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 16:25:37 - system - INFO - ==================================================
+2025-07-18 16:27:13 - system - INFO - ==================================================
+2025-07-18 16:27:13 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 16:27:13 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 16:27:13 - system - INFO - 📊 日志级别: INFO
+2025-07-18 16:27:13 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 16:27:13 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 16:27:13 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 16:27:13 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 16:27:13 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 16:27:13 - system - INFO - ==================================================
+2025-07-18 16:27:35 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 16:27:35 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 16:27:38 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 16:27:38 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 16:27:38 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 16:27:38 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 16:27:38 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (Could not connect to Weaviate:Connection to Weaviate failed. Details: .)，使用Mock向量数据库
+2025-07-18 16:27:38 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 16:27:38 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 16:27:38 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 16:27:38 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 16:29:01 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: Could not connect to Weaviate:Connection to Weaviate failed. Details: .
+2025-07-18 16:29:01 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 16:29:06 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8082
+ * Running on http://26.26.26.1:8082
+2025-07-18 16:29:06 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-07-18 16:29:06 - werkzeug - INFO -  * Restarting with stat
+2025-07-18 16:29:06 - system - INFO - ==================================================
+2025-07-18 16:29:06 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 16:29:06 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 16:29:06 - system - INFO - 📊 日志级别: INFO
+2025-07-18 16:29:06 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 16:29:06 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 16:29:06 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 16:29:06 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 16:29:06 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 16:29:06 - system - INFO - ==================================================
+2025-07-18 16:29:09 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 16:29:09 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 16:29:09 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 16:29:09 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 16:29:09 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 16:29:09 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 16:29:09 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (Could not connect to Weaviate:Connection to Weaviate failed. Details: .)，使用Mock向量数据库
+2025-07-18 16:29:09 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 16:29:09 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 16:29:09 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 16:29:09 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 16:29:19 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: Could not connect to Weaviate:Connection to Weaviate failed. Details: .
+2025-07-18 16:29:19 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 16:29:19 - werkzeug - WARNING -  * Debugger is active!
+2025-07-18 16:29:19 - werkzeug - INFO -  * Debugger PIN: 686-644-562
+2025-07-18 16:38:51 - system - INFO - ==================================================
+2025-07-18 16:38:51 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 16:38:51 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 16:38:51 - system - INFO - 📊 日志级别: INFO
+2025-07-18 16:38:51 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 16:38:51 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 16:38:51 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 16:38:51 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 16:38:51 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 16:38:51 - system - INFO - ==================================================
+2025-07-18 16:38:54 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 16:38:54 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 16:38:54 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 16:38:54 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 16:38:54 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 16:38:54 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 16:38:54 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (Could not connect to Weaviate:Connection to Weaviate failed. Details: .)，使用Mock向量数据库
+2025-07-18 16:38:54 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 16:38:54 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 16:38:54 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 16:38:54 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 16:39:01 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: Could not connect to Weaviate:Connection to Weaviate failed. Details: .
+2025-07-18 16:39:01 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 16:39:06 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8082
+ * Running on http://26.26.26.1:8082
+2025-07-18 16:39:06 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-07-18 16:39:06 - werkzeug - INFO -  * Restarting with stat
+2025-07-18 16:39:07 - system - INFO - ==================================================
+2025-07-18 16:39:07 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 16:39:07 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 16:39:07 - system - INFO - 📊 日志级别: INFO
+2025-07-18 16:39:07 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 16:39:07 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 16:39:07 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 16:39:07 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 16:39:07 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 16:39:07 - system - INFO - ==================================================
+2025-07-18 16:39:09 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 16:39:09 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 16:39:09 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 16:39:09 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 16:39:09 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 16:39:09 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 16:39:09 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 16:39:09 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.)，使用Mock向量数据库
+2025-07-18 16:39:09 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 16:39:09 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 16:39:09 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 16:39:09 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 16:39:16 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 16:39:16 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.
+2025-07-18 16:39:16 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 16:39:16 - werkzeug - WARNING -  * Debugger is active!
+2025-07-18 16:39:16 - werkzeug - INFO -  * Debugger PIN: 686-644-562
+2025-07-18 17:01:36 - system - INFO - ==================================================
+2025-07-18 17:01:36 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 17:01:36 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 17:01:36 - system - INFO - 📊 日志级别: INFO
+2025-07-18 17:01:36 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 17:01:36 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 17:01:36 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 17:01:36 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 17:01:36 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 17:01:36 - system - INFO - ==================================================
+2025-07-18 17:01:39 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 17:01:39 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 17:01:39 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 17:01:39 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 17:01:39 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 17:01:39 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 17:01:39 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 17:01:39 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.)，使用Mock向量数据库
+2025-07-18 17:01:39 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 17:01:39 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 17:01:39 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 17:01:39 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 17:01:46 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 17:01:46 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.
+2025-07-18 17:01:46 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 17:01:51 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8082
+ * Running on http://26.26.26.1:8082
+2025-07-18 17:01:51 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-07-18 17:01:51 - werkzeug - INFO -  * Restarting with stat
+2025-07-18 17:01:51 - system - INFO - ==================================================
+2025-07-18 17:01:51 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 17:01:51 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 17:01:51 - system - INFO - 📊 日志级别: INFO
+2025-07-18 17:01:51 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 17:01:51 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 17:01:51 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 17:01:51 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 17:01:51 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 17:01:51 - system - INFO - ==================================================
+2025-07-18 17:01:54 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 17:01:54 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 17:01:54 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 17:01:54 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 17:01:54 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 17:01:54 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 17:01:54 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 17:01:54 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.)，使用Mock向量数据库
+2025-07-18 17:01:54 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 17:01:54 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 17:01:54 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 17:01:54 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 17:02:00 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 17:02:00 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.
+2025-07-18 17:02:00 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 17:02:00 - werkzeug - WARNING -  * Debugger is active!
+2025-07-18 17:02:00 - werkzeug - INFO -  * Debugger PIN: 686-644-562
+2025-07-18 17:59:42 - system - INFO - ==================================================
+2025-07-18 17:59:42 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 17:59:42 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 17:59:42 - system - INFO - 📊 日志级别: INFO
+2025-07-18 17:59:42 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 17:59:42 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 17:59:42 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 17:59:42 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 17:59:42 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 17:59:42 - system - INFO - ==================================================
+2025-07-18 17:59:44 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 17:59:44 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 17:59:44 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 17:59:44 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 17:59:44 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 17:59:44 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 17:59:44 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 17:59:44 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.)，使用Mock向量数据库
+2025-07-18 17:59:44 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 17:59:44 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 17:59:44 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 17:59:44 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 17:59:53 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 17:59:53 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.
+2025-07-18 17:59:53 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 17:59:58 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8082
+ * Running on http://26.26.26.1:8082
+2025-07-18 17:59:58 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-07-18 17:59:58 - werkzeug - INFO -  * Restarting with stat
+2025-07-18 17:59:58 - system - INFO - ==================================================
+2025-07-18 17:59:58 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 17:59:58 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 17:59:58 - system - INFO - 📊 日志级别: INFO
+2025-07-18 17:59:58 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 17:59:58 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 17:59:58 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 17:59:58 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 17:59:58 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 17:59:58 - system - INFO - ==================================================
+2025-07-18 18:00:01 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 18:00:01 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 18:00:01 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 18:00:01 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 18:00:01 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 18:00:01 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 18:00:01 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 18:00:01 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.)，使用Mock向量数据库
+2025-07-18 18:00:01 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 18:00:01 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 18:00:01 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 18:00:01 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 18:00:09 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 18:00:09 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.
+2025-07-18 18:00:09 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 18:00:09 - werkzeug - WARNING -  * Debugger is active!
+2025-07-18 18:00:09 - werkzeug - INFO -  * Debugger PIN: 686-644-562
+2025-07-18 19:37:10 - system - INFO - ==================================================
+2025-07-18 19:37:10 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 19:37:10 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 19:37:10 - system - INFO - 📊 日志级别: INFO
+2025-07-18 19:37:10 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 19:37:10 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 19:37:10 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 19:37:10 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 19:37:10 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 19:37:10 - system - INFO - ==================================================
+2025-07-18 19:37:14 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 19:37:14 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 19:37:14 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 19:37:14 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 19:37:14 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 19:37:14 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 19:37:14 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 19:37:14 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.)，使用Mock向量数据库
+2025-07-18 19:37:14 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 19:37:14 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 19:37:14 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 19:37:14 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 19:37:15 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 19:37:20 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8082
+ * Running on http://26.26.26.1:8082
+2025-07-18 19:37:20 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-07-18 19:37:20 - werkzeug - INFO -  * Restarting with stat
+2025-07-18 19:37:20 - system - INFO - ==================================================
+2025-07-18 19:37:20 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 19:37:20 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 19:37:20 - system - INFO - 📊 日志级别: INFO
+2025-07-18 19:37:20 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 19:37:20 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 19:37:20 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 19:37:20 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 19:37:20 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 19:37:20 - system - INFO - ==================================================
+2025-07-18 19:37:22 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 19:37:22 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 19:37:22 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 19:37:22 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 19:37:22 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 19:37:22 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 19:37:22 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 401 Unauthorized"
+2025-07-18 19:37:22 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (Meta endpoint! Unexpected status code: 401, with response body: {'code': 401, 'message': 'oidc auth is not configured, please try another auth scheme or set up weaviate with OIDC configured'}.)，使用Mock向量数据库
+2025-07-18 19:37:22 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 19:37:22 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 19:37:22 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 19:37:22 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 19:37:23 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 19:37:23 - werkzeug - WARNING -  * Debugger is active!
+2025-07-18 19:37:23 - werkzeug - INFO -  * Debugger PIN: 267-982-214
+2025-07-18 19:40:25 - src.apis.coder_agent_api - INFO - 开始处理文档: 链数中建一局_1752838825
+2025-07-18 19:40:25 - src.apis.coder_agent_api - INFO - 文档长度: 4931 字符
+2025-07-18 19:40:25 - src.apis.coder_agent_api - INFO - 使用LangGraph: True
+2025-07-18 19:40:25 - src.apis.coder_agent_api - INFO - 代码输出路径: D:\gitlab\create_project
+2025-07-18 19:40:25 - src.apis.coder_agent_api - ERROR - 处理设计文档失败: cannot access local variable 'e' where it is not associated with a value
+2025-07-18 19:40:25 - werkzeug - INFO - 127.0.0.1 - - [18/Jul/2025 19:40:25] "[35m[1mPOST /api/coder-agent/process-document HTTP/1.1[0m" 500 -
+2025-07-18 20:07:30 - system - INFO - ==================================================
+2025-07-18 20:07:30 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 20:07:30 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 20:07:30 - system - INFO - 📊 日志级别: INFO
+2025-07-18 20:07:30 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 20:07:30 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 20:07:30 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 20:07:30 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 20:07:30 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 20:07:30 - system - INFO - ==================================================
+2025-07-18 20:07:32 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:07:32 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 20:07:32 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 20:07:32 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 20:07:32 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:07:33 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 20:07:33 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-18 20:07:33 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (
+Weaviate v1.31.6 makes use of a high-speed gRPC API as well as a REST API.
+Unfortunately, the gRPC health check against Weaviate could not be completed.
+
+This error could be due to one of several reasons:
+- The gRPC traffic at the specified port is blocked by a firewall.
+- gRPC is not enabled or incorrectly configured on the server or the client.
+    - Please check that the server address and port (localhost:50051) are correct.
+- your connection is unstable or has a high latency. In this case you can:
+    - increase init-timeout in `weaviate.connect_to_local(additional_config=wvc.init.AdditionalConfig(timeout=wvc.init.Timeout(init=X)))`
+    - disable startup checks by connecting using `skip_init_checks=True`
+)，使用Mock向量数据库
+2025-07-18 20:07:33 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 20:07:33 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 20:07:33 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 20:07:33 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 20:08:03 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-18 20:08:03 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: 
+Weaviate v1.31.6 makes use of a high-speed gRPC API as well as a REST API.
+Unfortunately, the gRPC health check against Weaviate could not be completed.
+
+This error could be due to one of several reasons:
+- The gRPC traffic at the specified port is blocked by a firewall.
+- gRPC is not enabled or incorrectly configured on the server or the client.
+    - Please check that the server address and port (localhost:50051) are correct.
+- your connection is unstable or has a high latency. In this case you can:
+    - increase init-timeout in `weaviate.connect_to_local(additional_config=wvc.init.AdditionalConfig(timeout=wvc.init.Timeout(init=X)))`
+    - disable startup checks by connecting using `skip_init_checks=True`
+
+2025-07-18 20:08:03 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 20:08:08 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8082
+ * Running on http://26.26.26.1:8082
+2025-07-18 20:08:08 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-07-18 20:08:08 - werkzeug - INFO -  * Restarting with stat
+2025-07-18 20:08:09 - system - INFO - ==================================================
+2025-07-18 20:08:09 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 20:08:09 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 20:08:09 - system - INFO - 📊 日志级别: INFO
+2025-07-18 20:08:09 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 20:08:09 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 20:08:09 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 20:08:09 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 20:08:09 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 20:08:09 - system - INFO - ==================================================
+2025-07-18 20:08:11 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:08:11 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 20:08:11 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 20:08:11 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 20:08:11 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:08:11 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 20:08:11 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-18 20:08:11 - WeaviateVectorDatabase - WARNING - ⚠️ Weaviate连接失败 (
+Weaviate v1.31.6 makes use of a high-speed gRPC API as well as a REST API.
+Unfortunately, the gRPC health check against Weaviate could not be completed.
+
+This error could be due to one of several reasons:
+- The gRPC traffic at the specified port is blocked by a firewall.
+- gRPC is not enabled or incorrectly configured on the server or the client.
+    - Please check that the server address and port (localhost:50051) are correct.
+- your connection is unstable or has a high latency. In this case you can:
+    - increase init-timeout in `weaviate.connect_to_local(additional_config=wvc.init.AdditionalConfig(timeout=wvc.init.Timeout(init=X)))`
+    - disable startup checks by connecting using `skip_init_checks=True`
+)，使用Mock向量数据库
+2025-07-18 20:08:11 - WeaviateVectorDatabase - INFO - ✅ 使用Mock向量数据库作为备选方案
+2025-07-18 20:08:11 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 20:08:11 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 20:08:11 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 20:08:13 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 20:08:13 - werkzeug - WARNING -  * Debugger is active!
+2025-07-18 20:08:13 - werkzeug - INFO -  * Debugger PIN: 267-982-214
+2025-07-18 20:10:22 - system - INFO - ==================================================
+2025-07-18 20:10:22 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 20:10:22 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 20:10:22 - system - INFO - 📊 日志级别: INFO
+2025-07-18 20:10:22 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 20:10:22 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 20:10:22 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 20:10:22 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 20:10:22 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 20:10:22 - system - INFO - ==================================================
+2025-07-18 20:10:24 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:10:24 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 20:10:24 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 20:10:24 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 20:10:24 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:10:24 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 20:10:24 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-18 20:10:43 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-18 20:10:43 - WeaviateVectorDatabase - INFO - ✅ Weaviate连接成功: http://localhost:8080 (gRPC: 50051)
+2025-07-18 20:10:43 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/AnalyDesignDocuments "HTTP/1.1 404 Not Found"
+2025-07-18 20:10:43 - httpx - INFO - HTTP Request: POST http://localhost:8080/v1/schema "HTTP/1.1 200 OK"
+2025-07-18 20:10:43 - WeaviateVectorDatabase - INFO - ✅ 创建Weaviate集合: AnalyDesignDocuments
+2025-07-18 20:10:43 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 20:10:43 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 20:10:43 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 20:11:51 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 20:11:56 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8082
+ * Running on http://26.26.26.1:8082
+2025-07-18 20:11:56 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2025-07-18 20:11:56 - werkzeug - INFO -  * Restarting with stat
+2025-07-18 20:11:57 - system - INFO - ==================================================
+2025-07-18 20:11:57 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 20:11:57 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 20:11:57 - system - INFO - 📊 日志级别: INFO
+2025-07-18 20:11:57 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 20:11:57 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 20:11:57 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 20:11:57 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 20:11:57 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 20:11:57 - system - INFO - ==================================================
+2025-07-18 20:11:59 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:11:59 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 20:11:59 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 20:11:59 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 20:11:59 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:11:59 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 20:11:59 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-18 20:12:02 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-18 20:12:02 - WeaviateVectorDatabase - INFO - ✅ Weaviate连接成功: http://localhost:8080 (gRPC: 50051)
+2025-07-18 20:12:02 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/AnalyDesignDocuments "HTTP/1.1 200 OK"
+2025-07-18 20:12:02 - WeaviateVectorDatabase - INFO - ✅ Weaviate集合已存在: AnalyDesignDocuments
+2025-07-18 20:12:02 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 20:12:02 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 20:12:02 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 20:12:19 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 20:12:19 - werkzeug - WARNING -  * Debugger is active!
+2025-07-18 20:12:19 - werkzeug - INFO -  * Debugger PIN: 267-982-214
+2025-07-18 20:12:19 - src.apis.coder_agent_api - INFO - 开始处理文档: 链数中建一局_1752840718
+2025-07-18 20:12:19 - src.apis.coder_agent_api - INFO - 文档长度: 4931 字符
+2025-07-18 20:12:19 - src.apis.coder_agent_api - INFO - 使用LangGraph: True
+2025-07-18 20:12:19 - src.apis.coder_agent_api - INFO - 代码输出路径: /Users/renyu/Documents/create_project
+2025-07-18 20:12:19 - src.apis.coder_agent_api - ERROR - 处理设计文档失败: cannot access local variable 'e' where it is not associated with a value
+2025-07-18 20:12:19 - werkzeug - INFO - 127.0.0.1 - - [18/Jul/2025 20:12:19] "[35m[1mPOST /api/coder-agent/process-document HTTP/1.1[0m" 500 -
+2025-07-18 20:18:18 - werkzeug - INFO -  * Detected change in '/Users/renyu/Documents/ai_project/document_analyzer/simple_api_test.py', reloading
+2025-07-18 20:18:18 - werkzeug - INFO -  * Restarting with stat
+2025-07-18 20:18:18 - system - INFO - ==================================================
+2025-07-18 20:18:18 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 20:18:18 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 20:18:18 - system - INFO - 📊 日志级别: INFO
+2025-07-18 20:18:18 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 20:18:18 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 20:18:18 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 20:18:18 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 20:18:18 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 20:18:18 - system - INFO - ==================================================
+2025-07-18 20:18:21 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:18:21 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 20:18:21 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 20:18:21 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 20:18:21 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:18:21 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 20:18:21 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-18 20:18:23 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-18 20:18:23 - WeaviateVectorDatabase - INFO - ✅ Weaviate连接成功: http://localhost:8080 (gRPC: 50051)
+2025-07-18 20:18:23 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/AnalyDesignDocuments "HTTP/1.1 200 OK"
+2025-07-18 20:18:23 - WeaviateVectorDatabase - INFO - ✅ Weaviate集合已存在: AnalyDesignDocuments
+2025-07-18 20:18:23 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 20:18:23 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 20:18:23 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 20:19:38 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 20:19:38 - werkzeug - WARNING -  * Debugger is active!
+2025-07-18 20:19:38 - werkzeug - INFO -  * Debugger PIN: 267-982-214
+2025-07-18 20:21:41 - src.apis.coder_agent_api - INFO - 开始处理文档: 链数中建一局_1752841301
+2025-07-18 20:21:41 - src.apis.coder_agent_api - INFO - 文档长度: 4937 字符
+2025-07-18 20:21:41 - src.apis.coder_agent_api - INFO - 使用LangGraph: True
+2025-07-18 20:21:41 - src.apis.coder_agent_api - INFO - 代码输出路径: /Users/renyu/Documents/create_project
+2025-07-18 20:21:41 - src.apis.coder_agent_api - ERROR - 处理设计文档失败: cannot access local variable 'e' where it is not associated with a value
+2025-07-18 20:21:41 - werkzeug - INFO - 127.0.0.1 - - [18/Jul/2025 20:21:41] "[35m[1mPOST /api/coder-agent/process-document HTTP/1.1[0m" 500 -
+2025-07-18 20:22:47 - werkzeug - INFO -  * Detected change in '/Users/renyu/Documents/ai_project/document_analyzer/src/apis/coder_agent_api.py', reloading
+2025-07-18 20:22:47 - werkzeug - INFO -  * Restarting with stat
+2025-07-18 20:22:48 - system - INFO - ==================================================
+2025-07-18 20:22:48 - system - INFO - 🚀 智能分析系统日志系统初始化完成
+2025-07-18 20:22:48 - system - INFO - 📁 日志根目录: /Users/renyu/Documents/ai_project/document_analyzer/logs
+2025-07-18 20:22:48 - system - INFO - 📊 日志级别: INFO
+2025-07-18 20:22:48 - system - INFO - 📅 按日期轮转: 每天午夜自动轮转
+2025-07-18 20:22:48 - system - INFO - 📂 按月分目录: logs/YYYY-MM/
+2025-07-18 20:22:48 - system - INFO - 📝 主日志: logs/2025-07/app.log
+2025-07-18 20:22:48 - system - INFO - 🔧 API日志: logs/2025-07/api_server.log
+2025-07-18 20:22:48 - system - INFO - 🗂️ 保留天数: 7 天
+2025-07-18 20:22:48 - system - INFO - ==================================================
+2025-07-18 20:22:50 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:22:50 - root - WARNING - LangGraph工作流编排器不可用: No module named 'langgraph'
+2025-07-18 20:22:50 - src.utils.task_storage - INFO - 数据库初始化成功
+2025-07-18 20:22:50 - markdown_storage - INFO - Markdown存储管理器初始化完成
+2025-07-18 20:22:50 - src.utils.analysis_utils - INFO - 分析目录初始化完成
+2025-07-18 20:22:50 - src.utils.volcengine_client - INFO - 火山引擎客户端初始化成功
+2025-07-18 20:22:50 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
+2025-07-18 20:22:51 - httpx - INFO - HTTP Request: GET https://pypi.org/pypi/weaviate-client/json "HTTP/1.1 200 OK"
+2025-07-18 20:22:51 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
+2025-07-18 20:22:51 - WeaviateVectorDatabase - INFO - ✅ Weaviate连接成功: http://localhost:8080 (gRPC: 50051)
+2025-07-18 20:22:51 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/AnalyDesignDocuments "HTTP/1.1 200 OK"
+2025-07-18 20:22:51 - WeaviateVectorDatabase - INFO - ✅ Weaviate集合已存在: AnalyDesignDocuments
+2025-07-18 20:22:51 - AnalysisServiceManager - INFO - 初始化向量数据库: weaviate
+2025-07-18 20:22:52 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
+2025-07-18 20:22:52 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
+2025-07-18 20:22:54 - src.utils.enhanced_analyzer - INFO - 增强分析器初始化完成
+2025-07-18 20:22:54 - werkzeug - WARNING -  * Debugger is active!
+2025-07-18 20:22:54 - werkzeug - INFO -  * Debugger PIN: 267-982-214
+2025-07-18 20:23:57 - src.apis.coder_agent_api - INFO - 开始处理文档: 链数中建一局_1752841437
+2025-07-18 20:23:57 - src.apis.coder_agent_api - INFO - 文档长度: 4937 字符
+2025-07-18 20:23:57 - src.apis.coder_agent_api - INFO - 使用LangGraph: True
+2025-07-18 20:23:57 - src.apis.coder_agent_api - INFO - 代码输出路径: /Users/renyu/Documents/create_project
+2025-07-18 20:23:57 - src.apis.coder_agent_api - ERROR - 处理设计文档失败: cannot access local variable 'e' where it is not associated with a value
+2025-07-18 20:23:57 - werkzeug - INFO - 127.0.0.1 - - [18/Jul/2025 20:23:57] "[35m[1mPOST /api/coder-agent/process-document HTTP/1.1[0m" 500 -

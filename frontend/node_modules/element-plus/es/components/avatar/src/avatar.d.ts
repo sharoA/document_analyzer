@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { ObjectFitProperty } from 'csstype';
 export declare const avatarProps: {
     readonly size: import("element-plus/es/utils").EpPropFinalized<readonly [NumberConstructor, StringConstructor], "" | "small" | "default" | "large", number, "", boolean>;
@@ -15,6 +15,7 @@ export declare const avatarProps: {
     readonly fit: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => "fill" | "contain" | "-moz-initial" | "inherit" | "initial" | "revert" | "unset" | "none" | "cover" | "scale-down") | (() => ObjectFitProperty) | ((new (...args: any[]) => "fill" | "contain" | "-moz-initial" | "inherit" | "initial" | "revert" | "unset" | "none" | "cover" | "scale-down") | (() => ObjectFitProperty))[], unknown, unknown, "cover", boolean>;
 };
 export type AvatarProps = ExtractPropTypes<typeof avatarProps>;
+export type AvatarPropsPublic = __ExtractPublicPropTypes<typeof avatarProps>;
 export declare const avatarEmits: {
     error: (evt: Event) => boolean;
 };

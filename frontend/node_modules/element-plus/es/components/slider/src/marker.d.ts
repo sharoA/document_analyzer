@@ -1,4 +1,4 @@
-import type { CSSProperties, ExtractPropTypes } from 'vue';
+import type { CSSProperties, ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const sliderMarkerProps: {
     readonly mark: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => string | {
         style: CSSProperties;
@@ -15,6 +15,7 @@ export declare const sliderMarkerProps: {
     }))[], unknown, unknown, undefined, boolean>;
 };
 export type SliderMarkerProps = ExtractPropTypes<typeof sliderMarkerProps>;
+export type SliderMarkerPropsPublic = __ExtractPublicPropTypes<typeof sliderMarkerProps>;
 declare const _default: import("vue").DefineComponent<{
     readonly mark: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => string | {
         style: CSSProperties;

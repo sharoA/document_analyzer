@@ -61,8 +61,8 @@ def simple_example():
 - updated_at: 更新时间
 
 ## 项目配置
-- 分支：feature/user-management
-- 项目路径：D:/new_project/user-management
+- 分支：D_20250101_项目名称
+- 项目路径：/Users/renyu/Documents/create_project/user-management
 """
     
     try:

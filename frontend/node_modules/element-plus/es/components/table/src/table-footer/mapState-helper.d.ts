@@ -1,9 +1,9 @@
 declare function useMapState(): {
-    leftFixedLeafCount: import("vue").ComputedRef<any>;
-    rightFixedLeafCount: import("vue").ComputedRef<any>;
-    columnsCount: import("vue").ComputedRef<any>;
-    leftFixedCount: import("vue").ComputedRef<any>;
-    rightFixedCount: import("vue").ComputedRef<any>;
-    columns: any;
+    leftFixedLeafCount: import("vue").ComputedRef<number>;
+    rightFixedLeafCount: import("vue").ComputedRef<number>;
+    columnsCount: import("vue").ComputedRef<number>;
+    leftFixedCount: import("vue").ComputedRef<number>;
+    rightFixedCount: import("vue").ComputedRef<number>;
+    columns: import("vue").ComputedRef<import("element-plus").TableColumnCtx<import("../table/defaults").DefaultRow>[]>;
 };
 export default useMapState;

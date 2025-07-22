@@ -1,7 +1,7 @@
 import type { Store } from '../store';
 import type { PropType } from 'vue';
 import type { DefaultRow, Sort, SummaryMethod } from '../table/defaults';
-export interface TableFooter<T> {
+export interface TableFooter<T extends DefaultRow> {
     fixed: string;
     store: Store<T>;
     summaryMethod: SummaryMethod<T>;
@@ -16,13 +16,13 @@ declare const _default: import("vue").DefineComponent<{
     };
     store: {
         required: true;
-        type: PropType<TableFooter<DefaultRow>["store"]>;
+        type: PropType<TableFooter<any>["store"]>;
     };
-    summaryMethod: PropType<TableFooter<DefaultRow>["summaryMethod"]>;
+    summaryMethod: PropType<TableFooter<any>["summaryMethod"]>;
     sumText: StringConstructor;
     border: BooleanConstructor;
     defaultSort: {
-        type: PropType<TableFooter<DefaultRow>["defaultSort"]>;
+        type: PropType<TableFooter<any>["defaultSort"]>;
         default: () => {
             prop: string;
             order: string;
@@ -50,8 +50,8 @@ declare const _default: import("vue").DefineComponent<{
     onScrollableChange: (layout: import("../table-layout").default<any>) => void;
     onColumnsChange: (layout: import("../table-layout").default<any>) => void;
     getCellClasses: (columns: import("../table-column/defaults").TableColumnCtx<any>[], cellIndex: number) => string[];
-    getCellStyles: (column: import("../table-column/defaults").TableColumnCtx<any>, cellIndex: number) => any;
-    columns: any;
+    getCellStyles: (column: import("../table-column/defaults").TableColumnCtx<any>, cellIndex: number) => import("vue").CSSProperties | undefined;
+    columns: import("vue").ComputedRef<import("../table-column/defaults").TableColumnCtx<DefaultRow>[]>;
 }, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, Record<string, any>, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{
     fixed: {
         type: StringConstructor;
@@ -59,13 +59,13 @@ declare const _default: import("vue").DefineComponent<{
     };
     store: {
         required: true;
-        type: PropType<TableFooter<DefaultRow>["store"]>;
+        type: PropType<TableFooter<any>["store"]>;
     };
-    summaryMethod: PropType<TableFooter<DefaultRow>["summaryMethod"]>;
+    summaryMethod: PropType<TableFooter<any>["summaryMethod"]>;
     sumText: StringConstructor;
     border: BooleanConstructor;
     defaultSort: {
-        type: PropType<TableFooter<DefaultRow>["defaultSort"]>;
+        type: PropType<TableFooter<any>["defaultSort"]>;
         default: () => {
             prop: string;
             order: string;

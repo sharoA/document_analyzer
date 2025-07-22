@@ -1,43 +1,27 @@
-import { defineComponent, inject, computed, openBlock, createElementBlock, normalizeStyle, unref, normalizeClass } from 'vue';
-import { tooltipV2RootKey, tooltipV2ContentKey } from './constants.mjs';
-import { tooltipV2ArrowProps, tooltipV2ArrowSpecialProps } from './arrow.mjs';
-import _export_sfc from '../../../_virtual/plugin-vue_export-helper.mjs';
+import { tooltipV2Sides } from './common.mjs';
+import { buildProps, definePropType } from '../../../utils/vue/props/runtime.mjs';
 
-const __default__ = defineComponent({
-  name: "ElTooltipV2Arrow"
-});
-const _sfc_main = /* @__PURE__ */ defineComponent({
-  ...__default__,
-  props: {
-    ...tooltipV2ArrowProps,
-    ...tooltipV2ArrowSpecialProps
+const tooltipV2ArrowProps = buildProps({
+  width: {
+    type: Number,
+    default: 10
   },
-  setup(__props) {
-    const props = __props;
-    const { ns } = inject(tooltipV2RootKey);
-    const { arrowRef } = inject(tooltipV2ContentKey);
-    const arrowStyle = computed(() => {
-      const { style, width, height } = props;
-      const namespace = ns.namespace.value;
-      return {
-        [`--${namespace}-tooltip-v2-arrow-width`]: `${width}px`,
-        [`--${namespace}-tooltip-v2-arrow-height`]: `${height}px`,
-        [`--${namespace}-tooltip-v2-arrow-border-width`]: `${width / 2}px`,
-        [`--${namespace}-tooltip-v2-arrow-cover-width`]: width / 2 - 1,
-        ...style || {}
-      };
-    });
-    return (_ctx, _cache) => {
-      return openBlock(), createElementBlock("span", {
-        ref_key: "arrowRef",
-        ref: arrowRef,
-        style: normalizeStyle(unref(arrowStyle)),
-        class: normalizeClass(unref(ns).e("arrow"))
-      }, null, 6);
-    };
+  height: {
+    type: Number,
+    default: 10
+  },
+  style: {
+    type: definePropType(Object),
+    default: null
   }
 });
-var TooltipV2Arrow = /* @__PURE__ */ _export_sfc(_sfc_main, [["__file", "arrow.vue"]]);
+const tooltipV2ArrowSpecialProps = buildProps({
+  side: {
+    type: definePropType(String),
+    values: tooltipV2Sides,
+    required: true
+  }
+});
 
-export { TooltipV2Arrow as default };
+export { tooltipV2ArrowProps, tooltipV2ArrowSpecialProps };
 //# sourceMappingURL=arrow2.mjs.map

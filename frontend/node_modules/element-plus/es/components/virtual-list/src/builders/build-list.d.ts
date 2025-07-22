@@ -19,7 +19,7 @@ declare const createList: ({ name, getOffset, getItemSize, getItemOffset, getEst
         readonly validator: ((val: unknown) => boolean) | undefined;
         __epPropKey: true;
     };
-    readonly useIsScrolling: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly useIsScrolling: BooleanConstructor;
     readonly width: {
         readonly type: import("vue").PropType<import("element-plus/es/utils").EpPropMergeType<readonly [NumberConstructor, StringConstructor], unknown, unknown>>;
         readonly required: false;
@@ -27,7 +27,7 @@ declare const createList: ({ name, getOffset, getItemSize, getItemOffset, getEst
         __epPropKey: true;
     };
     readonly perfMode: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, true, boolean>;
-    readonly scrollbarAlwaysOn: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly scrollbarAlwaysOn: BooleanConstructor;
     readonly cache: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, never, never, 2, false>;
     readonly estimatedItemSize: {
         readonly type: import("vue").PropType<number>;
@@ -91,7 +91,7 @@ declare const createList: ({ name, getOffset, getItemSize, getItemOffset, getEst
         scrollOffset: number;
         updateRequested: boolean;
         isScrollbarDragging: boolean;
-        scrollbarAlwaysOn: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
+        scrollbarAlwaysOn: boolean;
     }>;
     getItemStyle: (idx: number) => CSSProperties;
     onScroll: (e: Event) => void;
@@ -118,7 +118,7 @@ declare const createList: ({ name, getOffset, getItemSize, getItemOffset, getEst
         readonly validator: ((val: unknown) => boolean) | undefined;
         __epPropKey: true;
     };
-    readonly useIsScrolling: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly useIsScrolling: BooleanConstructor;
     readonly width: {
         readonly type: import("vue").PropType<import("element-plus/es/utils").EpPropMergeType<readonly [NumberConstructor, StringConstructor], unknown, unknown>>;
         readonly required: false;
@@ -126,7 +126,7 @@ declare const createList: ({ name, getOffset, getItemSize, getItemOffset, getEst
         __epPropKey: true;
     };
     readonly perfMode: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, true, boolean>;
-    readonly scrollbarAlwaysOn: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly scrollbarAlwaysOn: BooleanConstructor;
     readonly cache: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, never, never, 2, false>;
     readonly estimatedItemSize: {
         readonly type: import("vue").PropType<number>;
@@ -158,9 +158,9 @@ declare const createList: ({ name, getOffset, getItemSize, getItemOffset, getEst
     readonly className: string;
     readonly containerElement: import("element-plus/es/utils").EpPropMergeType<(new (...args: any[]) => string | Element) | (() => string | Element) | ((new (...args: any[]) => string | Element) | (() => string | Element))[], unknown, unknown>;
     readonly innerElement: import("element-plus/es/utils").EpPropMergeType<readonly [StringConstructor, ObjectConstructor], unknown, unknown>;
-    readonly useIsScrolling: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
     readonly perfMode: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
-    readonly scrollbarAlwaysOn: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
+    readonly useIsScrolling: boolean;
+    readonly scrollbarAlwaysOn: boolean;
     readonly cache: number;
     readonly initScrollOffset: number;
 }>;

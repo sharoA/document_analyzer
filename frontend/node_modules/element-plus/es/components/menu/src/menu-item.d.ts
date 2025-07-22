@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
 import type { MenuItemRegistered } from './types';
 export declare const menuItemProps: {
@@ -12,6 +12,7 @@ export declare const menuItemProps: {
     readonly disabled: BooleanConstructor;
 };
 export type MenuItemProps = ExtractPropTypes<typeof menuItemProps>;
+export type MenuItemPropsPublic = __ExtractPublicPropTypes<typeof menuItemProps>;
 export declare const menuItemEmits: {
     click: (item: MenuItemRegistered) => boolean;
 };

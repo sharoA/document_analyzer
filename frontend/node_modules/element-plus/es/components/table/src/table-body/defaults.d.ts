@@ -2,7 +2,7 @@ import type { PropType } from 'vue';
 import type { Store } from '../store';
 import type { ColumnCls, ColumnStyle, DefaultRow, Table } from '../table/defaults';
 import type { TableOverflowTooltipOptions } from '../util';
-interface TableBodyProps<T> {
+interface TableBodyProps<T extends DefaultRow> {
     store: Store<T>;
     stripe?: boolean;
     context: Table<T>;
@@ -16,19 +16,19 @@ interface TableBodyProps<T> {
 declare const defaultProps: {
     store: {
         required: boolean;
-        type: PropType<TableBodyProps<DefaultRow>["store"]>;
+        type: PropType<TableBodyProps<any>["store"]>;
     };
     stripe: BooleanConstructor;
     tooltipEffect: StringConstructor;
     tooltipOptions: {
-        type: PropType<TableBodyProps<DefaultRow>["tooltipOptions"]>;
+        type: PropType<TableBodyProps<any>["tooltipOptions"]>;
     };
     context: {
         default: () => {};
-        type: PropType<TableBodyProps<DefaultRow>["context"]>;
+        type: PropType<TableBodyProps<any>["context"]>;
     };
-    rowClassName: PropType<TableBodyProps<DefaultRow>["rowClassName"]>;
-    rowStyle: PropType<TableBodyProps<DefaultRow>["rowStyle"]>;
+    rowClassName: PropType<TableBodyProps<any>["rowClassName"]>;
+    rowStyle: PropType<TableBodyProps<any>["rowStyle"]>;
     fixed: {
         type: StringConstructor;
         default: string;

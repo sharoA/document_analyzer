@@ -12,14 +12,14 @@ function useEvents(props) {
   const tooltipContent = ref("");
   const tooltipTrigger = ref(h("div"));
   const handleEvent = (event, row, name) => {
-    var _a;
+    var _a, _b, _c;
     const table = parent;
     const cell = getCell(event);
-    let column;
+    let column = null;
     const namespace = (_a = table == null ? void 0 : table.vnode.el) == null ? void 0 : _a.dataset.prefix;
     if (cell) {
       column = getColumnByCell({
-        columns: props.store.states.columns.value
+        columns: (_c = (_b = props.store) == null ? void 0 : _b.states.columns.value) != null ? _c : []
       }, cell, namespace);
       if (column) {
         table == null ? void 0 : table.emit(`cell-${name}`, row, column, cell, event);
@@ -31,17 +31,20 @@ function useEvents(props) {
     handleEvent(event, row, "dblclick");
   };
   const handleClick = (event, row) => {
-    props.store.commit("setCurrentRow", row);
+    var _a;
+    (_a = props.store) == null ? void 0 : _a.commit("setCurrentRow", row);
     handleEvent(event, row, "click");
   };
   const handleContextMenu = (event, row) => {
     handleEvent(event, row, "contextmenu");
   };
   const handleMouseEnter = debounce((index) => {
-    props.store.commit("setHoverRow", index);
+    var _a;
+    (_a = props.store) == null ? void 0 : _a.commit("setHoverRow", index);
   }, 30);
   const handleMouseLeave = debounce(() => {
-    props.store.commit("setHoverRow", null);
+    var _a;
+    (_a = props.store) == null ? void 0 : _a.commit("setHoverRow", null);
   }, 30);
   const getPadding = (el) => {
     const style = window.getComputedStyle(el, null);
@@ -57,7 +60,8 @@ function useEvents(props) {
     };
   };
   const toggleRowClassByCell = (rowSpan, event, toggle) => {
-    let node = event.target.parentNode;
+    var _a;
+    let node = (_a = event == null ? void 0 : event.target) == null ? void 0 : _a.parentNode;
     while (rowSpan > 1) {
       node = node == null ? void 0 : node.nextSibling;
       if (!node || node.nodeName !== "TR")
@@ -67,19 +71,28 @@ function useEvents(props) {
     }
   };
   const handleCellMouseEnter = (event, row, tooltipOptions) => {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e, _f;
+    if (!parent)
+      return;
     const table = parent;
     const cell = getCell(event);
     const namespace = (_a = table == null ? void 0 : table.vnode.el) == null ? void 0 : _a.dataset.prefix;
-    let column;
+    let column = null;
     if (cell) {
       column = getColumnByCell({
-        columns: props.store.states.columns.value
+        columns: (_c = (_b = props.store) == null ? void 0 : _b.states.columns.value) != null ? _c : []
       }, cell, namespace);
+      if (!column) {
+        return;
+      }
       if (cell.rowSpan > 1) {
         toggleRowClassByCell(cell.rowSpan, event, addClass);
       }
-      const hoverState = table.hoverState = { cell, column, row };
+      const hoverState = table.hoverState = {
+        cell,
+        column,
+        row
+      };
       table == null ? void 0 : table.emit("cell-mouse-enter", hoverState.row, hoverState.column, hoverState.cell, event);
     }
     if (!tooltipOptions) {
@@ -98,9 +111,9 @@ function useEvents(props) {
     const horizontalPadding = left + right;
     const verticalPadding = top + bottom;
     if (isGreaterThan(rangeWidth + horizontalPadding, cellChildWidth) || isGreaterThan(rangeHeight + verticalPadding, cellChildHeight) || isGreaterThan(cellChild.scrollWidth, cellChildWidth)) {
-      createTablePopper(tooltipOptions, cell.innerText || cell.textContent, row, column, cell, table);
-    } else if (((_b = removePopper) == null ? void 0 : _b.trigger) === cell) {
-      (_c = removePopper) == null ? void 0 : _c();
+      createTablePopper(tooltipOptions, (_d = (cell == null ? void 0 : cell.innerText) || (cell == null ? void 0 : cell.textContent)) != null ? _d : "", row, column, cell, table);
+    } else if (((_e = removePopper) == null ? void 0 : _e.trigger) === cell) {
+      (_f = removePopper) == null ? void 0 : _f();
     }
   };
   const handleCellMouseLeave = (event) => {

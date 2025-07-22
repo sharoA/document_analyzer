@@ -1,5 +1,5 @@
-import { type EmitFn } from 'element-plus/es/utils';
-import { type FormItemContext } from 'element-plus/es/components/form';
+import type { EmitFn } from 'element-plus/es/utils';
+import type { FormItemContext } from 'element-plus/es/components/form';
 import type { InputTagEmits, InputTagProps } from '../input-tag';
 interface UseInputTagOptions {
     props: InputTagProps;

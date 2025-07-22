@@ -100,16 +100,6 @@ const useBasicDateTable = (props, emit) => {
     const rows_ = unref(tableRows);
     const dateUnit = "day";
     let count = 1;
-    if (showWeekNumber) {
-      for (let rowIndex = 0; rowIndex < 6; rowIndex++) {
-        if (!rows_[rowIndex][0]) {
-          rows_[rowIndex][0] = {
-            type: "week",
-            text: unref(startDate).add(rowIndex * 7 + 1, dateUnit).week()
-          };
-        }
-      }
-    }
     buildPickerTable({ row: 6, column: 7 }, rows_, {
       startDate: minDate,
       columnIndexOffset: showWeekNumber ? 1 : 0,
@@ -124,6 +114,16 @@ const useBasicDateTable = (props, emit) => {
       },
       setRowMetadata
     });
+    if (showWeekNumber) {
+      for (let rowIndex = 0; rowIndex < 6; rowIndex++) {
+        if (rows_[rowIndex][1].dayjs) {
+          rows_[rowIndex][0] = {
+            type: "week",
+            text: rows_[rowIndex][1].dayjs.week()
+          };
+        }
+      }
+    }
     return rows_;
   });
   watch(() => props.date, async () => {
@@ -296,7 +296,6 @@ const useBasicDateTableDOM = (props, {
     { "is-week-mode": props.selectionMode === "week" }
   ]);
   const tableLabel = computed(() => t("el.datepicker.dateTablePrompt"));
-  const weekLabel = computed(() => t("el.datepicker.week"));
   const getCellClasses = (cell) => {
     const classes = [];
     if (isNormalDay(cell.type) && !cell.disabled) {
@@ -337,7 +336,7 @@ const useBasicDateTableDOM = (props, {
   return {
     tableKls,
     tableLabel,
-    weekLabel,
+    weekHeaderClass: ns.e("week-header"),
     getCellClasses,
     getRowKls,
     t

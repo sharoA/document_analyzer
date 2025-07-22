@@ -1,4 +1,4 @@
-import type { CSSProperties, ExtractPropTypes } from 'vue';
+import type { CSSProperties, ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { FixedDirection, KeyType, RowCommonParams } from './types';
 export type RowExpandParams = {
     expanded: boolean;
@@ -98,3 +98,4 @@ export declare const tableV2RowProps: {
     };
 };
 export type TableV2RowProps = ExtractPropTypes<typeof tableV2RowProps>;
+export type TableV2RowPropsPublic = __ExtractPublicPropTypes<typeof tableV2RowProps>;

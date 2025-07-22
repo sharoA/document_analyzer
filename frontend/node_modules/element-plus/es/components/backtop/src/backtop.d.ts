@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const backtopProps: {
     /**
      * @description the button will not show until the scroll height reaches this value.
@@ -30,6 +30,7 @@ export declare const backtopProps: {
     };
 };
 export type BacktopProps = ExtractPropTypes<typeof backtopProps>;
+export type BacktopPropsPublic = __ExtractPublicPropTypes<typeof backtopProps>;
 export declare const backtopEmits: {
     click: (evt: MouseEvent) => boolean;
 };

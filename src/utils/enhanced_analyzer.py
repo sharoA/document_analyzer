@@ -22,7 +22,7 @@ except ImportError:
     DOCX_AVAILABLE = False
 
 try:
-    import PyPDF2
+    import pypdf
     PDF_AVAILABLE = True
 except ImportError:
     PDF_AVAILABLE = False
@@ -41,7 +41,7 @@ class EnhancedAnalyzer:
         if not DOCX_AVAILABLE:
             logger.warning("python-docx未安装，Word文档解析功能受限")
         if not PDF_AVAILABLE:
-            logger.warning("PyPDF2未安装，PDF文档解析功能受限")
+            logger.warning("pypdf未安装，PDF文档解析功能受限")
     
     def _init_text_patterns(self) -> Dict[str, re.Pattern]:
         """初始化文本模式"""
@@ -650,11 +650,11 @@ class EnhancedAnalyzer:
             解析结果字典
         """
         if not PDF_AVAILABLE:
-            return self._get_fallback_result(file_name, "PDF解析", "PyPDF2未安装")
+            return self._get_fallback_result(file_name, "PDF解析", "pypdf未安装")
         
         try:
             file_stream = BytesIO(file_content)
-            pdf_reader = PyPDF2.PdfReader(file_stream)
+            pdf_reader = pypdf.PdfReader(file_stream)
             
             # 提取文本
             text_parts = []

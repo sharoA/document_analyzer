@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { PosInfo } from './types';
 export declare const maskProps: {
     zIndex: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, number, boolean>;
@@ -13,3 +13,4 @@ export declare const maskProps: {
     targetAreaClickable: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, boolean, boolean>;
 };
 export type MaskProps = ExtractPropTypes<typeof maskProps>;
+export type MaskPropsPublic = __ExtractPublicPropTypes<typeof maskProps>;

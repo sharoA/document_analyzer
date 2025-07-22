@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const menuItemGroupProps: {
     /**
      * @description group title
@@ -6,3 +6,4 @@ export declare const menuItemGroupProps: {
     readonly title: StringConstructor;
 };
 export type MenuItemGroupProps = ExtractPropTypes<typeof menuItemGroupProps>;
+export type MenuItemGroupPropsPublic = __ExtractPublicPropTypes<typeof menuItemGroupProps>;

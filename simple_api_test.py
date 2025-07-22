@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class LocalProjectAnalyzer:
     """本地项目分析器"""
     
-    def __init__(self, local_server_url="http://localhost/ls/", git_base_path="D:\gitlab\create_project"):
+    def __init__(self, local_server_url="http://localhost:30000/ls/", git_base_path="/Users/renyu/Documents/create_project"):
         self.local_server_url = local_server_url.rstrip('/')
         self.git_base_path = Path(git_base_path)
         self.git_base_path.mkdir(parents=True, exist_ok=True)
@@ -24,7 +24,7 @@ class LocalProjectAnalyzer:
         """列出本地项目"""
         projects = []
         
-        # 1. 检查D:\gitlab目录下的项目
+        # 1. 检查/Users/renyu/Documents/create_project
         if self.git_base_path.exists():
             for item in self.git_base_path.iterdir():
                 if item.is_dir() and self._is_project_directory(item):
@@ -34,23 +34,7 @@ class LocalProjectAnalyzer:
                         "source": "gitlab"
                     })
         
-        # 2. 检查其他常见项目路径
-        other_paths = [
-            "D:/projects",
-            "C:/projects",
-            "./projects"
-        ]
-        
-        for path in other_paths:
-            if os.path.exists(path):
-                for item in os.listdir(path):
-                    item_path = os.path.join(path, item)
-                    if os.path.isdir(item_path) and self._is_project_directory(item_path):
-                        projects.append({
-                            "name": item,
-                            "path": item_path,
-                            "source": "local"
-                        })
+      
         
         return projects
     
@@ -379,8 +363,8 @@ description: 组织单元额度列表导出
 3 执行要求
 3.1 涉及服务范围
 本次没有新增服务，服务范围为：
-1. 用户服务：zqyl-user-center-service，git地址：http://gitlab.local/ls/zqyl-user-center-service.git
-2. 确权开立服务：crcl-open，git地址：http://gitlab.local/ls/crcl-open.git
+1. 用户服务：zqyl-user-center-service，git地址：http://localhost:30000/ls/zqyl-user-center-service.git
+2. 确权开立服务：crcl-open，git地址：http://localhost:30000/ls/crcl-open.git
 
 3.2 涉及数据库范围
 本次没有新增数据库，数据库范围为：
@@ -427,7 +411,7 @@ redis:
     print("-" * 70)
     
     try:
-        response = requests.post(api_url, json=request_data, timeout=300)
+        response = requests.post(api_url, json=request_data, timeout=5000)
         
         if response.status_code == 200:
             result = response.json()

@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const breadcrumbProps: {
     readonly separator: import("element-plus/es/utils").EpPropFinalized<StringConstructor, unknown, unknown, "/", boolean>;
     readonly separatorIcon: {
@@ -9,3 +9,4 @@ export declare const breadcrumbProps: {
     };
 };
 export type BreadcrumbProps = ExtractPropTypes<typeof breadcrumbProps>;
+export type BreadcrumbPropsPublic = __ExtractPublicPropTypes<typeof breadcrumbProps>;

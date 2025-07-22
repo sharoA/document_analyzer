@@ -48,10 +48,12 @@ const panelSharedProps = buildProps({
   showNow: {
     type: Boolean,
     default: true
-  }
+  },
+  showWeekNumber: Boolean
 });
 const panelRangeSharedProps = buildProps({
   unlinkPanels: Boolean,
+  visible: Boolean,
   parsedValue: {
     type: definePropType(Array)
   }

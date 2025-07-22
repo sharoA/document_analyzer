@@ -341,7 +341,8 @@ const createList = ({
         onScroll: onScrollbarScroll,
         ratio: clientSize * 100 / this.estimatedTotalSize,
         scrollFrom: states.scrollOffset / (this.estimatedTotalSize - clientSize),
-        total
+        total,
+        alwaysOn: states.scrollbarAlwaysOn
       });
       const listContainer = h(Container, {
         class: [ns.e("window"), className],

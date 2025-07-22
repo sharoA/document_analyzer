@@ -1,5 +1,5 @@
 import type { ExtractPropType } from 'element-plus/es/utils';
-import type { ExtractPropTypes, Ref } from 'vue';
+import type { ExtractPropTypes, Ref, __ExtractPublicPropTypes } from 'vue';
 declare const _prop: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => boolean) | (() => boolean | null) | ((new (...args: any[]) => boolean) | (() => boolean | null))[], never, never, null, false>;
 declare const _event: {
     readonly type: import("vue").PropType<(val: boolean) => void>;
@@ -35,6 +35,7 @@ declare const useModelToggle: ({ indicator, toggleReason, shouldHideWhenRouteCha
 }, useModelToggleProps: UseModelTogglePropsRaw<"modelValue">, useModelToggleEmits: "update:modelValue"[];
 export { useModelToggle, useModelToggleEmits, useModelToggleProps };
 export type UseModelToggleProps = ExtractPropTypes<typeof useModelToggleProps>;
+export type UseModelTogglePropsPublic = __ExtractPublicPropTypes<typeof useModelToggleProps>;
 export type ModelToggleParams = {
     indicator: Ref<boolean>;
     toggleReason?: Ref<Event | undefined>;

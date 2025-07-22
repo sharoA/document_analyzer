@@ -1,4 +1,4 @@
-import type { ExtractPropTypes, VNode } from 'vue';
+import type { ExtractPropTypes, VNode, __ExtractPublicPropTypes } from 'vue';
 export declare const paginationProps: {
     readonly pageSize: NumberConstructor;
     readonly defaultPageSize: NumberConstructor;
@@ -28,6 +28,7 @@ export declare const paginationProps: {
     readonly appendSizeTo: StringConstructor;
 };
 export type PaginationProps = ExtractPropTypes<typeof paginationProps>;
+export type PaginationPropsPublic = __ExtractPublicPropTypes<typeof paginationProps>;
 export declare const paginationEmits: {
     'update:current-page': (val: number) => boolean;
     'update:page-size': (val: number) => boolean;

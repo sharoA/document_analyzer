@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type Color from '../utils/color';
 export declare const alphaSliderProps: {
     readonly color: {
@@ -7,6 +7,7 @@ export declare const alphaSliderProps: {
         readonly validator: ((val: unknown) => boolean) | undefined;
         __epPropKey: true;
     };
-    readonly vertical: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly vertical: BooleanConstructor;
 };
 export type AlphaSliderProps = ExtractPropTypes<typeof alphaSliderProps>;
+export type AlphaSliderPropsPublic = __ExtractPublicPropTypes<typeof alphaSliderProps>;

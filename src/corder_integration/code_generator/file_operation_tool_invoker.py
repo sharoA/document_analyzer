@@ -27,6 +27,7 @@ class FileOperationToolInvoker:
         self.available_functions = {
             'read_file': self._read_file,
             'write_file': self._write_file,
+            'replace_text': self._replace_text,
             'list_files': self._list_files,
             'file_exists': self._file_exists,
             'create_directory': self._create_directory,
@@ -71,6 +72,34 @@ class FileOperationToolInvoker:
                         }
                     },
                     'required': ['file_path', 'content']
+                }
+            },
+            'replace_text': {
+                'name': 'replace_text',
+                'description': '在文件中替换指定的文本内容（适用于局部修改，避免重写整个大文件）。常用于在类中添加新方法：将类的最后一个 } 替换为 [新方法代码]\n}',
+                'parameters': {
+                    'type': 'object',
+                    'properties': {
+                        'file_path': {
+                            'type': 'string',
+                            'description': '相对于项目根目录的文件路径'
+                        },
+                        'old_text': {
+                            'type': 'string',
+                            'description': '要被替换的原始文本（必须精确匹配）。添加方法时通常是类的最后一个右花括号 }'
+                        },
+                        'new_text': {
+                            'type': 'string',
+                            'description': '新的文本内容。添加方法时格式为：[新方法的完整代码]\n}'
+                        },
+                        'occurrence': {
+                            'type': 'string',
+                            'enum': ['first', 'last', 'all'],
+                            'description': '替换策略：first（第一个匹配）、last（最后一个匹配，推荐用于添加方法）、all（所有匹配）',
+                            'default': 'last'
+                        }
+                    },
+                    'required': ['file_path', 'old_text', 'new_text']
                 }
             },
             'list_files': {
@@ -219,6 +248,55 @@ class FileOperationToolInvoker:
             logger.info(f"📝 覆盖写入文件: {file_path} ({len(content)} 字符)")
         
         return f"文件写入成功: {file_path}"
+    
+    def _replace_text(self, file_path: str, old_text: str, new_text: str, occurrence: str = 'last') -> str:
+        """在文件中替换指定的文本内容"""
+        full_path = self.project_path / file_path
+        
+        # 安全检查
+        if not self._is_safe_path(full_path):
+            raise ValueError(f"文件路径不安全: {file_path}")
+        
+        if not full_path.exists():
+            raise FileNotFoundError(f"文件不存在: {file_path}")
+        
+        # 读取文件内容
+        try:
+            content = full_path.read_text(encoding='utf-8')
+        except UnicodeDecodeError:
+            content = full_path.read_text(encoding='gbk')
+        
+        # 先备份文件
+        self._backup_file(file_path)
+        
+        # 执行替换
+        if old_text not in content:
+            raise ValueError(f"未找到要替换的文本: {old_text[:100]}...")
+        
+        if occurrence == 'first':
+            # 替换第一个匹配
+            new_content = content.replace(old_text, new_text, 1)
+            count = 1
+        elif occurrence == 'last':
+            # 替换最后一个匹配
+            parts = content.rsplit(old_text, 1)
+            if len(parts) < 2:  # 如果未找到匹配，rsplit返回整个字符串
+                raise ValueError(f"未找到要替换的文本: {old_text[:100]}...")
+            new_content = new_text.join(parts)
+            count = 1
+        else:  # occurrence == 'all'
+            # 替换所有匹配
+            count = content.count(old_text)
+            new_content = content.replace(old_text, new_text)
+        
+        # 写入修改后的内容
+        full_path.write_text(new_content, encoding='utf-8')
+        
+        logger.info(f"🔄 文本替换成功: {file_path} (替换了 {count} 处匹配)")
+        logger.info(f"   原文本长度: {len(old_text)} 字符")
+        logger.info(f"   新文本长度: {len(new_text)} 字符")
+        
+        return f"文本替换成功: {file_path}, 替换了 {count} 处匹配"
     
     def _list_files(self, directory_path: str = '.', pattern: str = '*') -> List[str]:
         """列出目录中的文件"""

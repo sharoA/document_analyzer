@@ -13,8 +13,8 @@ declare function __VLS_template(): {
     "next-month"?(_: {}): any;
 };
 declare const __VLS_component: import("vue").DefineComponent<{
-    readonly visible: BooleanConstructor;
     readonly unlinkPanels: BooleanConstructor;
+    readonly visible: BooleanConstructor;
     readonly parsedValue: {
         readonly type: import("vue").PropType<dayjs.Dayjs[]>;
         readonly required: false;
@@ -30,14 +30,15 @@ declare const __VLS_component: import("vue").DefineComponent<{
     readonly dateFormat: StringConstructor;
     readonly timeFormat: StringConstructor;
     readonly showNow: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, true, boolean>;
+    readonly showWeekNumber: BooleanConstructor;
 }, {}, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
     "calendar-change": (...args: any[]) => void;
     "panel-change": (...args: any[]) => void;
     pick: (...args: any[]) => void;
     "set-picker-option": (...args: any[]) => void;
 }, string, import("vue").VNodeProps & import("vue").AllowedComponentProps & import("vue").ComponentCustomProps, Readonly<import("vue").ExtractPropTypes<{
-    readonly visible: BooleanConstructor;
     readonly unlinkPanels: BooleanConstructor;
+    readonly visible: BooleanConstructor;
     readonly parsedValue: {
         readonly type: import("vue").PropType<dayjs.Dayjs[]>;
         readonly required: false;
@@ -53,6 +54,7 @@ declare const __VLS_component: import("vue").DefineComponent<{
     readonly dateFormat: StringConstructor;
     readonly timeFormat: StringConstructor;
     readonly showNow: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, true, boolean>;
+    readonly showWeekNumber: BooleanConstructor;
 }>> & {
     onPick?: ((...args: any[]) => any) | undefined;
     "onCalendar-change"?: ((...args: any[]) => any) | undefined;
@@ -61,6 +63,7 @@ declare const __VLS_component: import("vue").DefineComponent<{
 }, {
     readonly visible: boolean;
     readonly showNow: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
+    readonly showWeekNumber: boolean;
     readonly unlinkPanels: boolean;
 }>;
 declare const _default: __VLS_WithTemplateSlots<typeof __VLS_component, ReturnType<typeof __VLS_template>>;

@@ -1,10 +1,7 @@
 import { buildProps, definePropType } from '../../../utils/vue/props/runtime.mjs';
 
 const skeletonProps = buildProps({
-  animated: {
-    type: Boolean,
-    default: false
-  },
+  animated: Boolean,
   count: {
     type: Number,
     default: 1

@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export type CalendarDateType = 'prev-month' | 'next-month' | 'prev-year' | 'next-year' | 'today';
 export declare const calendarProps: {
     readonly modelValue: {
@@ -15,6 +15,7 @@ export declare const calendarProps: {
     };
 };
 export type CalendarProps = ExtractPropTypes<typeof calendarProps>;
+export type CalendarPropsPublic = __ExtractPublicPropTypes<typeof calendarProps>;
 export declare const calendarEmits: {
     "update:modelValue": (value: Date) => boolean;
     input: (value: Date) => boolean;

@@ -5,7 +5,7 @@
       <div class="sidebar-header">
         <h2 class="app-title">
           <el-icon><ChatDotRound /></el-icon>
-          analyDesign
+          智能文档解析与代码生成平台
         </h2>
         <el-button 
           type="primary" 

@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { Dayjs } from 'dayjs';
 export declare const panelTimeRangeProps: {
     readonly parsedValue: {
@@ -12,3 +12,4 @@ export declare const panelTimeRangeProps: {
     readonly format: import("element-plus/es/utils").EpPropFinalized<StringConstructor, unknown, unknown, "", boolean>;
 };
 export type PanelTimeRangeProps = ExtractPropTypes<typeof panelTimeRangeProps>;
+export type PanelTimeRangePropsPublic = __ExtractPublicPropTypes<typeof panelTimeRangeProps>;

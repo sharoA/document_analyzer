@@ -1,7 +1,7 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const panelDateRangeProps: {
-    readonly visible: BooleanConstructor;
     readonly unlinkPanels: BooleanConstructor;
+    readonly visible: BooleanConstructor;
     readonly parsedValue: {
         readonly type: import("vue").PropType<import("dayjs").Dayjs[]>;
         readonly required: false;
@@ -17,5 +17,7 @@ export declare const panelDateRangeProps: {
     readonly dateFormat: StringConstructor;
     readonly timeFormat: StringConstructor;
     readonly showNow: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, true, boolean>;
+    readonly showWeekNumber: BooleanConstructor;
 };
 export type PanelDateRangeProps = ExtractPropTypes<typeof panelDateRangeProps>;
+export type PanelDateRangePropsPublic = __ExtractPublicPropTypes<typeof panelDateRangeProps>;

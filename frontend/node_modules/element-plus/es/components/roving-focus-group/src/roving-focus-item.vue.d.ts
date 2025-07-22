@@ -3,10 +3,7 @@ declare const _default: import("vue").DefineComponent<{
         type: BooleanConstructor;
         default: boolean;
     };
-    active: {
-        type: BooleanConstructor;
-        default: boolean;
-    };
+    active: BooleanConstructor;
 }, {
     id: import("vue").Ref<string>;
     handleKeydown: (event: Event) => void;
@@ -17,10 +14,7 @@ declare const _default: import("vue").DefineComponent<{
         type: BooleanConstructor;
         default: boolean;
     };
-    active: {
-        type: BooleanConstructor;
-        default: boolean;
-    };
+    active: BooleanConstructor;
 }>> & {
     onFocus?: ((...args: any[]) => any) | undefined;
     onKeydown?: ((...args: any[]) => any) | undefined;

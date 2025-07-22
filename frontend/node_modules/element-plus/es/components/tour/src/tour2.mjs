@@ -2,7 +2,7 @@ import { defineComponent, ref, computed, toRef, watch, useSlots, provide, openBl
 import { useVModel } from '@vueuse/core';
 import { ElTeleport } from '../../teleport/index.mjs';
 import ElTourMask from './mask2.mjs';
-import ElTourContent from './content2.mjs';
+import ElTourContent from './content.mjs';
 import ElTourSteps from './steps.mjs';
 import { tourProps, tourEmits } from './tour.mjs';
 import { useTarget, tourKey } from './helper.mjs';

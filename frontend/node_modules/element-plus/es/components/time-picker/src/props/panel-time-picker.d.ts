@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { Dayjs } from 'dayjs';
 export declare const panelTimePickerProps: {
     readonly datetimeRole: StringConstructor;
@@ -13,3 +13,4 @@ export declare const panelTimePickerProps: {
     readonly format: import("element-plus/es/utils").EpPropFinalized<StringConstructor, unknown, unknown, "", boolean>;
 };
 export type PanelTimePickerProps = ExtractPropTypes<typeof panelTimePickerProps>;
+export type PanelTimePickerPropsPublic = __ExtractPublicPropTypes<typeof panelTimePickerProps>;

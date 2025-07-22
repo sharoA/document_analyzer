@@ -1,9 +1,9 @@
 import type { Ref } from 'vue';
 import type { TableColumnCtx } from './table-column/defaults';
 import type { TableHeader } from './table-header';
-import type { Table } from './table/defaults';
+import type { DefaultRow, Table } from './table/defaults';
 import type { Store } from './store';
-declare class TableLayout<T> {
+declare class TableLayout<T extends DefaultRow> {
     observers: TableHeader[];
     table: Table<T>;
     store: Store<T>;
@@ -23,8 +23,8 @@ declare class TableLayout<T> {
     gutterWidth: number;
     constructor(options: Record<string, any>);
     updateScrollY(): boolean;
-    setHeight(value: string | number, prop?: string): any;
-    setMaxHeight(value: string | number): void;
+    setHeight(value: string | number | null, prop?: string): void;
+    setMaxHeight(value: string | number | null): void;
     getFlattenColumns(): TableColumnCtx<T>[];
     updateElsHeight(): void;
     headerDisplayNone(elm: HTMLElement): boolean;

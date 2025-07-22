@@ -79,7 +79,7 @@ export interface FormValidateFailure {
 }
 export type FormContext = FormProps & UnwrapRef<FormLabelWidthContext> & {
     emit: SetupContext<FormEmits>['emit'];
-    getField: (prop: string) => FormItemContext | undefined;
+    getField: (prop: FormItemProp) => FormItemContext | undefined;
     addField: (field: FormItemContext) => void;
     removeField: (field: FormItemContext) => void;
     resetFields: (props?: Arrayable<FormItemProp>) => void;
@@ -89,12 +89,14 @@ export type FormContext = FormProps & UnwrapRef<FormLabelWidthContext> & {
 export interface FormItemContext extends FormItemProps {
     $el: HTMLDivElement | undefined;
     size: ComponentSize;
+    validateMessage: string;
     validateState: FormItemValidateState;
     isGroup: boolean;
     labelId: string;
     inputIds: string[];
     hasLabel: boolean;
     fieldValue: any;
+    propString: string;
     addInputId: (id: string) => void;
     removeInputId: (id: string) => void;
     validate: (trigger: string, callback?: FormValidateCallback) => FormValidationResult;

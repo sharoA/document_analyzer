@@ -1,6 +1,7 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const panelYearRangeProps: {
     readonly unlinkPanels: BooleanConstructor;
+    readonly visible: BooleanConstructor;
     readonly parsedValue: {
         readonly type: import("vue").PropType<import("dayjs").Dayjs[]>;
         readonly required: false;
@@ -10,3 +11,4 @@ export declare const panelYearRangeProps: {
 };
 export declare const panelYearRangeEmits: string[];
 export type PanelYearRangeProps = ExtractPropTypes<typeof panelYearRangeProps>;
+export type PanelYearRangePropsPublic = __ExtractPublicPropTypes<typeof panelYearRangeProps>;

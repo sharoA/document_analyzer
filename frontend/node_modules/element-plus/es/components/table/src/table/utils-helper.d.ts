@@ -1,10 +1,11 @@
 import type { Store } from '../store';
-declare function useUtils<T>(store: Store<T>): {
+import type { DefaultRow } from './defaults';
+declare function useUtils<T extends DefaultRow>(store: Store<T>): {
     setCurrentRow: (row: T) => void;
-    getSelectionRows: () => any;
+    getSelectionRows: () => T[];
     toggleRowSelection: (row: T, selected?: boolean, ignoreSelectable?: boolean) => void;
     clearSelection: () => void;
-    clearFilter: (columnKeys?: string[]) => void;
+    clearFilter: (columnKeys?: string[] | string) => void;
     toggleAllSelection: () => void;
     toggleRowExpansion: (row: T, expanded?: boolean) => void;
     clearSort: () => void;

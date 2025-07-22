@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const subMenuProps: {
     readonly index: {
         readonly type: import("vue").PropType<string>;
@@ -38,6 +38,7 @@ export declare const subMenuProps: {
     };
 };
 export type SubMenuProps = ExtractPropTypes<typeof subMenuProps>;
+export type SubMenuPropsPublic = __ExtractPublicPropTypes<typeof subMenuProps>;
 declare const _default: import("vue").DefineComponent<{
     readonly index: {
         readonly type: import("vue").PropType<string>;

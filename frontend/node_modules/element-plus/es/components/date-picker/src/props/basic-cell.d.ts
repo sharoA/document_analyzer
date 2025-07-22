@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { DateCell } from '../date-picker.type';
 export declare const basicCellProps: {
     readonly cell: {
@@ -9,3 +9,4 @@ export declare const basicCellProps: {
     };
 };
 export type BasicCellProps = ExtractPropTypes<typeof basicCellProps>;
+export type BasicCellPropsPublic = __ExtractPublicPropTypes<typeof basicCellProps>;

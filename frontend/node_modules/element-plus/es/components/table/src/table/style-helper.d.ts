@@ -1,19 +1,18 @@
-import type { Table, TableProps } from './defaults';
+import type { DefaultRow, RenderExpanded, Table, TableProps } from './defaults';
 import type { Store } from '../store';
 import type TableLayout from '../table-layout';
-declare function useStyle<T>(props: TableProps<T>, layout: TableLayout<T>, store: Store<T>, table: Table<T>): {
+declare function useStyle<T extends DefaultRow>(props: TableProps<T>, layout: TableLayout<T>, store: Store<T>, table: Table<T>): {
     isHidden: import("vue").Ref<boolean>;
-    renderExpanded: import("vue").Ref<null>;
+    renderExpanded: import("vue").Ref<RenderExpanded<T> | null>;
     setDragVisible: (visible: boolean) => void;
     isGroup: import("vue").Ref<boolean>;
     handleMouseLeave: () => void;
-    handleHeaderFooterMousewheel: (event: any, data: any) => void;
+    handleHeaderFooterMousewheel: (_event: WheelEvent, data: any) => void;
     tableSize: import("vue").ComputedRef<"" | "small" | "default" | "large">;
     emptyBlockStyle: import("vue").ComputedRef<{
         width: string;
         height: string;
-    } | null>;
-    handleFixedMousewheel: (event: any, data: any) => void;
+    } | undefined>;
     resizeProxyVisible: import("vue").Ref<boolean>;
     bodyWidth: import("vue").ComputedRef<string>;
     resizeState: import("vue").Ref<{

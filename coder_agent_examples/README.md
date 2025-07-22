@@ -54,7 +54,7 @@ pip install -r requirements.txt
 
 ```yaml
 coder_agent:
-  project_root: "D:/new_project"
+  project_root: "/Users/renyu/Documents/create_project"
   backend_framework: "spring_boot"
   frontend_framework: "vue2"
   # ... 其他配置
@@ -200,7 +200,7 @@ curl http://localhost:8000/api/coder-agent/tasks
 生成的项目结构如下：
 
 ```
-D:/new_project/
+/Users/renyu/Documents/create_project/zqyl-ls
 ├── backend/                    # 后端项目
 │   ├── src/main/java/
 │   │   └── com/example/
@@ -271,7 +271,7 @@ D:/new_project/
 ```yaml
 coder_agent:
   # 项目路径配置
-  project_root: "D:/new_project"        # 项目根目录
+  project_root: "/Users/renyu/Documents/create_project"        # 项目根目录
   tasks_dir: "tasks"                    # 任务目录
   test_project_dir: "test-project"      # 测试项目目录
   

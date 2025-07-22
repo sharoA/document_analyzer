@@ -1,4 +1,4 @@
-import type { CSSProperties, ExtractPropTypes } from 'vue';
+import type { CSSProperties, ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { TourBtnProps, TourMask } from './types';
 export declare const tourStepProps: {
     target: {
@@ -52,6 +52,7 @@ export declare const tourStepProps: {
     };
 };
 export type TourStepProps = ExtractPropTypes<typeof tourStepProps>;
+export type TourStepPropsPublic = __ExtractPublicPropTypes<typeof tourStepProps>;
 export declare const tourStepEmits: {
     close: () => boolean;
 };

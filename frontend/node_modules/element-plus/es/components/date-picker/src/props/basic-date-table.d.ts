@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { Dayjs } from 'dayjs';
 export declare const basicDateTableProps: {
     readonly cellClassName: {
@@ -46,6 +46,7 @@ export declare const basicDateTableProps: {
 };
 export declare const basicDateTableEmits: string[];
 export type BasicDateTableProps = ExtractPropTypes<typeof basicDateTableProps>;
+export type BasicDateTablePropsPublic = __ExtractPublicPropTypes<typeof basicDateTableProps>;
 export type BasicDateTableEmits = typeof basicDateTableEmits;
 export type RangePickerEmits = {
     minDate: Dayjs;

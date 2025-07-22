@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { Dayjs } from 'dayjs';
 declare const selectionModes: string[];
 export type RangeState = {
@@ -52,9 +52,11 @@ export declare const panelSharedProps: {
     readonly dateFormat: StringConstructor;
     readonly timeFormat: StringConstructor;
     readonly showNow: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, true, boolean>;
+    readonly showWeekNumber: BooleanConstructor;
 };
 export declare const panelRangeSharedProps: {
     readonly unlinkPanels: BooleanConstructor;
+    readonly visible: BooleanConstructor;
     readonly parsedValue: {
         readonly type: import("vue").PropType<Dayjs[]>;
         readonly required: false;
@@ -72,4 +74,5 @@ export declare const rangePickerSharedEmits: {
 };
 export type RangePickerSharedEmits = typeof rangePickerSharedEmits;
 export type PanelRangeSharedProps = ExtractPropTypes<typeof panelRangeSharedProps>;
+export type PanelRangeSharedPropsPublic = __ExtractPublicPropTypes<typeof panelRangeSharedProps>;
 export {};

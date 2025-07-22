@@ -1,5 +1,5 @@
 import { popperContentProps } from '../../popper/src/content.mjs';
-import { teleportProps } from '../../teleport/src/teleport2.mjs';
+import { teleportProps } from '../../teleport/src/teleport.mjs';
 import { buildProps, definePropType } from '../../../utils/vue/props/runtime.mjs';
 import { useDelayedToggleProps } from '../../../hooks/use-delayed-toggle/index.mjs';
 import { useAriaProps } from '../../../hooks/use-aria/index.mjs';

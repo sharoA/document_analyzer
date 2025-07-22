@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { castArray } from 'lodash-unified';
+import { isArray } from '@vue/shared';
 import { debugWarn } from '../../../utils/error.mjs';
 
 const SCOPE = "ElForm";
@@ -39,8 +40,8 @@ function useFormLabelWidth() {
   };
 }
 const filterFields = (fields, props) => {
-  const normalized = castArray(props);
-  return normalized.length > 0 ? fields.filter((field) => field.prop && normalized.includes(field.prop)) : fields;
+  const normalized = castArray(props).map((prop) => isArray(prop) ? prop.join(".") : prop);
+  return normalized.length > 0 ? fields.filter((field) => field.propString && normalized.includes(field.propString)) : fields;
 };
 
 export { filterFields, useFormLabelWidth };

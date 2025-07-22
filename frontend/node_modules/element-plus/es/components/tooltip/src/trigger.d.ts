@@ -1,5 +1,5 @@
 import type { Arrayable } from 'element-plus/es/utils';
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export type TooltipTriggerType = 'hover' | 'focus' | 'click' | 'contextmenu';
 export declare const useTooltipTriggerProps: {
     readonly disabled: BooleanConstructor;
@@ -58,3 +58,4 @@ export declare const useTooltipTriggerProps: {
     readonly open: BooleanConstructor;
 };
 export type ElTooltipTriggerProps = ExtractPropTypes<typeof useTooltipTriggerProps>;
+export type ElTooltipTriggerPropsPublic = __ExtractPublicPropTypes<typeof useTooltipTriggerProps>;

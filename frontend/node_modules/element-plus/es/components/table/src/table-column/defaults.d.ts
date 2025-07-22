@@ -1,31 +1,34 @@
 import type { ComponentInternalInstance, PropType, Ref, VNode } from 'vue';
-import type { DefaultRow, Table } from '../table/defaults';
+import type { DefaultRow, Table, TableSortOrder } from '../table/defaults';
 import type { TableOverflowTooltipFormatter, TableOverflowTooltipOptions } from '../util';
-type CI<T> = {
+import type { Store } from '../store';
+type CI<T extends DefaultRow> = {
     column: TableColumnCtx<T>;
     $index: number;
+    store: Store<T>;
+    _self: any;
 };
 type Filters = {
     text: string;
     value: string;
 }[];
-type FilterMethods<T> = (value: any, row: T, column: TableColumnCtx<T>) => void;
+type FilterMethods<T extends DefaultRow> = (value: string, row: T, column: TableColumnCtx<T>) => void;
 type ValueOf<T> = T[keyof T];
-interface TableColumnCtx<T> {
+type TableColumnCtx<T extends DefaultRow = DefaultRow> = {
     id: string;
-    realWidth: number;
+    realWidth: number | null;
     type: string;
     label: string;
     className: string;
     labelClassName: string;
     property: string;
     prop: string;
-    width: string | number;
+    width?: string | number;
     minWidth: string | number;
     renderHeader: (data: CI<T>) => VNode;
     sortable: boolean | string;
     sortMethod: (a: T, b: T) => number;
-    sortBy: string | ((row: T, index: number) => string) | string[];
+    sortBy: string | ((row: T, index: number, array?: T[]) => string) | string[];
     resizable: boolean;
     columnKey: string;
     rawColumnKey: string;
@@ -44,22 +47,24 @@ interface TableColumnCtx<T> {
     filterMultiple: boolean;
     filterClassName: string;
     index: number | ((index: number) => number);
-    sortOrders: ('ascending' | 'descending' | null)[];
-    renderCell: (data: any) => void;
+    sortOrders: (TableSortOrder | null)[];
+    renderCell: (data: any) => VNode | VNode[];
     colSpan: number;
     rowSpan: number;
-    children: TableColumnCtx<T>[];
+    children?: TableColumnCtx<T>[];
     level: number;
     filterable: boolean | FilterMethods<T> | Filters;
-    order: string;
+    order: TableSortOrder | null;
     isColumnGroup: boolean;
     isSubColumn: boolean;
     columns: TableColumnCtx<T>[];
     getColumnIndex: () => number;
     no: number;
     filterOpened?: boolean;
-}
-interface TableColumn<T> extends ComponentInternalInstance {
+    renderFilterIcon?: (scope: any) => VNode;
+    renderExpand?: (scope: any) => VNode;
+};
+interface TableColumn<T extends DefaultRow> extends ComponentInternalInstance {
     vnode: {
         vParent: TableColumn<T> | Table<T>;
     } & VNode;
@@ -113,22 +118,22 @@ declare const _default: {
     /**
      * @description render function for table header of this column
      */
-    renderHeader: PropType<TableColumnCtx<DefaultRow>["renderHeader"]>;
+    renderHeader: PropType<TableColumnCtx<any>["renderHeader"]>;
     /**
      * @description whether column can be sorted. Remote sorting can be done by setting this attribute to 'custom' and listening to the `sort-change` event of Table
      */
     sortable: {
-        type: (StringConstructor | BooleanConstructor)[];
+        type: (BooleanConstructor | StringConstructor)[];
         default: boolean;
     };
     /**
      * @description sorting method, works when `sortable` is `true`. Should return a number, just like Array.sort
      */
-    sortMethod: PropType<TableColumnCtx<DefaultRow>["sortMethod"]>;
+    sortMethod: PropType<TableColumnCtx<any>["sortMethod"]>;
     /**
      * @description specify which property to sort by, works when `sortable` is `true` and `sort-method` is `undefined`. If set to an Array, the column will sequentially sort by the next property if the previous one is equal
      */
-    sortBy: PropType<TableColumnCtx<DefaultRow>["sortBy"]>;
+    sortBy: PropType<TableColumnCtx<any>["sortBy"]>;
     /**
      * @description whether column width can be resized, works when `border` of `el-table` is `true`
      */
@@ -152,25 +157,25 @@ declare const _default: {
      * @description whether to hide extra content and show them in a tooltip when hovering on the cell
      */
     showOverflowTooltip: {
-        type: PropType<TableColumnCtx<DefaultRow>["showOverflowTooltip"]>;
+        type: PropType<TableColumnCtx<any>["showOverflowTooltip"]>;
         default: undefined;
     };
     /**
      * @description function that formats cell tooltip content, works when `show-overflow-tooltip` is `true`
      */
-    tooltipFormatter: PropType<TableColumnCtx<DefaultRow>["tooltipFormatter"]>;
+    tooltipFormatter: PropType<TableColumnCtx<any>["tooltipFormatter"]>;
     /**
      * @description whether column is fixed at left / right. Will be fixed at left if `true`
      */
-    fixed: (StringConstructor | BooleanConstructor)[];
+    fixed: (BooleanConstructor | StringConstructor)[];
     /**
      * @description function that formats cell content
      */
-    formatter: PropType<TableColumnCtx<DefaultRow>["formatter"]>;
+    formatter: PropType<TableColumnCtx<any>["formatter"]>;
     /**
      * @description function that determines if a certain row can be selected, works when `type` is 'selection'
      */
-    selectable: PropType<TableColumnCtx<DefaultRow>["selectable"]>;
+    selectable: PropType<TableColumnCtx<any>["selectable"]>;
     /**
      * @description whether to reserve selection after data refreshing, works when `type` is 'selection'. Note that `row-key` is required for this to work
      */
@@ -178,15 +183,15 @@ declare const _default: {
     /**
      * @description data filtering method. If `filter-multiple` is on, this method will be called multiple times for each row, and a row will display if one of the calls returns `true`
      */
-    filterMethod: PropType<TableColumnCtx<DefaultRow>["filterMethod"]>;
+    filterMethod: PropType<TableColumnCtx<any>["filterMethod"]>;
     /**
      * @description filter value for selected data, might be useful when table header is rendered with `render-header`
      */
-    filteredValue: PropType<TableColumnCtx<DefaultRow>["filteredValue"]>;
+    filteredValue: PropType<TableColumnCtx<any>["filteredValue"]>;
     /**
      * @description an array of data filtering options. For each element in this array, `text` and `value` are required
      */
-    filters: PropType<TableColumnCtx<DefaultRow>["filters"]>;
+    filters: PropType<TableColumnCtx<any>["filters"]>;
     /**
      * @description placement for the filter dropdown
      */
@@ -205,14 +210,14 @@ declare const _default: {
     /**
      * @description customize indices for each row, works on columns with `type=index`
      */
-    index: PropType<TableColumnCtx<DefaultRow>["index"]>;
+    index: PropType<TableColumnCtx<any>["index"]>;
     /**
      * @description the order of the sorting strategies used when sorting the data, works when `sortable` is `true`. Accepts an array, as the user clicks on the header, the column is sorted in order of the elements in the array
      */
     sortOrders: {
-        type: PropType<TableColumnCtx<DefaultRow>["sortOrders"]>;
+        type: PropType<TableColumnCtx<any>["sortOrders"]>;
         default: () => (string | null)[];
-        validator: (val: TableColumnCtx<unknown>["sortOrders"]) => boolean;
+        validator: (val: TableColumnCtx<any>["sortOrders"]) => boolean;
     };
 };
 export default _default;

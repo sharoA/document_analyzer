@@ -8,10 +8,11 @@ export type isDisabled = (data: CascaderOption, node: Node) => boolean;
 export type isLeaf = (data: CascaderOption, node: Node) => boolean;
 export type Resolve = (dataList?: CascaderOption[]) => void;
 export type LazyLoad = (node: Node, resolve: Resolve) => void;
-export type RenderLabel = ({ node: Node, data: CascaderOption, }: {
-    node: any;
-    data: any;
-}) => VNode | VNode[];
+export interface RenderLabelProps {
+    node: Node;
+    data: CascaderOption;
+}
+export type RenderLabel = (props: RenderLabelProps) => VNode | VNode[];
 export interface CascaderOption extends Record<string, unknown> {
     label?: string;
     value?: CascaderNodeValue;
@@ -36,7 +37,7 @@ export interface CascaderProps {
 export type Nullable<T> = null | T;
 type ChildrenData = CascaderOption[] | undefined;
 declare class Node {
-    readonly data: Nullable<CascaderOption>;
+    readonly data: CascaderOption;
     readonly config: CascaderConfig;
     readonly parent?: Node | undefined;
     readonly root: boolean;
@@ -69,14 +70,14 @@ declare class Node {
      * @default false
      */
     loading: boolean;
-    constructor(data: Nullable<CascaderOption>, config: CascaderConfig, parent?: Node | undefined, root?: boolean);
+    constructor(data: CascaderOption, config: CascaderConfig, parent?: Node | undefined, root?: boolean);
     get isDisabled(): boolean;
     get isLeaf(): boolean;
     get valueByOption(): CascaderNodeValue | CascaderNodePathValue;
     appendChild(childData: CascaderOption): Node;
     calcText(allLevels: boolean, separator: string): string;
-    broadcast(event: string, ...args: unknown[]): void;
-    emit(event: string, ...args: unknown[]): void;
+    broadcast(checked: boolean): void;
+    emit(): void;
     onParentCheck(checked: boolean): void;
     onChildCheck(): void;
     setCheckState(checked: boolean): void;

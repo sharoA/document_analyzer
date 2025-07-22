@@ -1,5 +1,5 @@
 import type { PopperEffect } from 'element-plus/es/components/popper';
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { Placement, Strategy, VirtualElement } from '@floating-ui/dom';
 export declare const tooltipV2ContentProps: {
     readonly ariaLabel: StringConstructor;
@@ -13,3 +13,4 @@ export declare const tooltipV2ContentProps: {
     readonly showArrow: BooleanConstructor;
 };
 export type TooltipV2ContentProps = ExtractPropTypes<typeof tooltipV2ContentProps>;
+export type TooltipV2ContentPropsPublic = __ExtractPublicPropTypes<typeof tooltipV2ContentProps>;

@@ -1,4 +1,4 @@
-import type { CSSProperties, ExtractPropTypes } from 'vue';
+import type { CSSProperties, ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { TooltipV2Sides } from './common';
 export declare const tooltipV2ArrowProps: {
     readonly width: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, 10, boolean>;
@@ -14,3 +14,4 @@ export declare const tooltipV2ArrowSpecialProps: {
     };
 };
 export type TooltipV2ArrowProps = ExtractPropTypes<typeof tooltipV2ArrowProps>;
+export type TooltipV2ArrowPropsPublic = __ExtractPublicPropTypes<typeof tooltipV2ArrowProps>;

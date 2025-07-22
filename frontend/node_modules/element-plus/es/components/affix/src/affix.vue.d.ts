@@ -10,7 +10,7 @@ declare const __VLS_component: import("vue").DefineComponent<{
     /** @description update affix status */
     update: () => void;
     /** @description update rootRect info */
-    updateRoot: () => void;
+    updateRoot: () => Promise<void>;
 }, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
     scroll: (args_0: {
         scrollTop: number;

@@ -32,7 +32,7 @@ class JavaCodeAnalyzer:
         
         # 优化分层模式 - 针对 interfaces → application → domain 架构
         self.layer_patterns = {
-            'interfaces': ['interfaces', 'facade', 'controller', 'web', 'api', 'facade'],
+            'interfaces': ['interfaces', 'controller', 'web', 'api', 'facade'],
             'application': ['application', 'app', 'service', 'business'],
             'domain': ['domain', 'entity', 'model', 'po', 'mapper', 'persistence'],
             'dto': ['dto', 'req', 'resp', 'request', 'response', 'vo'],

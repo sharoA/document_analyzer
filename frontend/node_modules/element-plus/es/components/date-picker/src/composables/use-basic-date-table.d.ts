@@ -88,66 +88,7 @@ export declare const useBasicDateTable: (props: BasicDateTableProps, emit: Setup
         text?: number | undefined;
         renderText?: string | undefined;
         timestamp?: number | undefined;
-        date?: {
-            toString: () => string;
-            toDateString: () => string;
-            toTimeString: () => string;
-            toLocaleString: {
-                (): string;
-                (locales?: string | string[], options?: Intl.DateTimeFormatOptions): string;
-            };
-            toLocaleDateString: {
-                (): string;
-                (locales?: string | string[], options?: Intl.DateTimeFormatOptions): string;
-            };
-            toLocaleTimeString: {
-                (): string;
-                (locales?: string | string[], options?: Intl.DateTimeFormatOptions): string;
-            };
-            valueOf: () => number;
-            getTime: () => number;
-            getFullYear: () => number;
-            getUTCFullYear: () => number;
-            getMonth: () => number;
-            getUTCMonth: () => number;
-            getDate: () => number;
-            getUTCDate: () => number;
-            getDay: () => number;
-            getUTCDay: () => number;
-            getHours: () => number;
-            getUTCHours: () => number;
-            getMinutes: () => number;
-            getUTCMinutes: () => number;
-            getSeconds: () => number;
-            getUTCSeconds: () => number;
-            getMilliseconds: () => number;
-            getUTCMilliseconds: () => number;
-            getTimezoneOffset: () => number;
-            setTime: (time: number) => number;
-            setMilliseconds: (ms: number) => number;
-            setUTCMilliseconds: (ms: number) => number;
-            setSeconds: (sec: number, ms?: number) => number;
-            setUTCSeconds: (sec: number, ms?: number) => number;
-            setMinutes: (min: number, sec?: number, ms?: number) => number;
-            setUTCMinutes: (min: number, sec?: number, ms?: number) => number;
-            setHours: (hours: number, min?: number, sec?: number, ms?: number) => number;
-            setUTCHours: (hours: number, min?: number, sec?: number, ms?: number) => number;
-            setDate: (date: number) => number;
-            setUTCDate: (date: number) => number;
-            setMonth: (month: number, date?: number) => number;
-            setUTCMonth: (month: number, date?: number) => number;
-            setFullYear: (year: number, month?: number, date?: number) => number;
-            setUTCFullYear: (year: number, month?: number, date?: number) => number;
-            toUTCString: () => string;
-            toISOString: () => string;
-            toJSON: (key?: any) => string;
-            [Symbol.toPrimitive]: {
-                (hint: "default"): string;
-                (hint: "string"): string;
-                (hint: "number"): number;
-                (hint: string): string | number;
-            };
-        } | undefined;
+        date?: Date | undefined;
         dayjs?: {
             clone: () => Dayjs;
             isValid: () => boolean;
@@ -238,7 +179,7 @@ export declare const useBasicDateTableDOM: (props: BasicDateTableProps, { isCurr
         'is-week-mode': boolean;
     })[]>;
     tableLabel: import("vue").ComputedRef<string>;
-    weekLabel: import("vue").ComputedRef<string>;
+    weekHeaderClass: string;
     getCellClasses: (cell: DateCell) => string;
     getRowKls: (cell: DateCell) => (string | {
         current: boolean;

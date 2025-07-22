@@ -60,7 +60,7 @@ declare const TableGrid: import("vue").DefineComponent<{
     };
     readonly cache: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, never, never, 2, false>;
     readonly useIsScrolling: BooleanConstructor;
-    readonly scrollbarAlwaysOn: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly scrollbarAlwaysOn: BooleanConstructor;
     readonly scrollbarStartGap: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, 0, boolean>;
     readonly scrollbarEndGap: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, 2, boolean>;
     readonly class: StringConstructor;
@@ -154,7 +154,7 @@ declare const TableGrid: import("vue").DefineComponent<{
     };
     readonly cache: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, never, never, 2, false>;
     readonly useIsScrolling: BooleanConstructor;
-    readonly scrollbarAlwaysOn: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly scrollbarAlwaysOn: BooleanConstructor;
     readonly scrollbarStartGap: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, 0, boolean>;
     readonly scrollbarEndGap: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, 2, boolean>;
     readonly class: StringConstructor;
@@ -192,7 +192,7 @@ declare const TableGrid: import("vue").DefineComponent<{
 }>>, {
     readonly rowKey: import("element-plus/es/utils").EpPropMergeType<(new (...args: any[]) => string | number | symbol) | (() => import("./types").KeyType) | ((new (...args: any[]) => string | number | symbol) | (() => import("./types").KeyType))[], unknown, unknown>;
     readonly useIsScrolling: boolean;
-    readonly scrollbarAlwaysOn: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
+    readonly scrollbarAlwaysOn: boolean;
     readonly cache: number;
     readonly estimatedRowHeight: number;
     readonly scrollbarStartGap: number;

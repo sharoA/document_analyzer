@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { ItemSize } from 'element-plus/es/components/virtual-list';
 export type onRowRenderedParams = {
     rowCacheStart: number;
@@ -65,7 +65,7 @@ export declare const tableV2GridProps: {
     };
     readonly cache: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, never, never, 2, false>;
     readonly useIsScrolling: BooleanConstructor;
-    readonly scrollbarAlwaysOn: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly scrollbarAlwaysOn: BooleanConstructor;
     readonly scrollbarStartGap: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, 0, boolean>;
     readonly scrollbarEndGap: import("element-plus/es/utils").EpPropFinalized<NumberConstructor, unknown, unknown, 2, boolean>;
     readonly class: StringConstructor;
@@ -102,3 +102,4 @@ export declare const tableV2GridProps: {
     };
 };
 export type TableV2GridProps = ExtractPropTypes<typeof tableV2GridProps>;
+export type TableV2GridPropsPublic = __ExtractPublicPropTypes<typeof tableV2GridProps>;

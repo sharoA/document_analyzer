@@ -7,22 +7,30 @@
 
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union, Tuple, Type
 from datetime import datetime
 import time
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, Response
 from werkzeug.exceptions import BadRequest
 
 
-# 尝试导入LangGraph工作流编排器，如果失败则设为None
+# 对类型检查器友好的条件导入
 try:
     from ..corder_integration.langgraph.workflow_orchestrator import LangGraphWorkflowOrchestrator
     LANGGRAPH_AVAILABLE = True
-except ImportError as e:
-    logging.warning(f"LangGraph工作流编排器不可用: {e}")
-    LangGraphWorkflowOrchestrator = None
+except ImportError:
+    # 定义一个占位符类，以避免在类型检查时出现 "None" 类型问题
+    class LangGraphWorkflowOrchestrator:
+        def __init__(self, *args, **kwargs):
+            raise NotImplementedError("LangGraph工作流不可用")
+        def execute_workflow(self, *args, **kwargs):
+            raise NotImplementedError("LangGraph工作流不可用")
+
     LANGGRAPH_AVAILABLE = False
+
+# 代码生成器可用性标志
+CODE_GENERATOR_AVAILABLE = True
 
 
 logger = logging.getLogger(__name__)
@@ -31,24 +39,28 @@ logger = logging.getLogger(__name__)
 coder_agent_api = Blueprint('coder_agent_api', __name__, url_prefix='/api/coder-agent')
 
 # 全局实例
-_workflow_orchestrator = None
-_code_generator = None
+_workflow_orchestrator: Optional[LangGraphWorkflowOrchestrator] = None
+_code_generator: Optional[Any] = None
 
 
-def get_workflow_orchestrator():
+def get_workflow_orchestrator() -> Optional[LangGraphWorkflowOrchestrator]:
     """获取LangGraph工作流编排器实例"""
     global _workflow_orchestrator
     if not LANGGRAPH_AVAILABLE:
         return None
     if _workflow_orchestrator is None:
-        _workflow_orchestrator = LangGraphWorkflowOrchestrator(use_sqlite=True)
+        try:
+            _workflow_orchestrator = LangGraphWorkflowOrchestrator(use_sqlite=True)
+        except Exception as exc:
+            logging.error(f"创建LangGraph工作流编排器失败: {exc}")
+            return None
     return _workflow_orchestrator
 
 
 
 
 @coder_agent_api.route('/process-document', methods=['POST'])
-def process_design_document():
+def process_design_document() -> Union[Response, Tuple[Response, int]]:
     """处理设计文档并生成代码 - 使用LangGraph工作流"""
     try:
         data = request.get_json()
@@ -74,7 +86,11 @@ def process_design_document():
             
             orchestrator = get_workflow_orchestrator()
             if orchestrator is None:
-                raise Exception("LangGraph工作流编排器不可用")
+                return jsonify({
+                    "status": "error",
+                    "message": "获取LangGraph工作流编排器失败",
+                    "timestamp": datetime.now().isoformat()
+                }), 500
             
             # 使用异步方法执行LangGraph工作流
             loop = asyncio.new_event_loop()
@@ -105,27 +121,32 @@ def process_design_document():
             })
             
         else:
-            # 🔄 发生错误
-            logger.error(f"发生错误: {e}")
+            # LangGraph不可用，返回错误
+            return jsonify({
+                "status": "error",
+                "message": "LangGraph工作流不可用，无法处理文档",
+                "langgraph_available": LANGGRAPH_AVAILABLE,
+                "timestamp": datetime.now().isoformat()
+            }), 400
         
-    except BadRequest as e:
+    except BadRequest as exc:
         return jsonify({
             "status": "error",
-            "message": str(e),
+            "message": str(exc),
             "timestamp": datetime.now().isoformat()
         }), 400
         
-    except Exception as e:
-        logger.error(f"处理设计文档失败: {e}")
+    except Exception as exc:
+        logger.error(f"处理设计文档失败: {exc}")
         return jsonify({
             "status": "error",
-            "message": str(e),
+            "message": str(exc),
             "timestamp": datetime.now().isoformat()
         }), 500
 
 
 @coder_agent_api.route('/health', methods=['GET'])
-def health_check():
+def health_check() -> Union[Response, Tuple[Response, int]]:
     """健康检查"""
     try:
         return jsonify({
@@ -136,24 +157,22 @@ def health_check():
             "timestamp": datetime.now().isoformat()
         })
         
-    except Exception as e:
-        logger.error(f"健康检查失败: {e}")
+    except Exception as exc:
+        logger.error(f"健康检查失败: {exc}")
         return jsonify({
             "status": "error",
-            "message": str(e),
+            "message": str(exc),
             "timestamp": datetime.now().isoformat()
         }), 500
 
 
 @coder_agent_api.route('/status', methods=['GET'])
-def get_agent_status():
+def get_agent_status() -> Union[Response, Tuple[Response, int]]:
     """获取智能体状态"""
     try:
         available_workflows = []
         if LANGGRAPH_AVAILABLE:
             available_workflows.append("langgraph")
-        if CODE_GENERATOR_AVAILABLE:
-            available_workflows.append("traditional")
         
         return jsonify({
             "status": "success",
@@ -162,17 +181,16 @@ def get_agent_status():
                 "langgraph_available": LANGGRAPH_AVAILABLE,
                 "code_generator_available": CODE_GENERATOR_AVAILABLE,
                 "workflow_orchestrator": _workflow_orchestrator is not None,
-                "code_generator": _code_generator is not None,
                 "available_workflows": available_workflows
             },
             "timestamp": datetime.now().isoformat()
         })
         
-    except Exception as e:
-        logger.error(f"获取智能体状态失败: {e}")
+    except Exception as exc:
+        logger.error(f"获取智能体状态失败: {exc}")
         return jsonify({
             "status": "error",
-            "message": str(e),
+            "message": str(exc),
             "timestamp": datetime.now().isoformat()
         }), 500
 
@@ -200,4 +218,5 @@ def internal_error(error):
         "status": "error",
         "message": "Internal Server Error", 
         "timestamp": datetime.now().isoformat()
-    }), 500 
+    }), 500
+ 

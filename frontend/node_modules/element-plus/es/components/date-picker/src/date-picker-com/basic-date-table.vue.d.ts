@@ -92,8 +92,8 @@ declare const _default: import("vue").DefineComponent<{
         selecting: boolean;
     }, boolean>;
 }>>, {
-    readonly rangeState: import("../props/shared").RangeState;
     readonly showWeekNumber: boolean;
+    readonly rangeState: import("../props/shared").RangeState;
     readonly selectionMode: string;
 }>;
 export default _default;

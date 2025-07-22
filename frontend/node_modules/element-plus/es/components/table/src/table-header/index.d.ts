@@ -1,14 +1,15 @@
+import TableLayout from '../table-layout';
 import type { ComponentInternalInstance, PropType, Ref } from 'vue';
 import type { DefaultRow, Sort } from '../table/defaults';
 import type { Store } from '../store';
 export interface TableHeader extends ComponentInternalInstance {
     state: {
-        onColumnsChange: any;
-        onScrollableChange: any;
+        onColumnsChange: (layout: TableLayout<any>) => void;
+        onScrollableChange: (layout: TableLayout<any>) => void;
     };
-    filterPanels: Ref<unknown>;
+    filterPanels: Ref<DefaultRow>;
 }
-export interface TableHeaderProps<T> {
+export interface TableHeaderProps<T extends DefaultRow> {
     fixed: string;
     store: Store<T>;
     border: boolean;
@@ -22,11 +23,11 @@ declare const _default: import("vue").DefineComponent<{
     };
     store: {
         required: true;
-        type: PropType<TableHeaderProps<DefaultRow>["store"]>;
+        type: PropType<TableHeaderProps<any>["store"]>;
     };
     border: BooleanConstructor;
     defaultSort: {
-        type: PropType<TableHeaderProps<DefaultRow>["defaultSort"]>;
+        type: PropType<TableHeaderProps<any>["defaultSort"]>;
         default: () => {
             prop: string;
             order: string;
@@ -58,23 +59,23 @@ declare const _default: import("vue").DefineComponent<{
         cssVarBlockName: (name: string) => string;
     };
     filterPanels: Ref<{}>;
-    onColumnsChange: (layout: import("../table-layout.js").default<any>) => void;
-    onScrollableChange: (layout: import("../table-layout.js").default<any>) => void;
-    columnRows: import("vue").ComputedRef<import("../table-column/defaults.js").TableColumnCtx<unknown>[]>;
+    onColumnsChange: (layout: TableLayout<DefaultRow>) => void;
+    onScrollableChange: (layout: TableLayout<DefaultRow>) => void;
+    columnRows: import("vue").ComputedRef<import("../table-column/defaults.js").TableColumnCtx<any>[][]>;
     getHeaderRowClass: (rowIndex: number) => string;
     getHeaderRowStyle: (rowIndex: number) => any;
-    getHeaderCellClass: (rowIndex: number, columnIndex: number, row: unknown, column: import("../table-column/defaults.js").TableColumnCtx<unknown>) => string;
-    getHeaderCellStyle: (rowIndex: number, columnIndex: number, row: unknown, column: import("../table-column/defaults.js").TableColumnCtx<unknown>) => any;
-    handleHeaderClick: (event: Event, column: import("../table-column/defaults.js").TableColumnCtx<unknown>) => void;
-    handleHeaderContextMenu: (event: Event, column: import("../table-column/defaults.js").TableColumnCtx<unknown>) => void;
-    handleMouseDown: (event: MouseEvent, column: import("../table-column/defaults.js").TableColumnCtx<unknown>) => void;
-    handleMouseMove: (event: MouseEvent, column: import("../table-column/defaults.js").TableColumnCtx<unknown>) => void;
+    getHeaderCellClass: (rowIndex: number, columnIndex: number, row: any, column: import("../table-column/defaults.js").TableColumnCtx<any>) => string;
+    getHeaderCellStyle: (rowIndex: number, columnIndex: number, row: any, column: import("../table-column/defaults.js").TableColumnCtx<any>) => import("vue").CSSProperties;
+    handleHeaderClick: (event: Event, column: import("../table-column/defaults.js").TableColumnCtx<any>) => void;
+    handleHeaderContextMenu: (event: Event, column: import("../table-column/defaults.js").TableColumnCtx<any>) => void;
+    handleMouseDown: (event: MouseEvent, column: import("../table-column/defaults.js").TableColumnCtx<any>) => void;
+    handleMouseMove: (event: MouseEvent, column: import("../table-column/defaults.js").TableColumnCtx<any>) => void;
     handleMouseOut: () => void;
-    handleSortClick: (event: Event, column: import("../table-column/defaults.js").TableColumnCtx<unknown>, givenOrder: string | boolean) => void;
+    handleSortClick: (event: Event, column: import("../table-column/defaults.js").TableColumnCtx<any>, givenOrder?: import("../table/defaults").TableSortOrder | boolean) => void;
     handleFilterClick: (event: Event) => void;
     isGroup: import("vue").ComputedRef<boolean>;
     toggleAllSelection: (event: Event) => void;
-    saveIndexSelection: Map<any, any>;
+    saveIndexSelection: import("@vue/reactivity").Reactive<Map<any, any>>;
     isTableLayoutAuto: boolean;
     theadRef: Ref<any>;
     updateFixedColumnStyle: () => void;
@@ -85,11 +86,11 @@ declare const _default: import("vue").DefineComponent<{
     };
     store: {
         required: true;
-        type: PropType<TableHeaderProps<DefaultRow>["store"]>;
+        type: PropType<TableHeaderProps<any>["store"]>;
     };
     border: BooleanConstructor;
     defaultSort: {
-        type: PropType<TableHeaderProps<DefaultRow>["defaultSort"]>;
+        type: PropType<TableHeaderProps<any>["defaultSort"]>;
         default: () => {
             prop: string;
             order: string;

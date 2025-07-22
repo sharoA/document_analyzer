@@ -5,7 +5,7 @@ declare const _default: import("vue").DefineComponent<{
         readonly validator: ((val: unknown) => boolean) | undefined;
         __epPropKey: true;
     };
-    readonly vertical: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly vertical: BooleanConstructor;
 }, {
     /**
      * @description update alpha slider manually
@@ -29,8 +29,8 @@ declare const _default: import("vue").DefineComponent<{
         readonly validator: ((val: unknown) => boolean) | undefined;
         __epPropKey: true;
     };
-    readonly vertical: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, false, boolean>;
+    readonly vertical: BooleanConstructor;
 }>>, {
-    readonly vertical: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
+    readonly vertical: boolean;
 }>;
 export default _default;

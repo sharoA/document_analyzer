@@ -362,7 +362,7 @@ class InterfaceAdder:
     
     def cleanup_backup_files(self, project_path: str) -> int:
         """
-        清理项目中的所有.backup文件
+        清理项目中的所有备份目录
         
         Args:
             project_path: 项目路径
@@ -375,8 +375,23 @@ class InterfaceAdder:
         try:
             import glob
             import os
+            import shutil
             
-            # 递归查找所有.backup文件
+            # 查找backup目录下的所有strategy1_backup_*目录
+            backup_dir = os.path.join(project_path, "backup")
+            if os.path.exists(backup_dir):
+                backup_dirs = glob.glob(os.path.join(backup_dir, "strategy1_backup_*"))
+                
+                for backup_dir_path in backup_dirs:
+                    if os.path.isdir(backup_dir_path):
+                        try:
+                            shutil.rmtree(backup_dir_path)
+                            logger.info(f"🗑️ 已清理备份目录: {backup_dir_path}")
+                            cleaned_count += 1
+                        except Exception as e:
+                            logger.warning(f"⚠️ 无法删除备份目录 {backup_dir_path}: {e}")
+            
+            # 同时清理旧的.backup文件（向后兼容）
             backup_files = glob.glob(os.path.join(project_path, "**", "*.backup"), recursive=True)
             
             for backup_file in backup_files:

@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 import type { CollapseActiveName } from './collapse';
 export declare const collapseItemProps: {
     readonly title: import("element-plus/es/utils").EpPropFinalized<StringConstructor, unknown, unknown, "", boolean>;
@@ -12,3 +12,4 @@ export declare const collapseItemProps: {
     readonly disabled: BooleanConstructor;
 };
 export type CollapseItemProps = ExtractPropTypes<typeof collapseItemProps>;
+export type CollapseItemPropsPublic = __ExtractPublicPropTypes<typeof collapseItemProps>;

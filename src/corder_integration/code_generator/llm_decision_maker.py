@@ -139,6 +139,9 @@ class LLMDecisionMaker:
 **API路径**: {task_parameters.get('api_path', 'N/A')}
 **HTTP方法**: {task_parameters.get('http_method', 'GET')}
 **Content-Type**: {task_parameters.get('content_type', 'application/json')}
+**接口名称**: {task_parameters.get('interface_name', 'N/A')}
+**接口描述**: {task_parameters.get('interface_description', 'N/A')}
+**业务逻辑**: {task_parameters.get('business_logic', 'N/A')}
 
 **请求参数**:
 """
@@ -194,7 +197,7 @@ class LLMDecisionMaker:
 ## DDD架构分层要求
 当前后端采用DDD（领域驱动设计）架构，请严格遵循以下分层结构：
 
-1. **Controller层** (interfaces/facade): 对外REST接口，负责接收HTTP请求和参数校验
+1. **Controller层** (interfaces/): 对外REST接口，负责接收HTTP请求和参数校验
 2. **Application Service层** (application/service): 应用服务，协调业务流程，不包含业务逻辑
 3. **Domain Service层** (domain/service): 领域服务，核心业务逻辑的实现
 4. **Domain Mapper层** (domain/mapper): 数据访问层接口，定义数据库操作方法
@@ -203,67 +206,6 @@ class LLMDecisionMaker:
 7. **Entity层** (domain/entity): 领域实体，表示业务核心概念
 8. **XML映射** (resources/mapper): MyBatis SQL映射，具体的SQL实现
 
-## 现有项目结构分析
-
-### Controller层 (interfaces/facade)
-{% if controllers %}
-{% for controller in controllers %}
-- {{ controller.class_name }}
-  - 包名: {{ controller.package }}
-  - 现有方法: {{ controller.methods | join(', ') }}
-  - 注解: {{ controller.annotations | join(', ') }}
-{% endfor %}
-{% else %}
-暂无Controller类
-{% endif %}
-
-### Application Service层 (application/service)
-{% if services %}
-{% for service in services %}
-- {{ service.class_name }}
-  - 包名: {{ service.package }}
-  - 现有方法: {{ service.methods | join(', ') }}
-  - 注解: {{ service.annotations | join(', ') }}
-{% endfor %}
-{% else %}
-暂无Application Service类
-{% endif %}
-
-### Domain Service层 (domain/service)
-{% if domain_services %}
-{% for service in domain_services %}
-- {{ service.class_name }}
-  - 包名: {{ service.package }}
-  - 现有方法: {{ service.methods | join(', ') }}
-  - 注解: {{ service.annotations | join(', ') }}
-{% endfor %}
-{% else %}
-暂无Domain Service类
-{% endif %}
-
-### Domain Mapper层 (domain/mapper)
-{% if mappers %}
-{% for mapper in mappers %}
-- {{ mapper.class_name }}
-  - 包名: {{ mapper.package }}
-  - 现有方法: {{ mapper.methods | join(', ') }}
-  - 注解: {{ mapper.annotations | join(', ') }}
-{% endfor %}
-{% else %}
-暂无Mapper类
-{% endif %}
-
-### Feign Client层 (application/feign)
-{% if feign_clients %}
-{% for feign in feign_clients %}
-- {{ feign.class_name }}
-  - 包名: {{ feign.package }}
-  - 现有方法: {{ feign.methods | join(', ') }}
-  - 注解: {{ feign.annotations | join(', ') }}
-{% endfor %}
-{% else %}
-暂无Feign Client类
-{% endif %}
 
 ## 决策原则
 请根据DDD架构原则和业务需求，决定如何实现新的API接口功能：

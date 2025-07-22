@@ -14,7 +14,7 @@ declare const __VLS_component: import("vue").DefineComponent<{
     marker: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, boolean, boolean>;
     type: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => "default" | "underline") | (() => "default" | "underline") | ((new (...args: any[]) => "default" | "underline") | (() => "default" | "underline"))[], unknown, unknown, string, boolean>;
     direction: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => "horizontal" | "vertical") | (() => "horizontal" | "vertical") | ((new (...args: any[]) => "horizontal" | "vertical") | (() => "horizontal" | "vertical"))[], unknown, unknown, string, boolean>;
-    selectScrollTop: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, boolean, boolean>;
+    selectScrollTop: BooleanConstructor;
 }, {
     scrollTo: (href?: string) => void;
 }, unknown, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
@@ -33,7 +33,7 @@ declare const __VLS_component: import("vue").DefineComponent<{
     marker: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, boolean, boolean>;
     type: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => "default" | "underline") | (() => "default" | "underline") | ((new (...args: any[]) => "default" | "underline") | (() => "default" | "underline"))[], unknown, unknown, string, boolean>;
     direction: import("element-plus/es/utils").EpPropFinalized<(new (...args: any[]) => "horizontal" | "vertical") | (() => "horizontal" | "vertical") | ((new (...args: any[]) => "horizontal" | "vertical") | (() => "horizontal" | "vertical"))[], unknown, unknown, string, boolean>;
-    selectScrollTop: import("element-plus/es/utils").EpPropFinalized<BooleanConstructor, unknown, unknown, boolean, boolean>;
+    selectScrollTop: BooleanConstructor;
 }>> & {
     onChange?: ((href: string) => any) | undefined;
     onClick?: ((e: MouseEvent, href?: string | undefined) => any) | undefined;
@@ -44,7 +44,7 @@ declare const __VLS_component: import("vue").DefineComponent<{
     type: import("element-plus/es/utils").EpPropMergeType<(new (...args: any[]) => "default" | "underline") | (() => "default" | "underline") | ((new (...args: any[]) => "default" | "underline") | (() => "default" | "underline"))[], unknown, unknown>;
     duration: number;
     bound: number;
-    selectScrollTop: import("element-plus/es/utils").EpPropMergeType<BooleanConstructor, unknown, unknown>;
+    selectScrollTop: boolean;
 }>;
 declare const _default: __VLS_WithTemplateSlots<typeof __VLS_component, ReturnType<typeof __VLS_template>>;
 export default _default;

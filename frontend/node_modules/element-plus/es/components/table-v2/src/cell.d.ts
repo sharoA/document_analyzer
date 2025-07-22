@@ -1,4 +1,4 @@
-import type { ExtractPropTypes, StyleValue } from 'vue';
+import type { ExtractPropTypes, StyleValue, __ExtractPublicPropTypes } from 'vue';
 export declare const tableV2CellProps: {
     readonly class: StringConstructor;
     readonly cellData: {
@@ -29,3 +29,4 @@ export declare const tableV2CellProps: {
     readonly rowIndex: NumberConstructor;
 };
 export type TableV2CellProps = ExtractPropTypes<typeof tableV2CellProps>;
+export type TableV2CellPropsPublic = __ExtractPublicPropTypes<typeof tableV2CellProps>;

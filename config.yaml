@@ -36,7 +36,7 @@ coder_agent:
     default_branch_pattern: D_{timestamp}_aigc
     default_remote_url: https://github.com/sharoA/testproject.git
   max_tokens: 4000
-  project_root: D:/new_project
+  project_root: /Users/renyu/Documents/create_project
   review_model: ep-20250605091804-wmw6w
   tasks_dir: tasks
   tech_stack_docs_dir: docs/tech-stack
@@ -120,6 +120,6 @@ vector_database:
 volcengine:
   api_key: 7fcb3541-9363-4bfa-90aa-19e9f691bc25
   endpoint: https://ark.cn-beijing.volces.com/api/v3
-  max_tokens: 4000
+  max_tokens: 16000
   model: ep-20250605091804-wmw6w
   temperature: 0.7

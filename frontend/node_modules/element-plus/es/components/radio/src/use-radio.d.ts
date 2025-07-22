@@ -9,6 +9,6 @@ export declare const useRadio: (props: RadioProps | RadioButtonProps, emit?: Set
     size: import("vue").ComputedRef<"" | "small" | "default" | "large">;
     disabled: import("vue").ComputedRef<boolean>;
     tabIndex: import("vue").ComputedRef<0 | -1>;
-    modelValue: import("vue").WritableComputedRef<import("element-plus/es/utils").EpPropMergeType<(NumberConstructor | StringConstructor | BooleanConstructor)[], unknown, unknown> | undefined>;
-    actualValue: import("vue").ComputedRef<import("element-plus/es/utils").EpPropMergeType<(NumberConstructor | StringConstructor | BooleanConstructor)[], unknown, unknown> | undefined>;
+    modelValue: import("vue").WritableComputedRef<import("element-plus/es/utils").EpPropMergeType<(BooleanConstructor | NumberConstructor | StringConstructor)[], unknown, unknown> | undefined>;
+    actualValue: import("vue").ComputedRef<import("element-plus/es/utils").EpPropMergeType<(BooleanConstructor | NumberConstructor | StringConstructor)[], unknown, unknown> | undefined>;
 };

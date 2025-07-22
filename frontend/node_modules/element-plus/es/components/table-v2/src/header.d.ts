@@ -1,4 +1,4 @@
-import type { ExtractPropTypes } from 'vue';
+import type { ExtractPropTypes, __ExtractPublicPropTypes } from 'vue';
 export declare const tableV2HeaderProps: {
     readonly class: StringConstructor;
     readonly columns: {
@@ -41,3 +41,4 @@ export declare const tableV2HeaderProps: {
     };
 };
 export type TableV2HeaderProps = ExtractPropTypes<typeof tableV2HeaderProps>;
+export type TableV2HeaderPropsPublic = __ExtractPublicPropTypes<typeof tableV2HeaderProps>;
