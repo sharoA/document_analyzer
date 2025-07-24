@@ -289,6 +289,9 @@ CREATE TABLE t_cust_multiorg_unit(
   KEY pk_company_id(company_id) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='多组织单元表';
 
+2.2.4 本次项目依赖服务：
+依赖服务名称：无
+
 2.2 确权开立服务 (crcl-open)
 职责：确权开立、额度管理
 
@@ -360,6 +363,12 @@ description: 组织单元额度列表导出
 3、列表头列内容：组织单元名称、额度名称、额度类型、已分配额度（元）、已用额度（元）、可用额度（元）
 4、需要调用zqyl-user-center-service服务的/queryCompanyUnitList接口获取组织单元详细信息
 
+2.2.3 数据库表设计：无
+
+2.2.4 本次项目依赖服务：
+依赖服务名称：zqyl-user-center-service
+
+
 3 执行要求
 3.1 涉及服务范围
 本次没有新增服务，服务范围为：
@@ -398,7 +407,8 @@ redis:
         "use_langgraph": True,
         "output_path": str(analyzer.git_base_path),
         "existing_project_path": selected_project['path'] if selected_project else None,
-        "target_branch": "feature/optimization"
+        "target_branch": "feature/optimization",
+        "project_task_id": "1231000001"
     }
     
     print(f"\n🚀 调用增强版API: {api_url}")
@@ -504,7 +514,8 @@ def test_langgraph_api():
     request_data = {
         "document_content": document_content,
         "project_name": project_name,
-        "use_langgraph": True
+        "use_langgraph": True,
+        "project_task_id": "1231000001"
     }
     
     print(f"🚀 调用API: {api_url}")

@@ -50,7 +50,7 @@ def get_workflow_orchestrator() -> Optional[LangGraphWorkflowOrchestrator]:
         return None
     if _workflow_orchestrator is None:
         try:
-            _workflow_orchestrator = LangGraphWorkflowOrchestrator(use_sqlite=True)
+            _workflow_orchestrator = LangGraphWorkflowOrchestrator()
         except Exception as exc:
             logging.error(f"创建LangGraph工作流编排器失败: {exc}")
             return None
@@ -68,13 +68,19 @@ def process_design_document() -> Union[Response, Tuple[Response, int]]:
         if not data or 'document_content' not in data:
             raise BadRequest("缺少document_content参数")
         
+        # 🆕 project_task_id为必填字段
+        if 'project_task_id' not in data or not data['project_task_id']:
+            raise BadRequest("缺少project_task_id参数，该字段为必填")
+        
         document_content = data['document_content']
+        project_task_id = data['project_task_id']  # 项目唯一标识，必填
         project_name = data.get('project_name', f'project_{int(datetime.now().timestamp())}')
         use_langgraph = data.get('use_langgraph', True)  # 默认使用LangGraph
         execute_immediately = data.get('execute_immediately', True)
         output_path = data.get('output_path', r'D:\gitlab')  # 代码输出路径
         
         logger.info(f"开始处理文档: {project_name}")
+        logger.info(f"项目唯一标识: {project_task_id}")
         logger.info(f"文档长度: {len(document_content)} 字符")
         logger.info(f"使用LangGraph: {use_langgraph}")
         logger.info(f"代码输出路径: {output_path}")
@@ -101,6 +107,7 @@ def process_design_document() -> Union[Response, Tuple[Response, int]]:
                     orchestrator.execute_workflow(
                         document_content=document_content,
                         project_name=project_name,
+                        project_task_id=project_task_id,  # 🆕 传递项目唯一标识
                         output_path=output_path
                     )
                 )
@@ -110,6 +117,7 @@ def process_design_document() -> Union[Response, Tuple[Response, int]]:
             return jsonify({
                 "status": "success",
                 "project_name": project_name,
+                "project_task_id": project_task_id,  # 🆕 返回项目唯一标识
                 "execution_id": f"exec_{int(datetime.now().timestamp())}",
                 "message": "文档处理完成（使用LangGraph工作流）",
                 "document_length": len(document_content),

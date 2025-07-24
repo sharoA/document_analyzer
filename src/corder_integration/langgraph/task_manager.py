@@ -28,10 +28,19 @@ class NodeTaskManager:
         self.max_retries = 3
         self.retry_delay = 1.0
         
-        # 确保数据库文件存在
+        # 🔧 确保数据库文件存在，不存在则自动创建
         if not os.path.exists(self.db_path):
-            logger.error(f"❌ 数据库文件不存在: {self.db_path}")
-            raise FileNotFoundError(f"数据库文件不存在: {self.db_path}")
+            logger.info(f"📋 数据库文件不存在，将自动创建: {self.db_path}")
+            # 确保父目录存在
+            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+            # 创建空的数据库文件（SQLite会自动创建）
+            try:
+                conn = sqlite3.connect(self.db_path)
+                conn.close()
+                logger.info(f"✅ 数据库文件创建成功: {self.db_path}")
+            except Exception as e:
+                logger.error(f"❌ 创建数据库文件失败: {e}")
+                raise e
         
         logger.info(f"📂 使用数据库: {self.db_path}")
     
@@ -69,24 +78,40 @@ class NodeTaskManager:
         logger.error(f"❌ 数据库操作重试{self.max_retries}次后仍然失败: {last_error}")
         raise last_error
     
-    def get_node_tasks(self, task_types: List[str]) -> List[Dict[str, Any]]:
-        """获取指定类型的可执行任务（检查依赖关系）"""
+    def get_node_tasks(self, task_types: List[str], project_task_id: str = None) -> List[Dict[str, Any]]:
+        """获取指定类型的可执行任务（检查依赖关系），可按项目ID过滤"""
         def _get_operation():
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 
+                # 🆕 确保表结构存在（防止旧数据库没有project_task_id列）
+                try:
+                    cursor.execute("SELECT project_task_id FROM execution_tasks LIMIT 1")
+                except Exception:
+                    # 列不存在，添加它
+                    logger.info("🔧 在查询前添加project_task_id列...")
+                    cursor.execute("ALTER TABLE execution_tasks ADD COLUMN project_task_id TEXT")
+                
                 # 构建查询条件
                 task_type_placeholders = ','.join(['?' for _ in task_types])
                 
+                # 根据是否提供project_task_id决定查询条件
+                if project_task_id:
+                    where_clause = f"WHERE task_type IN ({task_type_placeholders}) AND project_task_id = ? AND status != 'expired'"
+                    query_params = task_types + [project_task_id]
+                else:
+                    where_clause = f"WHERE task_type IN ({task_type_placeholders}) AND status != 'expired'"
+                    query_params = task_types
+                
                 cursor.execute(f"""
-                    SELECT task_id, service_name, task_type, priority, dependencies,
+                    SELECT task_id, project_task_id, service_name, task_type, priority, dependencies,
                            estimated_duration, description, deliverables,
                            implementation_details, completion_criteria, parameters,
                            status
                     FROM execution_tasks 
-                    WHERE task_type IN ({task_type_placeholders})
+                    {where_clause}
                     ORDER BY priority ASC, created_at ASC
-                """, task_types)
+                """, query_params)
                 
                 all_tasks = []
                 executable_tasks = []
@@ -104,36 +129,54 @@ class NodeTaskManager:
                     
                     task = {
                         'task_id': row[0],
-                        'service_name': row[1],
-                        'task_type': row[2],
-                        'priority': row[3],
-                        'dependencies': safe_json_loads(row[4], []),
-                        'estimated_duration': row[5],
-                        'description': row[6],
-                        'deliverables': safe_json_loads(row[7], []),
-                        'implementation_details': row[8],
-                        'completion_criteria': row[9],
-                        'parameters': safe_json_loads(row[10], {}),
-                        'status': row[11]
+                        'project_task_id': row[1],  # 🆕 项目唯一标识
+                        'service_name': row[2],
+                        'task_type': row[3],
+                        'priority': row[4],
+                        'dependencies': safe_json_loads(row[5], []),
+                        'estimated_duration': row[6],
+                        'description': row[7],
+                        'deliverables': safe_json_loads(row[8], []),
+                        'implementation_details': row[9],
+                        'completion_criteria': row[10],
+                        'parameters': safe_json_loads(row[11], {}),
+                        'status': row[12]
                     }
                     all_tasks.append(task)
                 
-                # 获取所有已完成的任务ID
-                cursor.execute("SELECT task_id FROM execution_tasks WHERE status = 'completed'")
+                # 获取所有已完成的任务ID（按项目过滤）
+                if project_task_id:
+                    cursor.execute("SELECT task_id FROM execution_tasks WHERE status = 'completed' AND project_task_id = ?", [project_task_id])
+                else:
+                    cursor.execute("SELECT task_id FROM execution_tasks WHERE status = 'completed'")
                 completed_task_ids = set(row[0] for row in cursor.fetchall())
                 
-                # 检查依赖关系，筛选可执行任务
-                for task in all_tasks:
-                    if task['status'] == 'pending':
-                        # 检查所有依赖是否已完成
-                        dependencies = task['dependencies']
-                        if not dependencies:  # 没有依赖的任务可以直接执行
+                # 检查依赖关系，筛选可执行任务 - 使用多轮检查确保顺序无关性
+                pending_tasks = [t for t in all_tasks if t['status'] == 'pending']
+                
+                while True:
+                    newly_executable_found_this_round = False
+                    remaining_pending = []
+                    
+                    for task in pending_tasks:
+                        dependencies = task.get('dependencies', [])
+                        
+                        # 检查所有依赖是否已完成 (completed_task_ids 包含已完成和本轮刚识别为可执行的任务)
+                        all_deps_met = all(dep_id in completed_task_ids for dep_id in dependencies)
+                        
+                        if all_deps_met:
                             executable_tasks.append(task)
+                            completed_task_ids.add(task['task_id']) # 关键：将新识别的任务也视为“已完成”，供后续依赖检查
+                            newly_executable_found_this_round = True
                         else:
-                            # 有依赖的任务，检查依赖是否都已完成
-                            dependencies_met = all(dep_id in completed_task_ids for dep_id in dependencies)
-                            if dependencies_met:
-                                executable_tasks.append(task)
+                            remaining_pending.append(task)
+                    
+                    # 如果本轮没有发现新的可执行任务，或者待处理任务已空，则结束循环
+                    if not newly_executable_found_this_round or not remaining_pending:
+                        break
+                    
+                    # 更新待处理任务列表，准备下一轮检查
+                    pending_tasks = remaining_pending
                 
                 return executable_tasks
         
@@ -248,6 +291,7 @@ class NodeTaskManager:
         except Exception as e:
             logger.error(f"❌ 获取任务统计失败: {e}")
             return {}
+
     
     def _save_single_task(self, task_data: Dict[str, Any]) -> bool:
         """保存单个任务到数据库"""
@@ -255,10 +299,11 @@ class NodeTaskManager:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 
-                # 确保execution_tasks表存在
+                # 确保execution_tasks表存在，并添加project_task_id列
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS execution_tasks (
                         task_id TEXT PRIMARY KEY,
+                        project_task_id TEXT,  -- 🆕 项目唯一标识
                         service_name TEXT NOT NULL,
                         task_type TEXT NOT NULL,
                         priority INTEGER DEFAULT 0,
@@ -275,15 +320,24 @@ class NodeTaskManager:
                     )
                 """)
                 
+                # 🆕 检查并添加project_task_id列（如果不存在）
+                try:
+                    cursor.execute("SELECT project_task_id FROM execution_tasks LIMIT 1")
+                except Exception:
+                    # 列不存在，添加它
+                    logger.info("🔧 添加project_task_id列到现有表...")
+                    cursor.execute("ALTER TABLE execution_tasks ADD COLUMN project_task_id TEXT")
+                
                 # 插入任务
                 cursor.execute("""
                     INSERT OR REPLACE INTO execution_tasks (
-                        task_id, service_name, task_type, priority, dependencies,
+                        task_id, project_task_id, service_name, task_type, priority, dependencies,
                         estimated_duration, description, deliverables,
                         implementation_details, completion_criteria, parameters, status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     task_data['task_id'],
+                    task_data.get('project_task_id'),  # 🆕 项目唯一标识
                     task_data['service_name'],
                     task_data['task_type'],
                     task_data['priority'],

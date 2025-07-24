@@ -68,16 +68,20 @@ class TaskSimpleSplittingNode:
         # 优先使用火山引擎
         if config and config.get('volcengine', {}).get('api_key'):
             try:
+                # 🆕 优先使用编码智能体专用模型配置，如果没有则使用通用配置
+                coder_model = config.get('coder_agent', {}).get('code_generation_model')
+                model_id = coder_model if coder_model else config['volcengine']['model']
+                
                 volcengine_config = VolcengineConfig(
                     api_key=config['volcengine']['api_key'],
-                    model_id=config['volcengine']['model'],
+                    model_id=model_id,
                     base_url=config['volcengine']['endpoint'],
                     temperature=config['volcengine'].get('temperature', 0.1),
                     max_tokens=config['volcengine'].get('max_tokens', 4000)
                 )
                 self.llm_client = VolcengineClient(volcengine_config)
                 self.llm_provider = "volcengine"
-                logger.info(f"✅ 使用火山引擎LLM客户端：{config['volcengine']['model']}")
+                logger.info(f"✅ 使用火山引擎LLM客户端：{model_id}{'(编码智能体专用)' if coder_model else '(通用配置)'}")
             except Exception as e:
                 logger.error(f"❌ 火山引擎初始化失败: {e}")
         
@@ -93,47 +97,138 @@ class TaskSimpleSplittingNode:
         logger.info("🚀 开始简化版任务拆分")
         
         try:
-            # 获取设计文档
+            # 获取设计文档和项目信息
             design_doc = state.get('design_doc', '')
             project_name = state.get('project_name', 'default_project')
+            project_task_id = state.get('project_task_id')  # 🆕 获取项目唯一标识
             
             logger.info(f"📄 设计文档长度: {len(design_doc)}")
             logger.info(f"📋 项目名称: {project_name}")
+            logger.info(f"🏷️ 项目标识: {project_task_id}")
             
-            # 智能解析设计文档
-            if self.llm_client:
-                parsed_info = self._llm_parse_design_document(design_doc)
-            else:
-                parsed_info = self._rule_parse_design_document(design_doc)
+            # 使用现有的Jinja2模板生成任务
+            tasks = self._generate_tasks_with_template(design_doc, project_name, project_task_id)
             
-            # 生成任务序列
-            tasks = self._generate_task_sequence(parsed_info, project_name)
-            
-            # 生成SQL文件
-            sql_content = self._generate_sql_content(tasks)
-            output_file = self._save_sql_file(sql_content, project_name)
+            if not tasks:
+                logger.warning("⚠️ 未生成任何任务")
+                return self._empty_result()
             
             logger.info(f"✅ 任务拆分完成，生成 {len(tasks)} 个任务")
-            logger.info(f"📁 SQL文件保存到: {output_file}")
             
-            # 同时保存到SQLite数据库用于工作流
-            self._save_to_database(tasks)
+            # 🆕 添加任务详情日志
+            for i, task in enumerate(tasks[:3]):  # 只显示前3个任务避免日志过长
+                logger.info(f"📋 任务 {i+1}: {task.get('task_type', 'unknown')} - {task.get('description', 'no description')[:50]}...")
+            if len(tasks) > 3:
+                logger.info(f"📋 还有 {len(tasks) - 3} 个任务未显示")
+            
+            # 保存到SQLite数据库用于工作流
+            self._save_to_database(tasks, project_task_id)
+            
+            # 提取服务信息
+            services = list(set([task.get('service_name', '未知服务') for task in tasks if task.get('service_name')]))
             
             return {
-                'identified_services': parsed_info.get('services', []),
-                'service_dependencies': parsed_info.get('dependencies', {}),
-                'task_execution_plan': {'total_tasks': len(tasks), 'sql_file': output_file},
-                'parallel_tasks': [{'task_id': task['task_id'], 'task_type': task['task_type']} for task in tasks]
+                'identified_services': services,
+                'service_dependencies': {},  # 简化版本暂不处理复杂依赖
+                'task_execution_plan': {'total_tasks': len(tasks)},
+                'parallel_tasks': [{'batch_id': 'batch_1', 'services': services, 'dependencies': []}],
+                'generated_tasks': tasks,
+                'current_phase': 'intelligent_coding'
             }
             
         except Exception as e:
             logger.error(f"❌ 任务拆分失败: {e}")
-            return {
-                'identified_services': [],
-                'service_dependencies': {},
-                'task_execution_plan': {},
-                'parallel_tasks': []
-            }
+            return self._empty_result()
+    
+    def _empty_result(self):
+        """返回空结果"""
+        return {
+            'identified_services': [],
+            'service_dependencies': {},
+            'task_execution_plan': {},
+            'parallel_tasks': [],
+            'generated_tasks': [],
+            'current_phase': 'intelligent_coding'
+        }
+    
+    def _generate_tasks_with_template(self, design_doc: str, project_name: str, project_task_id: str) -> List[Dict[str, Any]]:
+        """使用Jinja2模板生成任务"""
+        try:
+            from jinja2 import Environment, FileSystemLoader
+            
+            # 设置模板目录
+            template_dir = os.path.join(os.path.dirname(__file__), "..", "prompts")
+            env = Environment(loader=FileSystemLoader(template_dir))
+            
+            # 加载模板
+            template = env.get_template("task_splitting/generate_sqlite_tasks_prompts.jinja2")
+            
+            # 渲染模板
+            base_project_path = f"/Users/renyu/Documents/create_project/{project_name}"
+            prompt = template.render(
+                design_doc=design_doc,
+                services_summary="基于设计文档的服务拆分",
+                base_project_path=base_project_path,
+                project_task_id=project_task_id
+            )
+            
+            logger.info("🎯 使用Jinja2模板生成任务...")
+            logger.info(f"📝 渲染后的提示词长度: {len(prompt)}")
+            logger.info(f"📄 提示词内容:\n{prompt[:2000]}...")  # 显示前2000字符以便调试
+            
+            # 调用LLM
+            if not self.llm_client:
+                logger.error("❌ LLM客户端未初始化")
+                return []
+            
+            response = self.llm_client.chat(
+                messages=[
+                    {"role": "system", "content": "你是任务管理专家。请严格按照模板格式生成任务，确保包含project_task_id字段。"},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1
+            )
+            
+            logger.info(f"✅ LLM响应接收完成，长度: {len(response)}")
+            logger.info(f"📄 LLM完整响应内容:\n{response}")  # 显示完整响应以便调试
+            
+            # 解析JSON响应
+            json_str = self._extract_json_from_response(response)
+            if not json_str:
+                logger.error("❌ 无法从响应中提取JSON内容")
+                logger.debug(f"原始响应: {response[:1000]}...")
+                return []
+            
+            # 解析JSON字符串为字典
+            try:
+                task_data = json.loads(json_str)
+                logger.info(f"✅ JSON解析成功，数据类型: {type(task_data)}")
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ JSON解析失败: {e}")
+                logger.error(f"JSON内容: {json_str[:500]}...")
+                return []
+            
+            tasks = task_data.get('tasks', [])
+            logger.info(f"📋 从JSON中提取的任务数量: {len(tasks)}")
+            
+            if not tasks:
+                logger.warning("⚠️ JSON中没有tasks字段或tasks为空")
+                logger.debug(f"task_data内容: {task_data}")
+                return []
+            
+            # 🆕 为每个任务添加project_task_id
+            if project_task_id:
+                for task in tasks:
+                    task['project_task_id'] = project_task_id
+                logger.info(f"✅ 已为 {len(tasks)} 个任务添加项目标识: {project_task_id}")
+            
+            return tasks
+            
+        except Exception as e:
+            logger.error(f"❌ 模板生成任务失败: {e}")
+            import traceback
+            logger.error(f"详细错误: {traceback.format_exc()}")
+            return []
     
     def _llm_parse_design_document(self, design_doc: str) -> Dict[str, Any]:
         """使用LLM智能解析设计文档"""
@@ -669,27 +764,121 @@ class TaskSimpleSplittingNode:
             logger.error(f"❌ SQL文件保存失败: {e}")
             return ""
     
-    def _save_to_database(self, tasks: List[Dict[str, Any]]):
+    def _save_to_database(self, tasks: List[Dict[str, Any]], project_task_id: str):
         """保存任务到SQLite数据库"""
         try:
-            from src.corder_integration.langgraph.task_manager import TaskManager
-            task_manager = TaskManager()
+            from src.corder_integration.langgraph.task_manager import NodeTaskManager
+            task_manager = NodeTaskManager()
             
-            for task in tasks:
-                task_manager.create_task(
-                    task_id=task['task_id'],
-                    task_type=task['task_type'],
-                    status=task['status'],
-                    description=task['description'],
-                    parameters=json.loads(task['parameters']),
-                    dependencies=json.loads(task['dependencies']),
-                    priority=task['priority']
-                )
+            logger.info(f"💾 开始保存 {len(tasks)} 个任务到数据库...")
+            
+            # 🆕 删除相同project_task_id的旧任务
+            if project_task_id:
+                self._delete_old_tasks(task_manager, project_task_id)
+            
+            for i, task in enumerate(tasks):
+                # 使用新的任务管理器保存格式
+                task_data = {
+                    'task_id': task.get('task_id'),
+                    'project_task_id': task.get('project_task_id'),  # 🆕 项目唯一标识
+                    'service_name': task.get('service_name', '系统'),
+                    'task_type': task.get('task_type', 'api'),
+                    'priority': task.get('priority', 1),
+                    'dependencies': task.get('dependencies', []),
+                    'estimated_duration': task.get('estimated_duration', '30分钟'),
+                    'description': task.get('description', ''),
+                    'deliverables': task.get('deliverables', []),
+                    'implementation_details': task.get('implementation_details', ''),
+                    'completion_criteria': task.get('completion_criteria', ''),
+                    'parameters': task.get('parameters', {}),
+                    'status': 'pending'
+                }
+                
+                logger.debug(f"保存任务 {i+1}/{len(tasks)}: {task_data['task_id']} - {task_data['description'][:50]}...")
+                
+                # 使用新的保存方法
+                success = task_manager._save_single_task(task_data)
+                if not success:
+                    logger.warning(f"⚠️ 任务 {task_data['task_id']} 保存失败")
+                else:
+                    logger.debug(f"✅ 任务 {task_data['task_id']} 保存成功")
             
             logger.info(f"✅ 任务已保存到数据库，共 {len(tasks)} 个")
             
         except Exception as e:
-            logger.warning(f"⚠️ 保存到数据库失败: {e}")
+            logger.error(f"❌ 保存任务到数据库失败: {e}")
+            import traceback
+            logger.error(f"详细错误: {traceback.format_exc()}")
+            # 不抛出异常，允许工作流继续
+            logger.warning(f"⚠️ 保存到数据库失败，但工作流将继续执行")
+    
+    def _delete_old_tasks(self, task_manager, project_task_id: str):
+        """软删除相同project_task_id的旧任务，将状态改为已过期"""
+        try:
+            logger.info(f"🗂️ 标记项目 {project_task_id} 的旧任务为已过期...")
+            
+            # 获取数据库连接
+            with task_manager._get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 先查询要标记为过期的任务数量
+                cursor.execute("""
+                    SELECT COUNT(*) FROM execution_tasks 
+                    WHERE project_task_id = ? AND status != 'expired'
+                """, (project_task_id,))
+                
+                old_count = cursor.fetchone()[0]
+                
+                if old_count > 0:
+                    logger.info(f"📋 发现 {old_count} 个旧任务，准备标记为已过期")
+                    
+                    # 将该项目的所有非过期任务标记为已过期
+                    cursor.execute("""
+                        UPDATE execution_tasks 
+                        SET status = 'expired', 
+                            updated_at = datetime('now', 'localtime')
+                        WHERE project_task_id = ? AND status != 'expired'
+                    """, (project_task_id,))
+                    
+                    expired_count = cursor.rowcount
+                    logger.info(f"✅ 成功标记 {expired_count} 个旧任务为已过期")
+                else:
+                    logger.info("📋 没有发现需要过期的旧任务，直接创建新任务")
+                
+        except Exception as e:
+            logger.error(f"❌ 标记旧任务为过期失败: {e}")
+            # 不抛出异常，允许工作流继续
+
 
 # 创建节点实例
-task_simple_splitting_node = TaskSimpleSplittingNode()
+task_simple_splitting_node_instance = TaskSimpleSplittingNode()
+
+# 异步节点函数供LangGraph使用
+async def task_simple_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
+    """简化版任务拆分节点 - LangGraph异步接口"""
+    logger.info("🚀 简化版任务拆分节点开始执行...")
+    
+    try:
+        # 调用实例方法
+        result = task_simple_splitting_node_instance(state)
+        
+        # 更新状态
+        state.update(result)
+        
+        logger.info(f"✅ 简化版任务拆分完成，识别 {len(result.get('identified_services', []))} 个服务")
+        
+        return state
+        
+    except Exception as e:
+        logger.error(f"❌ 简化版任务拆分失败: {e}")
+        
+        # 返回失败状态但不中断工作流
+        state.update({
+            'identified_services': [],
+            'service_dependencies': {},
+            'task_execution_plan': {},
+            'parallel_tasks': [],
+            'current_phase': 'intelligent_coding'
+        })
+        
+        return state

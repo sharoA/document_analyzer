@@ -56,10 +56,10 @@ class FunctionCallingCodeGenerator:
         
         try:
             # 准备function calling
-            if self.supports_function_calling:
-                return self._generate_with_function_calling(layer, layer_decision, context)
-            else:
-                return self._generate_with_prompt_description(layer, layer_decision, context)
+            # if self.supports_function_calling:
+            return self._generate_with_function_calling(layer, layer_decision, context)
+            # else:
+            #     return self._generate_with_prompt_description(layer, layer_decision, context)
                 
         except Exception as e:
             logger.error(f"❌ 生成{layer}代码失败: {e}")
@@ -130,148 +130,87 @@ class FunctionCallingCodeGenerator:
     
     def _build_function_calling_prompt(self, layer: str, layer_decision: Dict[str, Any], 
                                      context: Dict[str, Any]) -> str:
-        """构建function calling提示词"""
+        """构建function calling提示词 - 使用简单模板加载"""
         
+        try:
+            # 使用简单的文件读取方式，而不是Jinja2 Environment
+            template_path = Path(__file__).parent.parent / 'langgraph' / 'prompts' / 'code_generator' / 'function_calling_prompt.jinja2'
+            
+            if not template_path.exists():
+                logger.error(f"❌ 模板文件不存在: {template_path}")
+                return self._build_simple_prompt(layer, layer_decision, context)
+            
+            # 读取模板内容
+            template_content = template_path.read_text(encoding='utf-8')
+            
+            # 准备模板变量
+            api_path = context.get('api_path', '')
+            api_keyword = context.get('api_keyword', '')
+            business_logic = context.get('business_logic', '')
+            base_package = context.get('base_package', '')
+            action = layer_decision.get('action', 'none')
+            target_class = layer_decision.get('target_class', '')
+            package_path = layer_decision.get('package_path', '')
+            
+            project_structure = context.get('project_structure', {}).get('directory_tree', '项目结构信息不可用')
+            project_path = context.get('project_structure', {}).get('project_path', '')
+            
+            # 使用简单的字符串替换（类似Jinja2但更简单）
+            template_vars = {
+                'layer': layer,
+                'api_path': api_path,
+                'business_logic': business_logic,
+                'detailed_params': self._extract_detailed_params(context),
+                'action': action,
+                'target_class': target_class,
+                'package_path': package_path,
+                'api_keyword': api_keyword,
+                'base_package': base_package,
+                'base_package_path': base_package.replace('.', '/'),
+                'project_structure': project_structure,
+                'project_path': project_path
+            }
+            
+            # 简单的模板变量替换
+            prompt = template_content
+            for var_name, var_value in template_vars.items():
+                placeholder = "{{ " + var_name + " }}"
+                prompt = prompt.replace(placeholder, str(var_value))
+            
+            logger.info(f"✅ 成功使用简单模板渲染function_calling_prompt")
+            return prompt
+            
+        except Exception as e:
+            logger.error(f"❌ 模板加载失败: {e}")
+            return self._build_simple_prompt(layer, layer_decision, context)
+    
+    def _build_simple_prompt(self, layer: str, layer_decision: Dict[str, Any], context: Dict[str, Any]) -> str:
+        """构建简单提示词（无模板依赖）"""
         api_keyword = context.get('api_keyword', '')
         business_logic = context.get('business_logic', '')
         base_package = context.get('base_package', '')
         action = layer_decision.get('action', 'create_new')
         target_class = layer_decision.get('target_class', '')
-        package_path = layer_decision.get('package_path', '')
         
-        prompt = f"""你是一个Java Spring Boot项目的DDD架构师，需要根据决策结果和详细业务需求生成{layer}层的代码。
+        return """你是一个Java Spring Boot项目的DDD架构师，需要生成{}层的代码。
 
-## 🎯 业务需求详情
-### API路径：{context.get('api_path', '')}
-### 业务逻辑：{business_logic}
+## 任务信息
+- 层级: {}
+- 决策: {}
+- 目标类: {}
+- API关键字: {}
+- 业务逻辑: {}
+- 基础包名: {}
 
-### 详细参数信息（如果有）：
-{self._extract_detailed_params(context)}
+## 要求
+1. 生成完整的Java代码
+2. 遵循DDD架构规范
+3. 包含必要的注解和依赖注入
+4. 处理异常和错误情况
 
-## 📋 任务信息
-- 层级: {layer}
-- 决策: {action}
-- 目标类: {target_class}
-- 包路径: {package_path}
-- API关键字: {api_keyword}
-- 业务逻辑: {business_logic}
-- 基础包名: {base_package}
-
-## 📁 完整项目结构
-{{context.get('project_structure', {{}}).get('directory_tree', '项目结构信息不可用')}}
-
-## 🎯 重要路径规则
-⚠️ 文件路径规则（相对于项目根目录）：
-- 项目根路径：{{context.get('project_structure', {{}}).get('project_path', '')}}
-- Java源码根路径：src/main/java/
-- 基础包路径：{{base_package.replace('.', '/')}}
-
-### DDD目录结构示例（相对路径）：
-**注意：所有路径都是相对于项目根目录的相对路径！**
-- Controller: src/main/java/{{base_package.replace('.', '/')}}/interfaces/XxxController.java
-- DTO Request: src/main/java/{{base_package.replace('.', '/')}}/interfaces/dto/XxxReq.java  
-- DTO Response: src/main/java/{{base_package.replace('.', '/')}}/interfaces/dto/XxxResp.java
-- Application Service: src/main/java/{{base_package.replace('.', '/')}}/application/service/XxxApplication.java
-- Domain Service: src/main/java/{{base_package.replace('.', '/')}}/domain/service/XxxDomainService.java
-- Mapper Interface: src/main/java/{{base_package.replace('.', '/')}}/domain/mapper/XxxMapper.java
-- Entity: src/main/java/{{base_package.replace('.', '/')}}/domain/entity/XxxEntity.java
-- Feign Client: src/main/java/{{base_package.replace('.', '/')}}/application/feign/XxxFeignClient.java
-- XML Mapping: src/main/resources/mapper/XxxMapper.xml
-
-### 路径转换规则：
-- 包路径 com.yljr.crcl.limit.interfaces.dto → 文件路径 src/main/java/com/yljr/crcl/limit/interfaces/dto/
-- 类名 LsLimitQueryRequest → 文件名 LsLimitQueryRequest.java
-
-### 🚨 关键路径要求：
-1. **必须使用相对路径**：所有文件路径必须是相对于项目根目录的相对路径
-2. **不要重复路径**：不要在路径中包含项目根路径部分
-3. **正确的包名**：使用 {{base_package}} 作为基础包名，而不是 com.yljr.crcl
-4. **文件路径示例**：
-   - ✅ 正确：src/main/java/{{base_package.replace('.', '/')}}/interfaces/dto/XxxReq.java
-   - ❌ 错误：任何包含项目根路径的绝对路径
-
-⚠️ 重要：使用file_exists、read_file、write_file时，必须使用完整的相对路径！
-
-## 💻 代码生成要求
-1. **完整实现业务逻辑**：根据request_params、response_params、validation_rules生成完整代码
-2. **处理外部服务调用**：如果有external_call，要生成对应的Feign Client
-3. **数据验证**：根据validation_rules生成参数校验
-4. **分页处理**：如果有分页参数，要正确实现分页逻辑
-5. **错误处理**：添加适当的异常处理和错误返回
-
-## DDD架构要求
-严格遵循DDD架构的分层原则，确保代码质量和架构一致性。
-
-## 文件操作指导
-优先使用高效的文件操作方式：
-
-**🎯 推荐方法（避免JSON截断）**：
-- replace_text: 局部替换文本内容（推荐用于在现有类中添加方法）
-- read_file: 读取现有文件内容
-
-**常规方法**：
-- write_file: 写入文件内容（仅用于小文件或新文件）
-- list_files: 列出目录中的文件
-- file_exists: 检查文件是否存在
-- create_directory: 创建目录
-- backup_file: 备份文件
-
-**💡 添加方法的最佳实践**：
-当需要在现有类中添加方法时，使用 `replace_text` 工具：
-1. 使用 `read_file` 读取文件，找到类的最后一个 `}}`
-2. 使用 `replace_text`，将最后的 `}}` 替换为 `[新方法的完整代码]\\n}}`
-
-## 📋 必须完成的工作流程
-请严格按照以下步骤执行，**每个步骤都必须完成**：
-
-### 步骤1：文件检查
-- 使用 `file_exists` 检查目标文件是否存在
-- 确定采用 create_new 还是 enhance_existing 策略
-
-### 步骤2：现有文件分析（如果需要增强）
-- 如果是enhance_existing，使用 `read_file` 读取现有文件内容
-- 分析现有的import、字段、方法结构
-
-### 步骤3：生成完整代码
-- 根据业务需求生成完整的Java代码
-- 包含所有必要的包声明、import、注解、字段和方法
-- 如果是增强现有文件，准备新方法代码
-
-### 步骤4：写入文件（🚨 关键步骤）
-**选择合适的写入方式**：
-- **新文件或小文件**：使用 `write_file` 函数写入完整内容
-- **大文件增强**：使用 `replace_text` 函数局部替换（推荐）
-  - 例如：将类的最后 `}}` 替换为 `[新方法代码]\\n}}`
-
-### 步骤5：确认完成
-- 在写入文件后，简要说明生成的内容
-
-## ⚠️ 重要提醒
-- ** 关键任务：必须调用文件写入函数（write_file 或 replace_text）将代码写入文件！**
-- ** 不要只检查文件存在性就结束，必须生成并写入代码**
-- ** 任务未完成标准：如果没有调用文件写入函数，任务就是失败的**
-- ** 优先使用 replace_text 避免大文件JSON截断问题**
-- 如果文件不存在，要创建新文件
-- 如果文件存在且需要增强，要读取后使用 replace_text 添加新方法
-## 📋 必须完成的完整流程
-**请严格按照以下流程执行，缺一不可：**
-1. 📋 使用 `file_exists` 检查目标文件是否存在
-2. 📖 如果文件存在且需要增强，使用 `read_file` 读取现有内容
-3. 🔨 生成完整的代码内容（不是代码片段）
-4. 📝 **必须使用 `write_file` 函数写入生成的代码**
-5. ✅ 确认写入成功
-
-**⛔ 严禁：只执行步骤1就结束！必须完成所有步骤！**
-
-## 注意事项
-- 确保生成的代码符合Java语法和DDD架构规范
-- 包含完整的package声明、import语句、类定义
-- 如果是增强现有文件，保留原有的import、注解和方法
-- 生成的是完整文件内容，不是代码片段
-
-现在开始执行任务，请确保完成所有5个步骤！"""
+请生成完整的代码实现。""".format(layer, layer, action, target_class, api_keyword, business_logic, base_package)
         
-        return prompt
+       
     
     def _extract_detailed_params(self, context: Dict[str, Any]) -> str:
         """从上下文中提取详细的API参数信息"""
@@ -351,12 +290,12 @@ class FunctionCallingCodeGenerator:
 请在你的响应中使用以下格式来调用文件操作：
 
 ```function_call
-{{
+{{{{
     "function": "read_file",
-    "parameters": {{
+    "parameters": {{{{
         "file_path": "src/main/java/com/example/Controller.java"
-    }}
-}}
+    }}}}
+}}}}
 ```
 
 可用函数：

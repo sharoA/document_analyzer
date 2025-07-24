@@ -24,14 +24,16 @@ class CodeReviewAgent:
         self.node_name = "code_review_node"
         self.supported_task_types = ["code_analysis", "database", "api", "config"]
     
-    def execute_task_from_database(self) -> List[Dict[str, Any]]:
+    def execute_task_from_database(self, project_task_id: str = None) -> List[Dict[str, Any]]:
         """从数据库领取并执行代码审查任务"""
         logger.info(f"🎯 {self.node_name} 开始执行任务...")
+        if project_task_id:
+            logger.info(f"🏷️ 过滤项目任务标识: {project_task_id}")
         
         execution_results = []
         
-        # 获取可执行的任务
-        available_tasks = self.task_manager.get_node_tasks(self.supported_task_types)
+        # 🔧 修复：获取可执行的任务时传递项目标识
+        available_tasks = self.task_manager.get_node_tasks(self.supported_task_types, project_task_id)
         
         if not available_tasks:
             logger.info("ℹ️ 没有可执行的代码审查任务")
@@ -320,8 +322,13 @@ async def code_review_node(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         review_agent = CodeReviewAgent()
         
-        # 执行数据库中的任务
-        task_results = review_agent.execute_task_from_database()
+        # 🆕 获取项目任务标识
+        project_task_id = state.get('project_task_id')
+        if project_task_id:
+            logger.info(f"🏷️ 代码审查节点获取项目标识: {project_task_id}")
+        
+        # 🔧 修复：执行数据库中的任务时传递项目标识
+        task_results = review_agent.execute_task_from_database(project_task_id)
         
         # 将任务执行结果添加到状态中
         review_operations = state.get('review_operations', [])

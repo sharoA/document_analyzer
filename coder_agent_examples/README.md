@@ -286,7 +286,7 @@ coder_agent:
   test_coverage_target: 0.8            # 测试覆盖率目标
   
   # AI配置
-  code_generation_model: "gpt-4"       # 代码生成模型
+  code_generation_model: ""       # 代码生成模型
   max_tokens: 4000                     # 最大token数
 ```
 

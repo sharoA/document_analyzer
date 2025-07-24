@@ -47,11 +47,17 @@ c.列表字段：
 - 数据访问：MyBatis Plus 3.5.x
 - 数据库：MySQL 8.0
 - 缓存：Redis 6.0
-- 消息队列：RabbitMQ 3.8
+- 分布式锁：redisson
+- 消息队列：Apache RocketMQ
 - 服务发现：Nacos
 - 配置中心：Nacos
 - 后端分页：pageHelper
+- 调度框架：XXL-JOB
+- Excel处理：Alibaba EasyExcel
+- 日志和监控：SLF4J
+- 注解和工具：Lombok
 - 部署：将代码提交到git分支即可
+- 开发语言版本：java 1.8
 
 2. 服务设计
 
@@ -106,6 +112,9 @@ CREATE TABLE t_cust_multiorg_unit(
   PRIMARY KEY(id),
   KEY pk_company_id(company_id) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='多组织单元表';
+
+2.2.4 本次项目依赖服务：
+依赖服务名称：无
 
 2.2 确权开立服务 (crcl-open)
 职责：确权开立、额度管理
@@ -177,6 +186,12 @@ description: 组织单元额度列表导出
 2、文件类型为Excel列表，文件类型：xlsx
 3、列表头列内容：组织单元名称、额度名称、额度类型、已分配额度（元）、已用额度（元）、可用额度（元）
 4、需要调用zqyl-user-center-service服务的/queryCompanyUnitList接口获取组织单元详细信息
+
+2.2.3 数据库表设计：无
+
+2.2.4 本次项目依赖服务：
+依赖服务名称：zqyl-user-center-service
+
 
 3 执行要求
 3.1 涉及服务范围

@@ -2444,6 +2444,13 @@ const generateCode = async () => {
     return
   }
   
+  // 获取当前分析任务的ID
+  const taskId = wsStore.currentParsingTask?.id
+  if (!taskId) {
+    ElMessage.error('无法获取任务ID，请重新分析文档')
+    return
+  }
+  
   isGeneratingCode.value = true
   
   try {
@@ -2451,7 +2458,8 @@ const generateCode = async () => {
     
     const response = await apiClient.post('/api/coder-agent/process-document', {
       document_content: analysisResult.value.markdownContent,
-      project_name: projectName
+      project_name: projectName,
+      project_task_id: taskId
     })
     
     if (response.data.status === 'success') {

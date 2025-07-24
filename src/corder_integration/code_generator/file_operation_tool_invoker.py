@@ -45,6 +45,11 @@ class FileOperationToolInvoker:
                         'file_path': {
                             'type': 'string',
                             'description': '相对于项目根目录的文件路径，如: src/main/java/com/example/Controller.java'
+                        },
+                        'limit': {
+                            'type': 'integer',
+                            'description': '可选的字符数限制，仅在文件超过20000字符时使用。⚠️警告：设置过小的值（如<2000字符）会导致无法看到完整的类结构，影响代码生成质量。如无特殊需要，建议不设置此参数',
+                            'minimum': 2000
                         }
                     },
                     'required': ['file_path']
@@ -52,7 +57,7 @@ class FileOperationToolInvoker:
             },
             'write_file': {
                 'name': 'write_file',
-                'description': '写入文件内容（会自动备份原文件）',
+                'description': '写入文件内容（会自动备份原文件）。⚠️警告：仅适用于小文件(<3000字符)或新文件，大文件会导致JSON截断',
                 'parameters': {
                     'type': 'object',
                     'properties': {
@@ -76,7 +81,7 @@ class FileOperationToolInvoker:
             },
             'replace_text': {
                 'name': 'replace_text',
-                'description': '在文件中替换指定的文本内容（适用于局部修改，避免重写整个大文件）。常用于在类中添加新方法：将类的最后一个 } 替换为 [新方法代码]\n}',
+                'description': '在文件中替换指定的文本内容（🎯推荐用于大文件修改，避免JSON截断）。常用场景：在现有类中添加新方法，将类的最后一个}替换为[新方法代码]\\n}。优势：只传输替换文本，不传输整个文件内容',
                 'parameters': {
                     'type': 'object',
                     'properties': {
@@ -202,8 +207,13 @@ class FileOperationToolInvoker:
                 'function_name': function_name
             }
     
-    def _read_file(self, file_path: str) -> str:
-        """读取文件内容"""
+    def _read_file(self, file_path: str, limit: Optional[int] = None) -> str:
+        """读取文件内容
+        
+        Args:
+            file_path: 文件路径
+            limit: 可选的字符数限制，用于避免读取过大的文件
+        """
         full_path = self.project_path / file_path
         
         # 安全检查：确保文件在项目目录内
@@ -215,12 +225,32 @@ class FileOperationToolInvoker:
         
         try:
             content = full_path.read_text(encoding='utf-8')
-            logger.info(f"📖 读取文件: {file_path} ({len(content)} 字符)")
+            
+            # 如果指定了limit参数，截取内容
+            if limit is not None and limit > 0:
+                if len(content) > limit:
+                    content = content[:limit]
+                    logger.info(f"📖 读取文件 (限制{limit}字符): {file_path} ({len(content)} 字符，已截断)")
+                else:
+                    logger.info(f"📖 读取文件: {file_path} ({len(content)} 字符)")
+            else:
+                logger.info(f"📖 读取文件: {file_path} ({len(content)} 字符)")
+            
             return content
         except UnicodeDecodeError:
             # 尝试其他编码
             content = full_path.read_text(encoding='gbk')
-            logger.info(f"📖 读取文件 (GBK): {file_path} ({len(content)} 字符)")
+            
+            # 如果指定了limit参数，截取内容
+            if limit is not None and limit > 0:
+                if len(content) > limit:
+                    content = content[:limit]
+                    logger.info(f"📖 读取文件 (GBK, 限制{limit}字符): {file_path} ({len(content)} 字符，已截断)")
+                else:
+                    logger.info(f"📖 读取文件 (GBK): {file_path} ({len(content)} 字符)")
+            else:
+                logger.info(f"📖 读取文件 (GBK): {file_path} ({len(content)} 字符)")
+            
             return content
     
     def _write_file(self, file_path: str, content: str, mode: str = 'overwrite') -> str:

@@ -25,6 +25,25 @@ class GitManagerAgent:
         self.task_manager = NodeTaskManager()
         self.node_name = "git_management_node"
         self.supported_task_types = ["git_extraction", "git_clone"]
+        # 🆕 统一的分支名称，在初始化时生成一次
+        self._branch_name = None
+    
+    def _generate_unified_branch_name(self, project_name: str) -> str:
+        """统一生成分支名称，确保整个生命周期使用相同的分支名"""
+        if self._branch_name is None:
+            from datetime import datetime
+            import re
+            
+            # 生成日期时间格式：YYYYMMDDHHMM
+            current_time = datetime.now().strftime("%Y%m%d%H%M")
+            
+            # 清理项目名称，只保留中文和英文字符
+            clean_project_name = re.sub(r'[^\u4e00-\u9fa5a-zA-Z]', '', project_name)
+            
+            self._branch_name = f"D_{current_time}_{clean_project_name}"
+            logger.info(f"🌿 生成统一分支名称: {self._branch_name}")
+        
+        return self._branch_name
     
     def extract_git_urls_from_text(self, text: str) -> List[Dict[str, str]]:
         """从文本中提取Git URL - 支持多种格式"""
@@ -68,7 +87,21 @@ class GitManagerAgent:
         logger.info(f"📥 开始克隆仓库: {repo_url} -> {target_dir}")
         
         try:
-            # 确保目标目录存在
+            # 🆕 检查目标目录是否已存在
+            if os.path.exists(target_dir):
+                logger.warning(f"⚠️ 目标目录已存在，将清理后重新克隆: {target_dir}")
+                import shutil
+                try:
+                    shutil.rmtree(target_dir)
+                    logger.info(f"✅ 已清理旧目录: {target_dir}")
+                except Exception as e:
+                    logger.error(f"❌ 清理目录失败: {e}")
+                    return {
+                        'success': False,
+                        'message': f'清理目录失败: {str(e)}'
+                    }
+            
+            # 确保父目录存在
             Path(target_dir).parent.mkdir(parents=True, exist_ok=True)
             
             # 🔧 修复编码问题：指定UTF-8编码和错误处理
@@ -90,26 +123,45 @@ class GitManagerAgent:
                     'stderr': error_msg
                 }
             
-            # 切换到指定分支
+            # 创建新分支或切换到指定分支
             if os.path.exists(target_dir):
+                original_cwd = os.getcwd()
                 os.chdir(target_dir)
                 
-                # 🔧 同样修复分支切换的编码问题
-                branch_result = subprocess.run(
-                    ["git", "checkout", branch],
-                    capture_output=True,
-                    text=True,
-                    encoding='utf-8',
-                    errors='replace'
-                )
+                try:
+                    # 🆕 如果分支名包含 "D_" 前缀，说明是新分支，需要创建
+                    if branch.startswith("D_"):
+                        # 创建并切换到新分支
+                        branch_result = subprocess.run(
+                            ["git", "checkout", "-b", branch],
+                            capture_output=True,
+                            text=True,
+                            encoding='utf-8',
+                            errors='replace'
+                        )
+                        
+                        if branch_result.returncode == 0:
+                            logger.info(f"✅ 已创建并切换到新分支: {branch}")
+                        else:
+                            logger.warning(f"⚠️ 新分支创建失败，保持master分支: {branch_result.stderr}")
+                    else:
+                        # 🔧 切换到现有分支
+                        branch_result = subprocess.run(
+                            ["git", "checkout", branch],
+                            capture_output=True,
+                            text=True,
+                            encoding='utf-8',
+                            errors='replace'
+                        )
+                        
+                        if branch_result.returncode == 0:
+                            logger.info(f"✅ 已切换到分支: {branch}")
+                        else:
+                            logger.warning(f"⚠️ 分支切换失败，保持当前分支: {branch_result.stderr}")
                 
-                if branch_result.returncode == 0:
-                    logger.info(f"✅ 已切换到分支: {branch}")
-                else:
-                    logger.warning(f"⚠️ 分支切换失败，保持当前分支: {branch_result.stderr}")
-                
-                # 返回到原目录
-                os.chdir(Path(target_dir).parent.parent)
+                finally:
+                    # 返回到原目录
+                    os.chdir(original_cwd)
             
             logger.info(f"✅ 仓库克隆成功: {target_dir}")
             return {
@@ -132,14 +184,16 @@ class GitManagerAgent:
                 'message': f'仓库克隆异常: {str(e)}'
             }
     
-    def execute_task_from_database(self) -> List[Dict[str, Any]]:
+    def execute_task_from_database(self, project_task_id: str = None) -> List[Dict[str, Any]]:
         """从数据库领取并执行Git管理任务"""
         logger.info(f"🎯 {self.node_name} 开始执行任务...")
+        if project_task_id:
+            logger.info(f"🏷️ 过滤项目任务标识: {project_task_id}")
         
         execution_results = []
         
-        # 获取可执行的任务
-        available_tasks = self.task_manager.get_node_tasks(self.supported_task_types)
+        # 🔧 修复：获取可执行的任务时传递项目标识
+        available_tasks = self.task_manager.get_node_tasks(self.supported_task_types, project_task_id)
         
         if not available_tasks:
             logger.info("ℹ️ 没有可执行的Git管理任务")
@@ -242,7 +296,9 @@ class GitManagerAgent:
         # 🔧 如果任务参数中没有repo_url，尝试从git_extraction任务结果中获取
         if not repo_url:
             logger.info("🔍 任务参数中无repo_url，尝试从git_extraction任务结果获取...")
-            extraction_results = self._get_git_extraction_results()
+            # ⭐️ 关键修复：传入当前项目的project_task_id
+            project_task_id = task.get('project_task_id')
+            extraction_results = self._get_git_extraction_results(project_task_id)
             
             if extraction_results:
                 # 根据任务描述或ID匹配对应的仓库
@@ -282,8 +338,11 @@ class GitManagerAgent:
             project_name = parameters.get('project_name', 'default_project')
             target_dir = f"{output_path}/{project_name}/{repo_name}"
         
-        # 执行克隆
-        clone_result = self.clone_repository(repo_url, target_dir)
+        # 🆕 使用统一的分支名称生成方法
+        new_branch = self._generate_unified_branch_name(parameters.get('project_name', 'default_project'))
+        
+        # 执行克隆并创建新分支
+        clone_result = self.clone_repository(repo_url, target_dir, new_branch)
         
         if clone_result['success']:
             # 🔧 修复路径映射：实际的项目根目录就是target_dir，不需要再加repo_name
@@ -301,33 +360,39 @@ class GitManagerAgent:
                 'message': f'仓库克隆失败: {clone_result["message"]}'
             }
     
-    def _get_git_extraction_results(self) -> List[Dict[str, Any]]:
-        """获取已完成的git_extraction任务结果"""
+    def _get_git_extraction_results(self, project_task_id: str) -> List[Dict[str, Any]]:
+        """获取指定项目已完成的git_extraction任务结果"""
+        if not project_task_id:
+            logger.warning("⚠️ project_task_id未提供，无法获取git_extraction结果")
+            return []
+            
         try:
             conn = self.task_manager._get_connection()
             cursor = conn.cursor()
             
-            # 查找已完成的git_extraction任务
+            # ⭐️ 关键修复：按 project_task_id 过滤
             cursor.execute("""
-                SELECT task_id, result 
+                SELECT task_id, parameters 
                 FROM execution_tasks 
                 WHERE task_type = 'git_extraction' 
                 AND status = 'completed'
-                AND result IS NOT NULL
-            """)
+                AND project_task_id = ?
+                AND parameters IS NOT NULL
+            """, (project_task_id,))
             
             extraction_tasks = cursor.fetchall()
             conn.close()
             
             extracted_repos = []
-            for task_id, result_json in extraction_tasks:
+            for task_id, params_json in extraction_tasks:
                 try:
-                    result = json.loads(result_json)
-                    if result.get('success') and 'extracted_repositories' in result:
-                        extracted_repos.extend(result['extracted_repositories'])
-                        logger.info(f"📋 从任务 {task_id} 获取到 {len(result['extracted_repositories'])} 个仓库")
+                    # 结果现在存储在parameters字段中
+                    params = json.loads(params_json)
+                    if params.get('success') and 'extracted_repositories' in params:
+                        extracted_repos.extend(params['extracted_repositories'])
+                        logger.info(f"📋 从任务 {task_id} 的parameters中获取到 {len(params['extracted_repositories'])} 个仓库")
                 except json.JSONDecodeError:
-                    logger.warning(f"⚠️ 无法解析任务 {task_id} 的结果")
+                    logger.warning(f"⚠️ 无法解析任务 {task_id} 的parameters字段")
             
             return extracted_repos
             
@@ -410,8 +475,11 @@ async def git_management_node(state: Dict[str, Any]) -> Dict[str, Any]:
                 repo_name = repo['name']
                 target_dir = f"{output_path}/{project_name}/{repo_name}"
                 
+                # 🆕 使用统一的分支名称生成方法
+                new_branch = git_agent._generate_unified_branch_name(project_name)
+                
                 logger.info(f"📥 自动克隆仓库: {repo_url} -> {target_dir}")
-                clone_result = git_agent.clone_repository(repo_url, target_dir)
+                clone_result = git_agent.clone_repository(repo_url, target_dir, new_branch)
                 
                 if clone_result['success']:
                     auto_cloned_repos.append({

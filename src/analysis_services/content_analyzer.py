@@ -1117,7 +1117,7 @@ class ContentAnalyzerService(BaseAnalysisService):
                 similarity = SequenceMatcher(None, change_text, other_text).ratio()
                 
                 # 相似度阈值
-                if similarity > 0.6:
+                if similarity > 0.4:
                     similar_group.append(other_change)
                     similar_indices.add(j)
             

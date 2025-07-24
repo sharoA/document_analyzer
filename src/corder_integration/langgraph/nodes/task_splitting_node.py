@@ -591,6 +591,37 @@ class TaskStorageManager:
             except Exception as final_error:
                 logger.error(f"❌ 最终数据库重置失败: {final_error}")
     
+    def expire_all_tasks(self):
+        """将所有现有任务标记为已过期（软删除）"""
+        def _expire_operation():
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                
+                # 查询现有任务数量
+                cursor.execute("SELECT COUNT(*) FROM execution_tasks WHERE status != 'expired'")
+                active_count = cursor.fetchone()[0]
+                
+                if active_count > 0:
+                    logger.info(f"🗂️ 发现 {active_count} 个活跃任务，准备标记为已过期")
+                    
+                    # 将所有非过期任务标记为已过期
+                    cursor.execute("""
+                        UPDATE execution_tasks 
+                        SET status = 'expired', 
+                            updated_at = datetime('now', 'localtime')
+                        WHERE status != 'expired'
+                    """)
+                    
+                    expired_count = cursor.rowcount
+                    logger.info(f"✅ 成功标记 {expired_count} 个任务为已过期")
+                else:
+                    logger.info("📋 没有发现需要过期的活跃任务")
+        
+        try:
+            self._execute_with_retry(_expire_operation)
+        except Exception as e:
+            logger.error(f"❌ 标记任务为过期失败: {e}")
+    
     def _init_database(self):
         """初始化数据库表"""
         def _init_operation():
@@ -734,8 +765,8 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
     window_manager = SlidingWindowManager(max_window_size=2000)
     task_storage = TaskStorageManager()
     
-    # 🔧 重置数据库表结构以支持新的任务字段
-    task_storage.reset_database()
+    # 🔧 标记现有任务为过期，而不是重置数据库表结构
+    task_storage.expire_all_tasks()
     
     try:
         # 🧠 步骤1：设计文档分析（使用真正的滑动窗口）
@@ -954,6 +985,13 @@ async def task_splitting_node(state: Dict[str, Any]) -> Dict[str, Any]:
         tasks = task_data.get('tasks', [])
         logger.info(f"🎯 生成的任务列表: {tasks}")
         logger.info(f"🔢 生成的任务数量: {len(tasks)}")
+        
+        # 🆕 为每个任务添加project_task_id
+        project_task_id = state.get('project_task_id')
+        if project_task_id and tasks:
+            for task in tasks:
+                task['project_task_id'] = project_task_id
+            logger.info(f"✅ 已为 {len(tasks)} 个任务添加项目标识: {project_task_id}")
         
         # 保存任务到SQLite数据库
         if tasks:

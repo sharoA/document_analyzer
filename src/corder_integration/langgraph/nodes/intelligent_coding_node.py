@@ -8,6 +8,7 @@ import asyncio
 import logging
 import json
 import os
+import re
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
@@ -82,16 +83,20 @@ class IntelligentCodingAgent:
         if config and config.get('volcengine', {}).get('api_key'):
             try:
                 from src.utils.volcengine_client import VolcengineClient, VolcengineConfig
+                # 🆕 优先使用编码智能体专用模型配置，如果没有则使用通用配置
+                coder_model = config.get('coder_agent', {}).get('code_generation_model')
+                model_id = coder_model if coder_model else config['volcengine']['model']
+                
                 volcengine_config = VolcengineConfig(
                     api_key=config['volcengine']['api_key'],
-                    model_id=config['volcengine']['model'],
+                    model_id=model_id,
                     base_url=config['volcengine']['endpoint'],
                     temperature=config['volcengine'].get('temperature', 0.7),
                     max_tokens=config['volcengine'].get('max_tokens', 16000)
                 )
                 self.llm_client = VolcengineClient(volcengine_config)
                 self.llm_provider = "volcengine"
-                logger.info(f"✅ 使用火山引擎LLM客户端：{config['volcengine']['model']}")
+                logger.info(f"✅ 使用火山引擎LLM客户端：{model_id}{'(编码智能体专用)' if coder_model else '(通用配置)'}")
             except Exception as e:
                 logger.error(f"❌ 火山引擎初始化失败: {e}")
                 import traceback
@@ -310,9 +315,11 @@ class IntelligentCodingAgent:
             # 基本类型（str, int, float, bool, None）直接返回
             return obj
     
-    def execute_task_from_database(self) -> List[Dict[str, Any]]:
+    def execute_task_from_database(self, project_task_id: str = None) -> List[Dict[str, Any]]:
         """从数据库领取并执行智能编码任务"""
         logger.info(f"🎯 {self.node_name} 开始执行任务...")
+        if project_task_id:
+            logger.info(f"🏷️ 过滤项目任务标识: {project_task_id}")
         
         execution_results = []
         max_rounds = 10  # 防止无限循环的安全机制
@@ -322,8 +329,8 @@ class IntelligentCodingAgent:
             current_round += 1
             logger.info(f"🔄 第{current_round}轮任务检查...")
             
-            # 获取可执行的任务
-            available_tasks = self.task_manager.get_node_tasks(self.supported_task_types)
+            # 🔧 修复：获取可执行的任务时传递项目标识
+            available_tasks = self.task_manager.get_node_tasks(self.supported_task_types, project_task_id)
             
             if not available_tasks:
                 logger.info(f"ℹ️ 第{current_round}轮没有可执行的智能编码任务")
@@ -674,40 +681,71 @@ ENTRYPOINT ["java", "-jar", "/app.jar"]"""
             }
         
         try:
-            # 🎯 深度搜索最佳Java项目路径,可以拿到根据/lslimit找到对应的\crcl-open\src\main\java\com\yljr\crcl\limit
+            # ==================== 1. 初始化项目路径 ====================
+            # 深度搜索最佳Java项目路径,可以拿到根据/lslimit找到对应的\crcl-open\src\main\java\com\yljr\crcl\limit
             optimized_project_path = self._find_deep_java_project_path(project_path, service_name)
+            logger.info(f"📁 基础项目路径: {optimized_project_path}")
             
-            # 🎯 基于API路径关键字查找现有文件结构，返回倒数第二个片段 /crcl-open-api/lsLimit/listUnitLimitByCompanyId，也就是领域名lslimit
+            # ==================== 2. 智能Controller匹配 ====================
             api_keyword = self._extract_api_path_keyword(api_path)
-            if api_keyword:
-                existing_path = self._find_existing_path_by_keyword(optimized_project_path, api_keyword)
-                if existing_path:
-                    logger.info(f"🎯 基于API关键字 '{api_keyword}' 找到现有路径: {existing_path}")
-                    # 如果找到现有路径，使用该路径作为项目基础路径
-                    optimized_project_path = existing_path
+            controller_match_result = self._find_most_similar_controller_with_llm(
+                optimized_project_path, api_keyword, api_path
+            )
             
-            # 分析目标项目，获取代码生成上下文
-            logger.info(f" 分析目标项目: {optimized_project_path}")
-            project_context = self.project_analysis_api.analyze_project_for_code_generation(
+            # 初始化项目上下文字典
+            project_context = {}
+            
+            if controller_match_result.get('found', False):
+                # 找到了相似的Controller，使用其所在目录优化项目路径
+                controller_path = controller_match_result['controller_path']
+                controller_dir = os.path.dirname(controller_path)
+                logger.info(f"🎯 智能匹配找到相似Controller: {controller_match_result['controller_info']['class_name']}")
+                logger.info(f"   📁 Controller路径: {controller_path}")
+                logger.info(f"   🔢 相似度分数: {controller_match_result['similarity_score']:.2f}")
+                logger.info(f"   💡 匹配原因: {', '.join(controller_match_result.get('similarity_reasons', []))}")
+                
+                # 使用Controller所在的包目录作为基础路径
+                if 'src/main/java' in controller_dir:
+                    java_src_index = controller_dir.find('src/main/java')
+                    optimized_project_path = controller_dir[:java_src_index + len('src/main/java')]
+                else:
+                    optimized_project_path = controller_dir
+                
+                # 将匹配结果保存到项目上下文
+                project_context['controller_match_result'] = controller_match_result
+            else:
+                logger.info(f"🔍 未找到相似Controller，原因: {controller_match_result.get('reason', '未知')}")
+                
+                # 关键字查找作为备选方案
+                if api_keyword:
+                    existing_path = self._find_existing_path_by_keyword(optimized_project_path, api_keyword)
+                    if existing_path:
+                        logger.info(f"🎯 关键字查找找到路径: {existing_path}")
+                        optimized_project_path = existing_path
+            
+            # ==================== 3. 项目上下文分析 ====================
+            logger.info(f"🔍 分析目标项目: {optimized_project_path}")
+            analyzed_context = self.project_analysis_api.analyze_project_for_code_generation(
                 optimized_project_path, service_name
             )
             
-            # 将API路径添加到项目上下文，用于智能路径选择
-            project_context['current_api_path'] = api_path
-            project_context['optimized_project_path'] = optimized_project_path
+            # 合并上下文信息
+            project_context.update(analyzed_context)
+            project_context.update({
+                'current_api_path': api_path,
+                'optimized_project_path': optimized_project_path
+            })
             
-            # 将设计文档内容添加到项目上下文（用于增强版代码生成）
+            # ==================== 4. 设计文档处理 ====================  
             document_content = parameters.get('document_content', '')
             if not document_content and hasattr(self, '_current_design_doc'):
-                # 从编码代理的存储中获取设计文档
                 document_content = self._current_design_doc
                 logger.info(f"📄 从编码代理获取设计文档内容 ({len(document_content)} 字符)")
-       
             
             project_context['document_content'] = document_content
             logger.info(f"📄 设计文档内容已添加到项目上下文 ({len(document_content)} 字符)")
             
-            # 智能项目策略判断，判断是需要新生成文件还是复用现有文件
+            # ==================== 5. 项目策略判断 ====================
             project_strategy = self._determine_project_strategy(optimized_project_path, service_name, api_keyword, project_context)
             logger.info(f"🎯 项目策略判断: {project_strategy['strategy']} - {project_strategy['reason']}")
             
@@ -2024,7 +2062,7 @@ public interface {service_interface_name} {{
             if not code_content.startswith('package'):
                 # 添加包名
                 if code_type == 'controller':
-                    code_content = f"package {base_package}.interfaces.facade;\n\n{code_content}"
+                    code_content = f"package {base_package}.interfaces;\n\n{code_content}"
                 elif code_type == 'service':
                     code_content = f"package {base_package}.application.service;\n\n{code_content}"
                 elif code_type in ['request_dto', 'response_dto']:
@@ -2055,7 +2093,7 @@ public interface {service_interface_name} {{
         fallback_code = {}
         
         # 简化的Controller
-        fallback_code['controller'] = f"""package {base_package}.interfaces.facade;
+        fallback_code['controller'] = f"""package {base_package}.interfaces;
 
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -2849,22 +2887,41 @@ public class {class_name} {{
         # 分割路径，过滤空字符串
         path_parts = [part for part in api_path.split('/') if part.strip()]
         
-        # 如果路径片段少于2个，返回空字符串
-        if len(path_parts) < 2:
+        # 如果路径片段少于1个，返回空字符串
+        if len(path_parts) < 1:
             return ""
         
-        # 返回倒数第二个片段作为原始关键字
-        raw_keyword = path_parts[-2]
+        # 🔧 智能提取业务关键字的逻辑
+        raw_keyword = ""
+        
+        # 定义需要忽略的通用前缀
+        ignored_prefixes = ['api', 'crcl-open-api', 'v1', 'v2', 'service']
+        
+        # 从路径中找到第一个有意义的业务关键字
+        for part in path_parts:
+            if part.lower() not in ignored_prefixes:
+                raw_keyword = part
+                break
+        
+        # 如果没找到有意义的关键字，使用最后一个非接口名的部分
+        if not raw_keyword and len(path_parts) >= 2:
+            # 对于 /crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport
+            # 倒数第二个是 lsLimit (业务模块)，最后一个是接口名
+            raw_keyword = path_parts[-2] if path_parts[-2].lower() not in ignored_prefixes else path_parts[-1]
+        elif not raw_keyword:
+            # 最后的兜底策略
+            raw_keyword = path_parts[-1]
+        
+        logger.info(f"🔍 从API路径 {api_path} 提取关键字: {raw_keyword}")
         
         # 🔧 使用业务领域映射配置进行智能转换
         try:
             from ...config.domain_mapping_config import map_api_keyword_to_domain
             mapped_domain = map_api_keyword_to_domain(raw_keyword)
-            logger.info(f"🎯 API关键字映射: {raw_keyword} -> {mapped_domain} (API路径: {api_path})")
+            logger.info(f"🎯 API关键字映射: {raw_keyword} -> {mapped_domain}")
             return mapped_domain
         except Exception as e:
             logger.warning(f"⚠️ 业务领域映射失败，使用原关键字: {e}")
-            logger.info(f"🔍 从API路径 {api_path} 提取关键字: {raw_keyword}")
             return raw_keyword
 
     def _find_existing_path_by_keyword(self, project_path: str, keyword: str) -> str:
@@ -3866,12 +3923,12 @@ Java文件数量: {java_files_count}
 
 ## 策略判断标准
 1. **enhance_existing** - 满足以下条件之一：
-   - 存在业务相关的Controller (关联度 > 0.6)
+   - 存在业务相关的Controller (关联度 > 0.4)
    - API路径与现有Controller路径模式匹配
    - 相同业务领域的Controller存在
 
 2. **create_new** - 满足以下条件：
-   - 无相关Controller或关联度较低 (< 0.6)
+   - 无相关Controller或关联度较低 (< 0.4)
    - 全新的业务领域
    - 项目为空或Controller数为0
 
@@ -3928,6 +3985,367 @@ Java文件数量: {java_files_count}
                 'confidence': 0.3
             }
 
+    def _find_most_similar_controller_with_llm(self, project_path: str, api_keyword: str, api_path: str) -> Dict[str, Any]:
+        """
+        使用大模型智能查找与API最相似的Controller
+        
+        Args:
+            project_path: 项目路径
+            api_keyword: API关键字
+            api_path: 完整API路径
+            
+        Returns:
+            最相似的Controller信息和相似度分析
+        """
+        logger.info(f"🤖 使用大模型智能匹配Controller: {api_keyword} (API: {api_path})")
+        
+        try:
+            # 1. 扫描项目路径下的所有Controller文件
+            controllers_info = self._scan_all_controllers(project_path)
+            
+            if not controllers_info:
+                logger.warning(f"⚠️ 在项目路径 {project_path} 下未找到任何Controller文件")
+                return {
+                    'found': False,
+                    'reason': '项目中无Controller文件',
+                    'controller_path': None,
+                    'similarity_score': 0.0
+                }
+            
+            logger.info(f"📋 找到 {len(controllers_info)} 个Controller文件")
+            
+            # 2. 如果没有LLM客户端，使用规则匹配
+            if not self.llm_client:
+                return self._fallback_controller_matching(controllers_info, api_keyword, api_path)
+            
+            # 3. 使用大模型进行语义相似度分析
+            similarity_analysis = self._llm_analyze_controller_similarity(
+                controllers_info, api_keyword, api_path
+            )
+            
+            return similarity_analysis
+            
+        except Exception as e:
+            logger.error(f"❌ 智能Controller匹配失败: {e}")
+            return {
+                'found': False,
+                'reason': f'匹配过程异常: {str(e)}',
+                'controller_path': None,
+                'similarity_score': 0.0
+            }
+    
+    def _scan_all_controllers(self, project_path: str) -> List[Dict[str, Any]]:
+        """
+        扫描项目路径下的所有Controller文件并提取关键信息
+        
+        Args:
+            project_path: 项目路径
+            
+        Returns:
+            Controller文件信息列表
+        """
+        controllers = []
+        
+        try:
+            from pathlib import Path
+            import re
+            
+            project_path_obj = Path(project_path)
+            
+            # 查找所有Java文件
+            for java_file in project_path_obj.rglob("*.java"):
+                try:
+                    with open(java_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    # 检查是否是Controller文件
+                    if self._is_controller_file(content):
+                        controller_info = self._extract_controller_info(java_file, content)
+                        if controller_info:
+                            controllers.append(controller_info)
+                            logger.debug(f"📄 解析Controller: {controller_info['class_name']}")
+                            
+                except Exception as e:
+                    logger.warning(f"⚠️ 读取文件失败 {java_file}: {e}")
+                    continue
+            
+            logger.info(f"✅ 成功扫描到 {len(controllers)} 个Controller文件")
+            return controllers
+            
+        except Exception as e:
+            logger.error(f"❌ 扫描Controller文件失败: {e}")
+            return []
+    
+    def _is_controller_file(self, content: str) -> bool:
+        """判断Java文件是否是Controller"""
+        controller_patterns = [
+            r'@RestController',
+            r'@Controller',
+            r'class\s+\w*Controller',
+        ]
+        
+        for pattern in controller_patterns:
+            if re.search(pattern, content):
+                return True
+        return False
+    
+    def _extract_controller_info(self, file_path: Path, content: str) -> Dict[str, Any]:
+        """
+        从Controller文件中提取关键信息
+        
+        Args:
+            file_path: 文件路径
+            content: 文件内容
+            
+        Returns:
+            Controller信息字典
+        """
+        try:
+            import re
+            
+            # 提取类名
+            class_match = re.search(r'public\s+class\s+(\w+)', content)
+            class_name = class_match.group(1) if class_match else file_path.stem
+            
+            # 提取@RequestMapping
+            request_mapping_patterns = [
+                r'@RequestMapping\s*\(\s*value\s*=\s*["\']([^"\']+)["\']',
+                r'@RequestMapping\s*\(\s*["\']([^"\']+)["\']',
+                r'@RequestMapping\s*\([^)]*path\s*=\s*["\']([^"\']+)["\']'
+            ]
+            
+            request_mappings = []
+            for pattern in request_mapping_patterns:
+                matches = re.findall(pattern, content)
+                request_mappings.extend(matches)
+            
+            # 提取方法映射
+            method_patterns = [
+                r'@GetMapping\s*\(\s*["\']([^"\']+)["\']',
+                r'@PostMapping\s*\(\s*["\']([^"\']+)["\']',
+                r'@PutMapping\s*\(\s*["\']([^"\']+)["\']',
+                r'@DeleteMapping\s*\(\s*["\']([^"\']+)["\']'
+            ]
+            
+            method_mappings = []
+            for pattern in method_patterns:
+                matches = re.findall(pattern, content)
+                method_mappings.extend(matches)
+            
+            # 提取包名
+            package_match = re.search(r'package\s+([\w\.]+);', content)
+            package_name = package_match.group(1) if package_match else 'unknown'
+            
+            # 构建相对路径
+            relative_path = str(file_path).replace(str(file_path.anchor), '').replace('\\', '/')
+            
+            return {
+                'class_name': class_name,
+                'file_path': str(file_path),
+                'relative_path': relative_path,
+                'package_name': package_name,
+                'request_mappings': request_mappings,
+                'method_mappings': method_mappings,
+                'base_mapping': request_mappings[0] if request_mappings else '',
+                'all_mappings': request_mappings + method_mappings
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ 提取Controller信息失败 {file_path}: {e}")
+            return None
+    
+    def _llm_analyze_controller_similarity(self, controllers_info: List[Dict[str, Any]], 
+                                         api_keyword: str, api_path: str) -> Dict[str, Any]:
+        """
+        使用大模型分析Controller与API的相似度
+        
+        Args:
+            controllers_info: Controller信息列表
+            api_keyword: API关键字
+            api_path: 完整API路径
+            
+        Returns:
+            相似度分析结果
+        """
+        try:
+            # 构建分析提示词
+            controllers_summary = []
+            for i, controller in enumerate(controllers_info):
+                summary = f"""
+Controller {i+1}:
+- 类名: {controller['class_name']}
+- 包名: {controller['package_name']}
+- 基础路径: {controller['base_mapping']}
+- 所有路径: {', '.join(controller['all_mappings'])}
+- 文件路径: {controller['relative_path']}
+"""
+                controllers_summary.append(summary.strip())
+            
+            prompt = f"""
+你是Java后端架构专家，需要分析API与现有Controller的业务相似度。
+
+## 目标API信息
+- API关键字: {api_keyword}
+- 完整API路径: {api_path}
+- 业务场景: 根据API路径判断是什么业务功能
+
+## 现有Controller列表
+{chr(10).join(controllers_summary)}
+
+## 分析要求
+请分析哪个Controller与目标API业务最相似，考虑：
+1. **业务领域相似性**: 类名、包名、路径是否表示相同业务领域
+2. **功能相关性**: API功能与Controller现有功能是否相关
+3. **路径模式匹配**: API路径与Controller路径的匹配程度
+4. **命名语义**: 基于业务语义的相似度
+
+## 输出格式
+请返回JSON格式分析结果：
+{{
+    "found": true/false,
+    "best_match_index": "最相似Controller的索引(0-{len(controllers_info)-1})",
+    "similarity_score": "相似度分数(0.0-1.0)",
+    "similarity_reasons": ["相似的具体原因列表"],
+    "business_analysis": "业务相似度分析",
+    "recommendation": "建议：enhance_existing(在现有Controller添加方法) 或 create_new(创建新Controller)"
+}}
+
+如果没有找到相似度>=0.6的Controller，设置found为false。
+"""
+            
+            logger.info(f"🤖 调用{self.llm_provider}分析Controller相似度...")
+            
+            response = self.llm_client.chat(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=1000
+            )
+            
+            # 解析LLM响应
+            try:
+                import json
+                response_data = json.loads(response)
+                
+                # 验证和补充返回数据
+                if response_data.get('found', False):
+                    best_index = int(response_data.get('best_match_index', 0))
+                    if 0 <= best_index < len(controllers_info):
+                        best_controller = controllers_info[best_index]
+                        
+                        return {
+                            'found': True,
+                            'controller_info': best_controller,
+                            'controller_path': best_controller['file_path'],
+                            'similarity_score': float(response_data.get('similarity_score', 0.0)),
+                            'similarity_reasons': response_data.get('similarity_reasons', []),
+                            'business_analysis': response_data.get('business_analysis', ''),
+                            'recommendation': response_data.get('recommendation', 'create_new'),
+                            'analysis_method': 'llm_semantic'
+                        }
+                
+                # 未找到相似Controller
+                return {
+                    'found': False,
+                    'reason': response_data.get('business_analysis', '无相似Controller'),
+                    'controller_path': None,
+                    'similarity_score': 0.0,
+                    'recommendation': 'create_new',
+                    'analysis_method': 'llm_semantic'
+                }
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ LLM响应JSON解析失败: {e}")
+                logger.debug(f"LLM原始响应: {response}")
+                # 降级到规则匹配
+                return self._fallback_controller_matching(controllers_info, api_keyword, api_path)
+                
+        except Exception as e:
+            logger.error(f"❌ LLM Controller相似度分析失败: {e}")
+            # 降级到规则匹配
+            return self._fallback_controller_matching(controllers_info, api_keyword, api_path)
+    
+    def _fallback_controller_matching(self, controllers_info: List[Dict[str, Any]], 
+                                    api_keyword: str, api_path: str) -> Dict[str, Any]:
+        """
+        规则匹配方式的Controller查找（LLM不可用时的降级方案）
+        
+        Args:
+            controllers_info: Controller信息列表
+            api_keyword: API关键字  
+            api_path: 完整API路径
+            
+        Returns:
+            匹配结果
+        """
+        logger.info(f"🔄 使用规则匹配方式查找Controller: {api_keyword}")
+        
+        best_controller = None
+        best_score = 0.0
+        
+        for controller in controllers_info:
+            score = 0.0
+            reasons = []
+            
+            class_name = controller['class_name'].lower()
+            base_mapping = controller['base_mapping'].lower()
+            all_mappings = ' '.join(controller['all_mappings']).lower()
+            package_name = controller['package_name'].lower()
+            
+            # 规则1: API关键字在类名中 (权重40%)
+            if api_keyword and api_keyword.lower() in class_name:
+                score += 0.4
+                reasons.append(f"类名包含关键字: {api_keyword}")
+            
+            # 规则2: API关键字在路径中 (权重30%)
+            if api_keyword and (api_keyword.lower() in base_mapping or api_keyword.lower() in all_mappings):
+                score += 0.3
+                reasons.append(f"路径包含关键字: {api_keyword}")
+            
+            # 规则3: API路径片段匹配 (权重20%)
+            if api_path:
+                api_parts = set(p.lower() for p in api_path.split('/') if p)
+                mapping_parts = set(p.lower() for p in all_mappings.split('/') if p)
+                common_parts = api_parts & mapping_parts
+                if common_parts:
+                    path_score = len(common_parts) / max(len(api_parts), 1) * 0.2
+                    score += path_score
+                    reasons.append(f"路径片段匹配: {list(common_parts)}")
+            
+            # 规则4: 包名相关性 (权重10%)
+            business_keywords = ['limit', 'manage', 'query', 'company', 'unit', 'organization', 'user']
+            for keyword in business_keywords:
+                if keyword in package_name and (not api_keyword or keyword in api_keyword.lower()):
+                    score += 0.1
+                    reasons.append(f"包名业务相关: {keyword}")
+                    break
+            
+            if score > best_score:
+                best_score = score
+                best_controller = controller
+                best_controller['match_reasons'] = reasons
+        
+        # 判断是否找到合适的匹配
+        if best_controller and best_score >= 0.5:  # 降低阈值，规则匹配相对宽松
+            return {
+                'found': True,
+                'controller_info': best_controller,
+                'controller_path': best_controller['file_path'],
+                'similarity_score': best_score,
+                'similarity_reasons': best_controller.get('match_reasons', []),
+                'business_analysis': f'规则匹配分数: {best_score:.2f}',
+                'recommendation': 'enhance_existing' if best_score >= 0.7 else 'create_new',
+                'analysis_method': 'rule_based'
+            }
+        else:
+            return {
+                'found': False,
+                'reason': f'最高匹配分数仅为 {best_score:.2f}，低于阈值 0.5',
+                'controller_path': None,
+                'similarity_score': best_score,
+                'recommendation': 'create_new',
+                'analysis_method': 'rule_based'
+            }
+
 
 
 async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -3944,13 +4362,21 @@ async def intelligent_coding_node(state: Dict[str, Any]) -> Dict[str, Any]:
             # 设置到编码代理的全局变量中，供任务执行时使用
             coding_agent._current_design_doc = design_doc
         
+        # 🆕 获取项目任务标识 - 先检查两个可能的key
+        project_task_id = state.get('project_task_id') or state.get('task_id')
+        if project_task_id:
+            logger.info(f"🏷️ 智能编码节点获取项目标识: {project_task_id}")
+        else:
+            logger.warning("⚠️ 智能编码节点未获取到项目标识，将处理所有任务")
+            logger.warning(f"⚠️ 状态中可用的keys: {list(state.keys())}")
+        
         # 🆕 新增：递增重试计数器
         retry_count = state.get("retry_count", 0)
         if retry_count > 0:
             logger.info(f"🔄 智能编码节点重试，当前重试次数: {retry_count}")
         
-        # 执行数据库中的任务，对langgraph上一步分解的任务进行执行
-        task_results = coding_agent.execute_task_from_database()
+        # 🔧 修复：执行数据库中的任务时传递项目标识
+        task_results = coding_agent.execute_task_from_database(project_task_id)
         
         # 将任务执行结果添加到状态中
         coding_operations = state.get('coding_operations', [])

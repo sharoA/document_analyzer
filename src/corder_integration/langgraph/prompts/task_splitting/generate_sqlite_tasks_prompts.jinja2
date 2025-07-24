@@ -1,15 +1,8 @@
 {#- SQLite任务生成提示词模板 -#}
 
-{% macro generate_sqlite_tasks_prompt(execution_plan, services_summary, context_window=None, base_project_path="/Users/renyu/Documents/create_project") %}
-你是任务管理专家，基于设计文档生成具体的开发任务。
+你是资深任务管理专家，基于设计文档生成具体的开发任务。
 
-服务概要：{{ services_summary }}
-
-执行计划：{{ execution_plan }}
-
-{% if context_window %}
-上下文信息：{{ context_window }}
-{% endif %}
+详细设计文档：{{ design_doc }}
 
 **项目路径配置：**
 基础路径：{{ base_project_path }}
@@ -42,7 +35,7 @@
     "字段名1": "字段说明",
     "字段名2": "字段说明"
   },
-  "business_logic": "详细的业务逻辑描述",
+  "business_logic": "详细的业务逻辑描述。重要：如果API设计部分包含'特殊要求'，必须将'特殊要求'的所有内容合并到此字段中。",
   "data_source": "数据来源和获取方式",
   "validation_rules": {
     "参数名1": "校验规则描述",
@@ -102,20 +95,21 @@
   - deployment的path
 
 **设计文档关键信息：**
-- GitLab仓库：用户服务 http://localhost:30000/ls/zqyl-user-center-service.git，确权开立服务 http://localhost:30000/ls/crcl-open.git
-- 接口路径：/general/multiorgManage/queryCompanyUnitList，/crcl-open-api/lsLimit/listUnitLimitByCompanyId，/crcl-open-api/lsLimit/listUnitLimitByCompanyIdExport
-- 表名：t_cust_multiorg_unit
-- 数据库：jdbc:mysql://localhost:6446/dbwebappdb，用户名密码：dbwebapp/dbwebapp
+- GitLab仓库：提取设计文档中的GitLab仓库地址
+- 接口路径：提取设计文档中的接口路径
+- 表名：提取设计文档中的表名
+- 数据库：提取设计文档中的数据库信息
 
 **任务类型说明：**
 git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分析结构) -> config(配置环境) -> database(建表) -> api(开发接口) -> integration_test(集成测试) -> deployment(代码提交)
 
-请输出JSON格式的12个任务（从task_001到task_012）：
+请输出JSON格式的任务列表，下面是各类型生成的结构，及示例内容，请严格遵守根据设计文档生成，不要编造：
 
 {
   "tasks": [
     {
       "task_id": "task_001",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "系统",
       "task_type": "git_extraction",
       "priority": 1,
@@ -131,6 +125,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_002", 
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "用户服务",
       "task_type": "git_clone",
       "priority": 2,
@@ -147,6 +142,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_003",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "确权开立服务", 
       "task_type": "git_clone",
       "priority": 2,
@@ -163,6 +159,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_004",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "用户服务",
       "task_type": "code_analysis", 
       "priority": 3,
@@ -180,6 +177,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_005",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "确权开立服务",
       "task_type": "code_analysis",
       "priority": 3,
@@ -197,6 +195,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_006",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "用户服务",
       "task_type": "config",
       "priority": 4,
@@ -215,6 +214,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_007",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "用户服务",
       "task_type": "database",
       "priority": 5,
@@ -231,6 +231,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_008",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "用户服务",
       "task_type": "api",
       "priority": 6, 
@@ -268,6 +269,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_009",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "确权开立服务",
       "task_type": "api",
       "priority": 7,
@@ -309,6 +311,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_010",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "确权开立服务",
       "task_type": "api",
       "priority": 8,
@@ -346,6 +349,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_011",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "系统",
       "task_type": "integration_test",
       "priority": 9,
@@ -362,6 +366,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
     },
     {
       "task_id": "task_012",
+      "project_task_id": "{{ project_task_id }}",
       "service_name": "系统",
       "task_type": "deployment",
       "priority": 10,
@@ -389,7 +394,7 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
       {"phase": "测试部署", "tasks": ["task_011", "task_012"]}
     ]
   },
-  "summary": "生成12个任务：GitLab代码下载->结构分析->环境配置->接口开发->测试部署。严格使用设计文档中的真实接口路径和参数，确保先开发用户服务接口，再开发依赖它的确权开立服务接口。"
+  "summary": "生成任务：GitLab代码下载->结构分析->环境配置->接口开发->测试部署。严格使用设计文档中的真实接口路径和参数，确保先开发用户服务接口，再开发依赖它的确权开立服务接口。"
 }
 
 **执行顺序说明：**
@@ -402,6 +407,4 @@ git_extraction(提取Git地址) -> git_clone(下载代码) -> code_analysis(分�
 **关键依赖关系：**
 - 确权开立服务的接口依赖用户服务的接口
 - 所有接口开发前需要先完成代码下载和结构分析
-- 部署前需要完成集成测试验证
-
-{% endmacro %} 
+- 部署前需要完成集成测试验证 

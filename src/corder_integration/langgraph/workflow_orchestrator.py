@@ -13,29 +13,12 @@ import time
 import os
 from datetime import datetime
 
-# 🔧 修改：使用SQLite检查点
-try:
-    # 先尝试同步版本的SqliteSaver（更简单稳定）
-    from langgraph.checkpoint.sqlite import SqliteSaver
-    SYNC_SQLITE_AVAILABLE = True
-except ImportError:
-    SYNC_SQLITE_AVAILABLE = False
-    SqliteSaver = None
-
-try:
-    # 再尝试异步版本
-    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-    ASYNC_SQLITE_AVAILABLE = True
-except ImportError:
-    ASYNC_SQLITE_AVAILABLE = False
-    AsyncSqliteSaver = None
-
-SQLITE_CHECKPOINTER_AVAILABLE = SYNC_SQLITE_AVAILABLE or ASYNC_SQLITE_AVAILABLE
-
-if not SQLITE_CHECKPOINTER_AVAILABLE:
-    logging.warning("SQLite检查点不可用，将仅使用内存检查点")
+# 导入LangGraph核心组件
+from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.memory import MemorySaver
 
 # from .nodes.task_splitting_node import task_splitting_node  # 任务拆分节点
+from .nodes.task_simple_splitting_node import task_simple_splitting_node  # 🆕 简化版任务拆分节点
 from .nodes.git_management_node import git_management_node
 from .nodes.intelligent_coding_node import intelligent_coding_node
 from .nodes.code_review_node import code_review_node
@@ -51,6 +34,7 @@ class CodingAgentState(TypedDict):
     # 🔄 输入状态
     design_doc: str                         # 设计文档内容
     project_name: str                       # 项目名称
+    project_task_id: str                    # 🆕 项目唯一标识，用于任务拆解和编码智能体操作
     
     # 🧠 任务拆分结果
     identified_services: List[str]          # 识别的微服务列表
@@ -96,59 +80,19 @@ class CodingAgentState(TypedDict):
 class LangGraphWorkflowOrchestrator:
     """LangGraph工作流编排器"""
     
-    def __init__(self, use_sqlite: bool = True, db_path: Optional[str] = None):
+    def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.use_sqlite = use_sqlite and SQLITE_CHECKPOINTER_AVAILABLE
-        # 🔧 修改：使用独立的检查点数据库，避免与任务存储冲突
-        self.db_path = db_path or "workflow_checkpoints.db"  # 独立的检查点数据库
         self.graph = self._build_workflow_graph()
-        # 延迟编译，在执行时使用上下文管理器
-        self.compiled_graph = None
-    
-    def _get_checkpointer_context(self):
-        """获取检查点管理器上下文"""
-        if self.use_sqlite and SQLITE_CHECKPOINTER_AVAILABLE:
-            try:
-                # 🔧 优先使用异步SQLite检查点（与ainvoke兼容）
-                if ASYNC_SQLITE_AVAILABLE and AsyncSqliteSaver is not None:
-                    if self.db_path == ":memory:":
-                        conn_string = ":memory:"
-                    else:
-                        # 确保使用绝对路径
-                        if not os.path.isabs(self.db_path):
-                            self.db_path = os.path.abspath(self.db_path)
-                        conn_string = self.db_path  # 直接使用文件路径
-                    
-                    self.logger.info(f"准备使用异步SQLite检查点: {conn_string}")
-                    return AsyncSqliteSaver.from_conn_string(conn_string)
-                
-                # 🔧 备选：同步SQLite检查点（需要同步调用）
-                elif SYNC_SQLITE_AVAILABLE and SqliteSaver is not None:
-                    # 格式化连接字符串 - LangGraph使用简单格式，不需要sqlite://前缀
-                    if self.db_path == ":memory:":
-                        conn_string = ":memory:"
-                    else:
-                        # 确保使用绝对路径
-                        if not os.path.isabs(self.db_path):
-                            self.db_path = os.path.abspath(self.db_path)
-                        conn_string = self.db_path  # 直接使用文件路径
-                    
-                    self.logger.info(f"准备使用同步SQLite检查点: {conn_string}")
-                    return SqliteSaver.from_conn_string(conn_string)
-                
-            except Exception as e:
-                self.logger.warning(f"SQLite检查点准备失败，降级到内存检查点: {e}")
-        
-        # 🔧 备选：内存检查点
-        self.logger.info("使用内存检查点")
-        return MemorySaver()
+        # 使用内存检查点
+        self.checkpointer = MemorySaver()
     
     def _build_workflow_graph(self) -> StateGraph:
         """构建LangGraph工作流图"""
         workflow = StateGraph(CodingAgentState)
         
         # 🧠 添加工作流节点
-        # workflow.add_node("task_splitting", task_splitting_node) #先注释，调试完成后面节点后再放开
+        # workflow.add_node("task_splitting", task_splitting_node) #原复杂版本，已注释
+        workflow.add_node("task_splitting", task_simple_splitting_node) # 🆕 使用简化版任务拆分节点
         workflow.add_node("git_management", git_management_node)
         workflow.add_node("intelligent_coding", intelligent_coding_node)
         workflow.add_node("code_review", code_review_node)
@@ -156,12 +100,12 @@ class LangGraphWorkflowOrchestrator:
         workflow.add_node("git_commit", git_commit_node)
         
         # 🚀 设置工作流入口
-        # workflow.set_entry_point("task_splitting") #先注释，调试完成后面节点后再放开
-        workflow.set_entry_point("git_management")
+        workflow.set_entry_point("task_splitting") #先注释，调试完成后面节点后再放开
+        # workflow.set_entry_point("git_management")
         
         # 🔄 定义节点流转逻辑
-        # workflow.add_edge("task_splitting", "git_management") #先注释，调试完成后面节点后再放开
-        workflow.add_edge("git_management", "intelligent_coding")
+        workflow.add_edge("task_splitting", "git_management") #先注释，调试完成后面节点后再放开
+        # workflow.add_edge("git_management", "intelligent_coding")
 
 
 
@@ -248,11 +192,24 @@ class LangGraphWorkflowOrchestrator:
             self.logger.warning(f"编码流程重试次数过多({retry_count})，强制结束")
             return "critical_error"
         
-        # 检查是否有coding_operations结果，如果连续多轮都没有任务执行，说明可能没有可执行的任务
-        coding_operations = state.get("coding_operations", [])
-        if retry_count >= 2 and len(coding_operations) == 0:
-            self.logger.warning("连续多轮没有任务执行，可能数据库中没有可执行的任务，结束流程")
-            return "critical_error"
+        # 🔧 修复：检查数据库中是否还有编码相关任务，而不是只看 coding_operations
+        project_task_id = state.get("project_task_id")
+        if project_task_id and retry_count >= 2:
+            try:
+                from .task_manager import NodeTaskManager
+                task_manager = NodeTaskManager()
+                # 检查是否还有编码相关任务（intelligent_coding_node 支持的任务类型）
+                coding_task_types = ["code_analysis", "database", "api", "config"]
+                remaining_coding_tasks = task_manager.get_node_tasks(coding_task_types, project_task_id)
+                
+                if len(remaining_coding_tasks) == 0:
+                    self.logger.info("✅ 所有编码相关任务已完成，进入下一阶段")
+                    return "all_completed"
+                else:
+                    self.logger.info(f"🔄 还有 {len(remaining_coding_tasks)} 个编码任务待执行，继续等待")
+                    
+            except Exception as e:
+                self.logger.warning(f"⚠️ 检查剩余任务时出错: {e}")
         
         if completed_services == total_services:
             return "all_completed"
@@ -292,14 +249,20 @@ class LangGraphWorkflowOrchestrator:
         test_results = state.get("unit_test_results", {})
         coverage_results = state.get("test_coverage", {})
         
+        # 🆕 如果没有任何测试结果，说明没有测试任务，直接通过
+        if not test_results and not coverage_results:
+            self.logger.info("没有测试任务，测试检查直接通过")
+            return "tests_passed"
+        
         # 检查测试是否通过
         if any(not result.get("all_passed", True) for result in test_results.values()):
             return "tests_failed"
         
-        # 检查覆盖率
-        avg_coverage = sum(coverage_results.values()) / len(coverage_results) if coverage_results else 0
-        if avg_coverage < 0.8:  # 80%覆盖率要求
-            return "coverage_insufficient"
+        # 检查覆盖率 - 🆕 修复：如果没有覆盖率数据，认为通过
+        if coverage_results:
+            avg_coverage = sum(coverage_results.values()) / len(coverage_results)
+            if avg_coverage < 0.8:  # 80%覆盖率要求
+                return "coverage_insufficient"
         
         return "tests_passed"
     
@@ -321,6 +284,7 @@ class LangGraphWorkflowOrchestrator:
         self, 
         design_doc: str, 
         project_name: str,
+        project_task_id: str,  # 🆕 添加project_task_id参数
         output_path: str = None  # 🎯 新增：输出路径参数
     ) -> Dict[str, Any]:
         """执行完整的编码工作流"""
@@ -329,52 +293,8 @@ class LangGraphWorkflowOrchestrator:
         if output_path is None:
             output_path = r"/Users/renyu/Documents/create_project"
         
-        # 🔄 获取检查点管理器
-        checkpointer_context = self._get_checkpointer_context()
-        
-        # 🔧 修复：特别处理 MemorySaver 的上下文管理器问题
-        if isinstance(checkpointer_context, MemorySaver):
-            # MemorySaver 的异步上下文管理器实现有问题，直接使用对象
-            return await self._execute_with_checkpointer(checkpointer_context, design_doc, project_name, output_path)
-        elif hasattr(checkpointer_context, '__aenter__'):
-            # 异步上下文管理器 (AsyncSqliteSaver)
-            async with checkpointer_context as checkpointer:
-                return await self._execute_with_checkpointer(checkpointer, design_doc, project_name, output_path)
-        elif hasattr(checkpointer_context, '__enter__'):
-            # 同步上下文管理器 (SqliteSaver)
-            with checkpointer_context as checkpointer:
-                return await self._execute_with_checkpointer(checkpointer, design_doc, project_name, output_path)
-        else:
-            # 直接的检查点对象
-            return await self._execute_with_checkpointer(checkpointer_context, design_doc, project_name, output_path)
-    
-    def _generate_target_branch(self, project_name: str) -> str:
-        """生成目标分支名称 - 格式: D_日期_项目名称"""
-        # 获取当前日期 (YYYYMMDD格式)
-        current_date = datetime.now().strftime("%Y%m%d")
-        
-        # 清理项目名称，去除特殊字符
-        import re
-        clean_project_name = re.sub(r'[^\w\-_]', '_', project_name)
-        clean_project_name = re.sub(r'_+', '_', clean_project_name)  # 合并多个下划线
-        clean_project_name = clean_project_name.strip('_')  # 去除首尾下划线
-        
-        target_branch = f"D_{current_date}_{clean_project_name}"
-        
-        self.logger.info(f"生成目标分支名称: {project_name} -> {target_branch}")
-        return target_branch
-
-    async def _execute_with_checkpointer(
-        self, 
-        checkpointer, 
-        design_doc: str, 
-        project_name: str,
-        output_path: str
-    ) -> Dict[str, Any]:
-        """使用给定的检查点执行工作流"""
-        
         # 编译图形
-        compiled_graph = self.graph.compile(checkpointer=checkpointer)
+        compiled_graph = self.graph.compile(checkpointer=self.checkpointer)
         
         # 🔧 生成新的分支名称格式
         target_branch = self._generate_target_branch(project_name)
@@ -383,6 +303,7 @@ class LangGraphWorkflowOrchestrator:
         initial_state: CodingAgentState = {
             "design_doc": design_doc,
             "project_name": project_name,
+            "project_task_id": project_task_id,  # 🆕 添加项目唯一标识
             "identified_services": [],
             "service_dependencies": {},
             "task_execution_plan": {},
@@ -405,8 +326,8 @@ class LangGraphWorkflowOrchestrator:
             "commit_hashes": {},
             "push_results": {},
             "pr_urls": {},
-            # "current_phase": "task_splitting", #先注释，调试完成后面节点后再放开
-            "current_phase": "git_management",
+            "current_phase": "task_splitting", #先注释，调试完成后面节点后再放开
+            # "current_phase": "git_management",
             "completed_services": [],
             "failed_services": [],
             "retry_count": 0,
@@ -448,12 +369,29 @@ class LangGraphWorkflowOrchestrator:
                 "project_name": project_name,
                 "output_path": output_path  # 🎯 新增：返回输出路径
             }
+    
+    def _generate_target_branch(self, project_name: str) -> str:
+        """生成目标分支名称 - 格式: D_日期_项目名称"""
+        # 获取当前日期 (YYYYMMDD格式)
+        current_date = datetime.now().strftime("%Y%m%d")
+        
+        # 清理项目名称，去除特殊字符
+        import re
+        clean_project_name = re.sub(r'[^\w\-_]', '_', project_name)
+        clean_project_name = re.sub(r'_+', '_', clean_project_name)  # 合并多个下划线
+        clean_project_name = clean_project_name.strip('_')  # 去除首尾下划线
+        
+        target_branch = f"D_{current_date}_{clean_project_name}"
+        
+        self.logger.info(f"生成目标分支名称: {project_name} -> {target_branch}")
+        return target_branch
 
     # 🎯 新增：便捷的文档处理方法
     async def execute_workflow(
         self,
         document_content: str,
         project_name: str,
+        project_task_id: str,  # 🆕 添加project_task_id参数
         output_path: str = None
     ) -> Dict[str, Any]:
         """便捷方法：直接使用设计文档进行处理"""
@@ -464,5 +402,6 @@ class LangGraphWorkflowOrchestrator:
         return await self.execute_coding_workflow(
             design_doc=design_doc,
             project_name=project_name,
+            project_task_id=project_task_id,  # 🆕 传递project_task_id
             output_path=output_path
         ) 

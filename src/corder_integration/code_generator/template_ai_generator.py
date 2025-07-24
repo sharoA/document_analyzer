@@ -320,7 +320,7 @@ class TemplateAIGenerator:
         logger.warning("🔄 生成最基础的后备代码")
         
         return {
-            'controller': f'''package com.main.interfaces.facade;
+            'controller': f'''package com.main.interfaces;
 
 import org.springframework.web.bind.annotation.*;
 

@@ -20,7 +20,7 @@ coder_agent:
     backend_package_prefix: com
     backend_version: 2.7.x
     frontend_framework: vue2
-  code_generation_model: ep-20250605091804-wmw6w
+  code_generation_model: ep-20250724094351-pnjf4
   frontend_template_path: templates/fronted_construct.md
   frontend_test_framework: jest
   git_config:
@@ -37,7 +37,7 @@ coder_agent:
     default_remote_url: https://github.com/sharoA/testproject.git
   max_tokens: 4000
   project_root: /Users/renyu/Documents/create_project
-  review_model: ep-20250605091804-wmw6w
+  review_model: ep-20250724094351-pnjf4
   tasks_dir: tasks
   tech_stack_docs_dir: docs/tech-stack
   temperature: 0.7

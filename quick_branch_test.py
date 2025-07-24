@@ -18,7 +18,7 @@ def main():
     print("🧪 快速测试Git分支命名规则\n")
     
     # 创建工作流协调器
-    orchestrator = LangGraphWorkflowOrchestrator(use_sqlite=False)
+    orchestrator = LangGraphWorkflowOrchestrator()
     
     # 测试项目名称
     test_cases = [

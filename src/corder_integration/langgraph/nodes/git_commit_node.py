@@ -11,6 +11,7 @@ import os
 import subprocess
 from typing import Dict, Any, List
 from pathlib import Path
+import yaml
 
 # 导入任务管理工具
 from ..task_manager import NodeTaskManager
@@ -25,14 +26,16 @@ class GitCommitAgent:
         self.node_name = "git_commit_node"
         self.supported_task_types = ["deployment"]
     
-    def execute_task_from_database(self) -> List[Dict[str, Any]]:
+    def execute_task_from_database(self, project_task_id: str = None) -> List[Dict[str, Any]]:
         """从数据库领取并执行Git提交任务"""
         logger.info(f"🎯 {self.node_name} 开始执行任务...")
+        if project_task_id:
+            logger.info(f"🏷️ 过滤项目任务标识: {project_task_id}")
         
         execution_results = []
         
-        # 获取可执行的任务
-        available_tasks = self.task_manager.get_node_tasks(self.supported_task_types)
+        # 🔧 修复：获取可执行的任务时传递项目标识
+        available_tasks = self.task_manager.get_node_tasks(self.supported_task_types, project_task_id)
         
         if not available_tasks:
             logger.info("ℹ️ 没有可执行的Git提交任务")
@@ -94,144 +97,232 @@ class GitCommitAgent:
         # 获取任务参数
         parameters = task.get('parameters', {})
         service_name = task.get('service_name', 'unknown_service')
-        deployment_type = parameters.get('deployment_type', 'docker')
         
-        # 模拟部署流程
-        deployment_result = {
-            'service_name': service_name,
-            'deployment_type': deployment_type,
-            'deployment_environment': 'staging',
-            'deployment_steps': [
-                {
-                    'step': 'pre_deployment_check',
-                    'status': 'completed',
-                    'duration': '30s',
-                    'details': f'检查{service_name}服务的部署前置条件'
-                },
-                {
-                    'step': 'build_application',
-                    'status': 'completed',
-                    'duration': '2m 15s',
-                    'details': f'构建{service_name}服务应用程序'
-                },
-                {
-                    'step': 'create_docker_image',
-                    'status': 'completed',
-                    'duration': '1m 45s',
-                    'details': f'创建{service_name}服务Docker镜像'
-                },
-                {
-                    'step': 'push_to_registry',
-                    'status': 'completed',
-                    'duration': '45s',
-                    'details': f'推送{service_name}服务镜像到仓库'
-                },
-                {
-                    'step': 'deploy_to_staging',
-                    'status': 'completed',
-                    'duration': '1m 20s',
-                    'details': f'部署{service_name}服务到预发布环境'
-                },
-                {
-                    'step': 'health_check',
-                    'status': 'completed',
-                    'duration': '30s',
-                    'details': f'检查{service_name}服务健康状态'
-                }
-            ],
-            'deployment_artifacts': {
-                'docker_image': f'{service_name.lower()}-service:1.0.0',
-                'registry_url': f'registry.example.com/{service_name.lower()}-service:1.0.0',
-                'deployment_config': f'{service_name.lower()}-deployment.yaml',
-                'service_config': f'{service_name.lower()}-service.yaml'
-            },
-            'deployment_metrics': {
-                'total_duration': '6m 45s',
-                'build_time': '2m 15s',
-                'deployment_time': '1m 20s',
-                'startup_time': '45s',
-                'memory_usage': '256MB',
-                'cpu_usage': '0.2 cores'
-            },
-            'endpoints': {
-                'health_check': f'http://staging.example.com/{service_name.lower()}/actuator/health',
-                'api_base': f'http://staging.example.com/{service_name.lower()}/api/v1',
-                'metrics': f'http://staging.example.com/{service_name.lower()}/actuator/metrics'
-            },
-            'rollback_info': {
-                'previous_version': f'{service_name.lower()}-service:0.9.0',
-                'rollback_command': f'kubectl rollout undo deployment/{service_name.lower()}-service',
-                'backup_available': True
-            },
-            'deployment_status': 'success'
-        }
-        
-        # 模拟Git提交流程
-        git_commit_result = self._simulate_git_commit(service_name, parameters)
-        
-        # 合并结果
-        final_result = {
-            'deployment_result': deployment_result,
-            'git_commit_result': git_commit_result,
-            'overall_status': 'success' if deployment_result['deployment_status'] == 'success' and git_commit_result['commit_status'] == 'success' else 'failed'
-        }
+        # 🔧 修复：执行真正的Git提交而不是模拟
+        git_commit_result = self._execute_real_git_commit(task, parameters)
         
         return {
-            'success': final_result['overall_status'] == 'success',
-            'message': f'{service_name}服务部署和Git提交完成',
-            'deployment_info': final_result,
+            'success': git_commit_result.get('success', False),
+            'message': f'{service_name}服务Git提交' + ('成功' if git_commit_result.get('success') else '失败'),
+            'git_commit_result': git_commit_result,
             'service_name': service_name
         }
     
-    def _simulate_git_commit(self, service_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
-        """模拟Git提交流程"""
-        logger.info(f"📝 模拟{service_name}服务的Git提交流程")
+    def _execute_real_git_commit(self, task: Dict[str, Any], parameters: Dict[str, Any]) -> Dict[str, Any]:
+        """执行真正的Git提交操作"""
+        service_name = task.get('service_name', 'unknown_service')
+        logger.info(f"📝 执行{service_name}服务的真实Git提交流程")
         
-        # 模拟Git操作
-        git_operations = [
-            {
-                'operation': 'git add .',
-                'status': 'success',
-                'files_added': [
-                    f'src/main/java/com/example/{service_name.lower()}/',
-                    f'src/test/java/com/example/{service_name.lower()}/',
-                    f'src/main/resources/application.yml',
-                    'pom.xml',
-                    'Dockerfile',
-                    'deployment.yaml'
-                ]
-            },
-            {
-                'operation': 'git commit',
-                'status': 'success',
-                'commit_hash': f'abc123def456_{service_name.lower()}',
-                'commit_message': f'feat: 添加{service_name}微服务\n\n- 实现{service_name}基础CRUD功能\n- 添加数据库配置和实体类\n- 完善API接口和文档\n- 添加单元测试和集成测试\n- 配置Docker部署文件',
-                'changed_files': 15,
-                'insertions': 847,
-                'deletions': 0
-            },
-            {
-                'operation': 'git push',
-                'status': 'success',
-                'remote': 'origin',
-                'branch': parameters.get('target_branch', 'main'),
-                'push_url': 'https://github.com/example/microservices.git'
+        # 从参数中获取仓库信息
+        repositories = parameters.get('repositories', [])
+        if not repositories:
+            logger.warning("⚠️ 未找到仓库信息，无法执行Git提交")
+            return {
+                'success': False,
+                'error': '未找到仓库信息',
+                'commit_status': 'failed'
             }
-        ]
+        
+        git_results = []
+        overall_success = True
+        
+        for repo_info in repositories:
+            if isinstance(repo_info, dict):
+                repo_path = repo_info.get('path', '')
+                changes_desc = repo_info.get('changes', f'新增{service_name}相关功能')
+            else:
+                # 向后兼容：如果是字符串，直接作为路径
+                repo_path = str(repo_info)
+                changes_desc = f'新增{service_name}相关功能'
+            
+            if not repo_path or not os.path.exists(repo_path):
+                logger.warning(f"⚠️ 仓库路径不存在: {repo_path}")
+                git_results.append({
+                    'repo_path': repo_path,
+                    'success': False,
+                    'error': '仓库路径不存在'
+                })
+                overall_success = False
+                continue
+            
+            # 执行真正的Git操作
+            repo_result = self._execute_git_operations(repo_path, changes_desc, service_name)
+            git_results.append(repo_result)
+            
+            if not repo_result.get('success'):
+                overall_success = False
         
         return {
-            'commit_status': 'success',
-            'commit_hash': f'abc123def456_{service_name.lower()}',
-            'branch': parameters.get('target_branch', 'main'),
-            'git_operations': git_operations,
-            'repository_info': {
-                'total_commits': 127,
-                'contributors': 3,
-                'last_commit_author': 'LangGraph Agent',
-                'last_commit_time': '2024-01-15 10:30:00'
-            }
+            'success': overall_success,
+            'commit_status': 'success' if overall_success else 'failed',
+            'git_results': git_results,
+            'total_repositories': len(repositories)
         }
-
+    
+    def _execute_git_operations(self, repo_path: str, changes_desc: str, service_name: str) -> Dict[str, Any]:
+        """在指定仓库中执行Git操作"""
+        logger.info(f"🔧 在仓库 {repo_path} 中执行Git操作")
+        
+        try:
+            # 切换到仓库目录
+            original_cwd = os.getcwd()
+            os.chdir(repo_path)
+            
+            # 检查是否是Git仓库
+            if not os.path.exists('.git'):
+                logger.error(f"❌ {repo_path} 不是一个Git仓库")
+                return {
+                    'repo_path': repo_path,
+                    'success': False,
+                    'error': '不是Git仓库'
+                }
+            
+            git_operations = []
+            
+            # 1. git add .
+            logger.info("📁 执行 git add .")
+            add_result = subprocess.run(['git', 'add', '.'], 
+                                      capture_output=True, text=True, cwd=repo_path)
+            git_operations.append({
+                'operation': 'git add .',
+                'success': add_result.returncode == 0,
+                'stdout': add_result.stdout,
+                'stderr': add_result.stderr
+            })
+            
+            if add_result.returncode != 0:
+                logger.error(f"❌ git add 失败: {add_result.stderr}")
+                return {
+                    'repo_path': repo_path,
+                    'success': False,
+                    'error': f'git add 失败: {add_result.stderr}',
+                    'operations': git_operations
+                }
+            
+            # 2. 检查是否有更改
+            status_result = subprocess.run(['git', 'status', '--porcelain'], 
+                                         capture_output=True, text=True, cwd=repo_path)
+            
+            if not status_result.stdout.strip():
+                logger.info("ℹ️ 没有检测到文件更改，跳过提交")
+                return {
+                    'repo_path': repo_path,
+                    'success': True,
+                    'message': '没有文件更改，跳过提交',
+                    'operations': git_operations
+                }
+            
+            # 3. git commit
+            commit_message = f"feat: {changes_desc}\n\n🤖 已经按设计文档生成对应初始代码\n\nCo-Authored-By: coder <coder@yljr.com>"
+            
+            logger.info(f"💾 执行 git commit")
+            commit_result = subprocess.run(['git', 'commit', '-m', commit_message], 
+                                         capture_output=True, text=True, cwd=repo_path)
+            git_operations.append({
+                'operation': 'git commit',
+                'success': commit_result.returncode == 0,
+                'stdout': commit_result.stdout,
+                'stderr': commit_result.stderr,
+                'commit_message': commit_message
+            })
+            
+            if commit_result.returncode != 0:
+                logger.error(f"❌ git commit 失败: {commit_result.stderr}")
+                return {
+                    'repo_path': repo_path,
+                    'success': False,
+                    'error': f'git commit 失败: {commit_result.stderr}',
+                    'operations': git_operations
+                }
+            
+            # 提取commit hash
+            commit_hash = None
+            if 'commit' in commit_result.stdout.lower():
+                import re
+                hash_match = re.search(r'commit ([a-f0-9]+)', commit_result.stdout)
+                if hash_match:
+                    commit_hash = hash_match.group(1)
+            
+            # 4. git push - 智能处理上游分支设置
+            logger.info("🚀 执行 git push")
+            
+            # 首先尝试普通的git push
+            push_result = subprocess.run(['git', 'push'], 
+                                       capture_output=True, text=True, cwd=repo_path)
+            
+            # 如果失败且错误信息包含"no upstream branch"，则设置上游分支
+            if push_result.returncode != 0 and "no upstream branch" in push_result.stderr:
+                logger.info("🔧 检测到新分支，设置上游分支并推送")
+                
+                # 获取当前分支名
+                branch_result = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'], 
+                                             capture_output=True, text=True, cwd=repo_path)
+                
+                if branch_result.returncode == 0:
+                    current_branch = branch_result.stdout.strip()
+                    logger.info(f"📋 当前分支: {current_branch}")
+                    
+                    # 使用 --set-upstream 推送
+                    push_upstream_result = subprocess.run(
+                        ['git', 'push', '--set-upstream', 'origin', current_branch], 
+                        capture_output=True, text=True, cwd=repo_path
+                    )
+                    
+                    git_operations.append({
+                        'operation': f'git push --set-upstream origin {current_branch}',
+                        'success': push_upstream_result.returncode == 0,
+                        'stdout': push_upstream_result.stdout,
+                        'stderr': push_upstream_result.stderr
+                    })
+                    
+                    push_success = push_upstream_result.returncode == 0
+                    if push_success:
+                        logger.info("✅ 上游分支设置成功，git push 完成")
+                    else:
+                        logger.error(f"❌ 设置上游分支后 git push 仍然失败: {push_upstream_result.stderr}")
+                else:
+                    logger.error(f"❌ 获取当前分支名失败: {branch_result.stderr}")
+                    push_success = False
+            else:
+                # 记录普通push的结果
+                git_operations.append({
+                    'operation': 'git push',
+                    'success': push_result.returncode == 0,
+                    'stdout': push_result.stdout,
+                    'stderr': push_result.stderr
+                })
+                
+                push_success = push_result.returncode == 0
+                if push_success:
+                    logger.info("✅ git push 成功")
+                else:
+                    logger.error(f"❌ git push 失败: {push_result.stderr}")
+            
+            # 如果push仍然失败，但commit成功了，记录这种情况
+            if not push_success:
+                logger.warning("⚠️ git push 失败，但commit可能已经成功")
+            
+            return {
+                'repo_path': repo_path,
+                'success': push_success,  # 只有push成功才算完全成功
+                'commit_hash': commit_hash,
+                'operations': git_operations,
+                'message': 'Git操作完成' if push_success else 'Commit成功但Push失败'
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Git操作执行异常: {e}")
+            return {
+                'repo_path': repo_path,
+                'success': False,
+                'error': f'Git操作异常: {str(e)}'
+            }
+        finally:
+            # 恢复原始工作目录
+            try:
+                os.chdir(original_cwd)
+            except Exception as e:
+                logger.warning(f"⚠️ 恢复工作目录失败: {e}")
 
 async def git_commit_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """Git提交节点 - 支持任务驱动的Git操作和部署"""
@@ -240,8 +331,13 @@ async def git_commit_node(state: Dict[str, Any]) -> Dict[str, Any]:
     try:
         commit_agent = GitCommitAgent()
         
-        # 执行数据库中的任务
-        task_results = commit_agent.execute_task_from_database()
+        # 🆕 获取项目任务标识
+        project_task_id = state.get('project_task_id')
+        if project_task_id:
+            logger.info(f"🏷️ Git提交节点获取项目标识: {project_task_id}")
+        
+        # 🔧 修复：执行数据库中的任务时传递项目标识
+        task_results = commit_agent.execute_task_from_database(project_task_id)
         
         # 将任务执行结果添加到状态中
         commit_operations = state.get('commit_operations', [])

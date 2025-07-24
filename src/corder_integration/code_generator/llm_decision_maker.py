@@ -504,7 +504,7 @@ class LLMDecisionMaker:
             'controller': {
                 'action': 'create_new',
                 'target_class': '',
-                'package_path': 'interfaces.facade',
+                'package_path': 'interfaces',
                 'reason': '默认创建新Controller'
             },
             'application_service': {
