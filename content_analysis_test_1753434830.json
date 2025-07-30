@@ -1,0 +1,33 @@
+{
+  "file_info": {
+    "content": "CiMg6ZyA5rGC5paH5qGjIC0g56Gu5p2D5Lia5Yqh55Sz6K+35o6l5Y+j5LyY5YyWVjEuMgoKIyMgMS4g6aG555uu6IOM5pmvCuS4gOWxgOWvueaOpemTvuaVsOeahOmhueebruS4iue6v+WQju+8jOaguOW/g+S8geS4muWPjemmiO+8jOW4jOacm+WwseW3suaOqOmAgeiHs+W5s+WPsOeahOaVsOaNru+8jOWcqOaguOW/g+S8geS4muWGhemDqOezu+e7n+WGheS/ruaUuemDqOWIhuS/oeaBr++8iOWmgumineW6puS/oeaBr++8ieWQju+8jOS9v+eUqOWOn+S4muWKoee8luWPt+WGjeasoeaOqOmAgeiHs+W5s+WPsOOAggoKIyMgMi4g5Yqf6IO96LCD5pW0CgojIyMgMi4xIOehruadg+S4muWKoeeUs+ivt+aOpeWPo+iwg+aVtArosIPmlbTor7TmmI7vvJrlr7nnoa7mnYPkuJrliqHnlLPor7fmjqXlj6PkuK3lhbPkuo5iaXpTZXJpYWxOb+eahOagoemqjOinhOWImei/m+ihjOiwg+aVtO+8jOWFgeiuuOebuOWQjOS4muWKoee8luWPt+eahOaVsOaNruWcqOaguOW/g+S8geS4muWGhemDqOezu+e7n+S/ruaUueWQjumHjeaWsOaOqOmAgeOAggoK5YW35L2T5Y+Y5pu077yaCi0g6LCD5pW05o6l5Y+j5qCh6aqM6YC76L6R77yM5pSv5oyB55u45ZCM5Lia5Yqh57yW5Y+36YeN5aSN5o+Q5LqkCi0g5paw5aKe5pWw5o2u54mI5pys5o6n5Yi25py65Yi2Ci0g5aKe5Yqg6YeN5o6o5qCH6K+G5a2X5q61CgojIyMgMi4yIOmineW6pueuoeeQhuWKn+iDveiwg+aVtArlr7nljp8i6ZO+5pWw6aKd5bqmIuWKn+iDvei/m+ihjOS7peS4i+iwg+aVtO+8mgotIOWKn+iDveWQjeensOeUsSLpk77mlbDpop3luqYi5Y+Y5pu05Li6IumineW6pueuoeeQhiIKLSDmlrDlop4i57uE57uH5Y2V5YWD6aKd5bqmIuaMiemSrgotIOWIl+ihqOaWsOWiniLpop3luqbnsbvlnosi5a2X5q61CgojIyAzLiDmioDmnK/opoHmsYIKLSDkvb/nlKjnjrDmnInnmoTmjqXlj6PmoYbmnrYKLSDkv53mjIHmlbDmja7kuIDoh7TmgKcKLSDnoa7kv53lkJHlkI7lhbzlrrkK",
+    "name": "test_requirement_doc.md",
+    "size": 975
+  },
+  "message": "完整分析流程已启动",
+  "stages": [
+    {
+      "name": "document_parsing",
+      "status": "pending",
+      "title": "文档解析"
+    },
+    {
+      "name": "content_analysis",
+      "status": "pending",
+      "title": "内容分析"
+    },
+    {
+      "name": "ai_analysis",
+      "status": "pending",
+      "title": "AI设计方案"
+    },
+    {
+      "name": "document_generation",
+      "status": "pending",
+      "title": "生成文档"
+    }
+  ],
+  "success": true,
+  "task_id": "bd9f87f0-410a-40fc-90b8-dbde3bdc1c3d",
+  "timestamp": "2025-07-25T17:13:50.291192"
+}

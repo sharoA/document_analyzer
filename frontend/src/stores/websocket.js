@@ -6,7 +6,7 @@ import { ElMessage } from 'element-plus'
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: 'http://localhost:8082',
+  baseURL: window.location.origin, // 使用当前域名，确保通过Vite代理
   timeout: 900000, // 15分钟超时，适应代码生成等长时间任务
   headers: {
     'Content-Type': 'application/json',
@@ -1858,14 +1858,6 @@ ${task.timestamps ? `
         status: 'pending',
         progress: 0,
         timestamp: new Date().toLocaleTimeString()
-      },
-      {
-        id: 'step_document_generation',
-        title: '生成文档',
-        description: '等待AI分析完成...',
-        status: 'pending',
-        progress: 0,
-        timestamp: new Date().toLocaleTimeString()
       }
     ]
     
@@ -1889,8 +1881,7 @@ ${task.timestamps ? `
     const titleMapping = {
       'document_parsing': '文档解析',
       'content_analysis': '内容分析',
-      'ai_analysis': 'AI智能分析',
-      'document_generation': '生成文档'
+      'ai_analysis': 'AI智能分析'
     }
     
     // 更新各个阶段的步骤

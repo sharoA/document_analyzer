@@ -334,12 +334,7 @@ class ContentAnalyzerService(BaseAnalysisService):
                     sample_dim = len(actual_vector)
                     
                     self.logger.info(f"历史数据向量维度: {sample_dim}, 当前分析向量维度: {len(query_vector)}")
-                    
-                    if sample_dim != len(query_vector):
-                        # 维度不匹配，跳过向量搜索，使用关键词搜索替代
-                        self.logger.info(f"向量维度不匹配 (历史: {sample_dim}, 当前: {len(query_vector)})，跳过向量搜索")
-                        return await self._fallback_keyword_search(chunk, top_k)
-                
+
                 # 如果维度匹配，继续向量搜索
                 response = collection.query.near_vector(
                     near_vector=query_vector,
@@ -365,40 +360,10 @@ class ContentAnalyzerService(BaseAnalysisService):
         except Exception as e:
             self.logger.error(f"历史内容搜索失败: {e}")
             # 降级到关键词搜索
-            return await self._fallback_keyword_search(chunk, top_k)
-    
-    async def _fallback_keyword_search(self, chunk: Dict[str, Any], top_k: int = 5) -> List[Dict[str, Any]]:
-        """当向量搜索失败时，使用关键词搜索作为降级方案"""
-        try:
-            collection = self.weaviate_client.collections.get("AnalyDesignDocuments")
-            
-            # 使用BM25关键词搜索
-            search_text = f"{chunk['section']} {chunk['content']}"
-            
-            response = collection.query.bm25(
-                query=search_text,
-                limit=top_k,
-                return_metadata=['score']
-            )
-            
-            similar_items = []
-            for obj in response.objects:
-                # BM25得分转换为相似度（简单映射）
-                similarity = min(obj.metadata.score / 10.0, 1.0) if obj.metadata.score else 0.1
-                similar_items.append({
-                    "content": obj.properties.get('content', ''),
-                    "title": obj.properties.get('title', ''),
-                    "file_path": obj.properties.get('file_path', ''),
-                    "similarity": similarity,
-                    "search_method": "BM25关键词搜索"
-                })
-            
-            self.logger.info(f"使用关键词搜索找到 {len(similar_items)} 个相似项")
-            return similar_items
-            
-        except Exception as e:
-            self.logger.error(f"关键词搜索也失败: {e}")
             return []
+    
+
+
     
     async def _identify_deleted_items(self, structured_chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """识别删除项"""
@@ -483,7 +448,7 @@ class ContentAnalyzerService(BaseAnalysisService):
             for idx, item in enumerate(comparison['matched_history'][:3]):  # 取前3个最相似的
                 history_item = f"""
 历史文档{idx+1}:
-- 文件: {item.get('file_path', '未知文件')}
+- 文件: {item.get('file_name', '未知文件')}
 - 标题: {item.get('title', '未知标题')}
 - 相似度: {item.get('similarity', 0):.2f}
 - 内容: {item.get('content', '')}

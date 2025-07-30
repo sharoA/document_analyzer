@@ -121,5 +121,18 @@ public class {{ interface_name }}ServiceImpl implements {{ interface_name }}Serv
 
 **重要**: 生成的ServiceImpl类必须严格实现Service接口中定义的所有方法，方法签名必须完全匹配。
 
+## 🔍 强制执行：方法调用存在性验证
+**生成ServiceImpl代码后，必须执行以下验证**：
+
+1. **读取Service接口文件**: 使用`read_file`确保实现了接口中的所有方法
+2. **验证Mapper方法调用**: 对于所有`xxxMapper.methodName()`调用：
+   - 使用`read_file`读取对应的Mapper接口文件
+   - 确认被调用的方法在Mapper接口中存在
+   - 如果不存在，使用现有的方法或建议创建该方法
+3. **验证外部Service调用**: 对于跨Service调用，检查目标Service接口
+4. **验证Feign调用**: 对于`xxxFeignClient.methodName()`调用，检查Feign接口
+
+**绝对禁止**: 生成调用不存在方法的代码！
+
 请生成完整的ServiceImpl实现类代码。
 {% endmacro %}

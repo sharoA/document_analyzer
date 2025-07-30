@@ -15,6 +15,14 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+
+class ErrorOnlyFilter(logging.Filter):
+    """只允许ERROR和CRITICAL级别日志通过的过滤器"""
+    
+    def filter(self, record):
+        return record.levelno >= logging.ERROR
+
+
 class SimpleDailyRotatingHandler(logging.handlers.TimedRotatingFileHandler):
     """
     简化的按日期轮转文件处理器
@@ -171,8 +179,26 @@ class LoggerManager:
         except Exception as e:
             print(f"创建API服务器日志处理器失败: {e}", file=sys.stderr)
         
-        # 4. 只在有实际错误时创建错误日志（移除预创建的错误处理器）
-        # 不再预创建错误日志处理器，避免空文件
+        # 4. 创建错误日志处理器（预创建，确保错误能被正确记录）
+        try:
+            error_handler = SimpleDailyRotatingHandler(
+                base_dir=log_dir,
+                filename_prefix='error',
+                when='midnight',
+                interval=1,
+                backupCount=config.get('backup_count', 30)
+            )
+            error_handler.setLevel(logging.ERROR)
+            error_handler.setFormatter(formatter)
+            
+            # 添加错误过滤器，只记录ERROR和CRITICAL级别的日志
+            error_filter = ErrorOnlyFilter()
+            error_handler.addFilter(error_filter)
+            
+            root_logger.addHandler(error_handler)
+            cls._error_handler_created = True
+        except Exception as e:
+            print(f"创建错误日志处理器失败: {e}", file=sys.stderr)
         
         cls._initialized = True
         
@@ -186,6 +212,7 @@ class LoggerManager:
         logger.info(f"📂 按月分目录: logs/YYYY-MM/")
         logger.info(f"📝 主日志: logs/{current_month}/app.log")
         logger.info(f"🔧 API日志: logs/{current_month}/api_server.log")
+        logger.info(f"🚨 错误日志: logs/{current_month}/error.log")
         logger.info(f"🗂️ 保留天数: {config.get('backup_count', 30)} 天")
         logger.info("=" * 50)
     
@@ -235,38 +262,10 @@ class LoggerManager:
     
     @classmethod
     def create_error_logger_if_needed(cls):
-        """只在有实际错误时才创建错误日志处理器"""
-        if hasattr(cls, '_error_handler_created'):
-            return
-            
-        try:
-            log_dir = Path('logs')
-            current_month = datetime.now().strftime('%Y-%m')
-            monthly_dir = log_dir / current_month
-            monthly_dir.mkdir(parents=True, exist_ok=True)
-            
-            error_handler = SimpleDailyRotatingHandler(
-                base_dir=log_dir,
-                filename_prefix='error',
-                when='midnight',
-                interval=1,
-                backupCount=7
-            )
-            error_handler.setLevel(logging.ERROR)
-            
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                datefmt='%Y-%m-%d %H:%M:%S'
-            )
-            error_handler.setFormatter(formatter)
-            
-            root_logger = logging.getLogger()
-            root_logger.addHandler(error_handler)
-            
-            cls._error_handler_created = True
-            
-        except Exception as e:
-            print(f"创建错误日志处理器失败: {e}", file=sys.stderr)
+        """确保错误日志处理器已创建（现在在初始化时就创建了）"""
+        # 错误日志处理器现在在系统初始化时就创建了
+        # 这个方法保留是为了向后兼容
+        pass
     
     @classmethod
     def log_operation(cls, operation: str, details: str = "", level: str = "INFO"):

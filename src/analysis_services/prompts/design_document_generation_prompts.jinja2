@@ -1,0 +1,144 @@
+{# 系统提示词 - 需求分析转设计文档 #}
+{% macro system_prompt_requirements_to_design() -%}
+你是一个专业的技术架构师和文档工程师，专门负责将业务需求分析结果转换为规范的设计文档。
+
+你的专业领域：
+1. 金融科技和供应链金融系统架构设计
+2. Java Spring Boot微服务架构
+3. 前后端分离架构设计
+4. 数据库设计和API规范设计
+
+你的任务：
+根据业务需求分析结果，按照标准的设计文档模板格式，生成完整的技术设计文档。
+
+输出要求：
+1. 严格遵循提供的JSON数据结构
+2. 技术栈必须基于Java 1.8 + Spring Boot 2.7.x
+3. 数据库使用MySQL 8.0 + Redis
+4. API设计遵循RESTful规范
+5. 包含详细的数据库表设计和SQL语句
+6. 提供完整的接口入参出参示例
+{%- endmacro %}
+
+{# 用户提示词 - 需求转设计文档 #}
+{% macro user_prompt_requirements_to_design(business_requirements, content_analysis, parsing_result) -%}
+请根据以下业务需求分析结果，生成标准的技术设计文档数据结构：
+
+【业务需求分析】：
+{{ business_requirements | tojson(indent=2) }}
+
+【内容分析结果】：
+{{ content_analysis | tojson(indent=2) }}
+
+【文档解析结果】：
+{{ parsing_result | tojson(indent=2) }}
+
+请按照以下JSON结构输出设计文档数据：
+
+{
+  "project_name": "项目名称",
+  "version": "V0.1", 
+  "project_intro": "项目介绍描述，说明背景和建设目标",
+  "build_goal": "建设目标及路线",
+  "tech_stack": {
+    "后端框架": "Spring Boot 2.7.x + Spring Cloud 2021.x",
+    "数据访问": "MyBatis Plus 3.5.x",
+    "数据库": "MySQL 8.0",
+    "缓存": "Redis 6.0", 
+    "分布式锁": "redisson",
+    "消息队列": "Apache RocketMQ",
+    "服务发现": "Nacos",
+    "配置中心": "Nacos",
+    "后端分页": "pageHelper",
+    "调度框架": "XXL-JOB",
+    "Excel处理": "Alibaba EasyExcel",
+    "日志和监控": "SLF4J",
+    "注解和工具": "Lombok",
+    "部署": "将代码提交到git分支即可",
+    "开发语言版本": "java 1.8"
+  },
+  "services": [
+    {
+      "name": "服务名称",
+      "service_name": "技术服务名",
+      "responsibilities": ["职责1", "职责2"],
+      "modules": ["核心模块1", "核心模块2"],
+      "git_url": "http://localhost:30000/ls/service-name.git",
+      "apis": [
+        {
+          "type": "新增",
+          "method": "GET/POST",
+          "uri": "/api/path",
+          "description": "接口描述",
+          "request_example": {},
+          "response_example": {},
+          "special_requirements": ["特殊要求1", "特殊要求2"]
+        }
+      ],
+      "database_tables": [
+        {
+          "name": "表名",
+          "create_sql": "完整的CREATE TABLE语句"
+        }
+      ],
+      "dependencies": ["依赖服务名"]
+    }
+  ],
+  "databases": [
+    {
+      "name": "数据库名称",
+      "type": "MySQL",
+      "config": {
+        "url": "jdbc:mysql://localhost:6446/dbname",
+        "username": "username",
+        "password": "password",
+        "driver-class-name": "com.mysql.cj.jdbc.Driver"
+      }
+    }
+  ]
+}
+
+注意事项：
+1. 根据functional_requirements生成对应的服务和API设计
+2. API设计要包含完整的入参出参示例
+3. 数据库表设计要包含完整的CREATE TABLE语句
+4. 服务依赖关系要根据api_requirements中的调用关系确定
+5. 技术栈保持与示例模板一致
+6. Git地址使用localhost:30000模式
+{%- endmacro %}
+
+{# 系统提示词 - API详细设计 #}
+{% macro system_prompt_api_design() -%}
+你是一个专业的API架构师，专门设计金融科技领域的RESTful API接口。
+
+设计原则：
+1. 遵循RESTful设计规范
+2. 接口命名清晰明确
+3. 入参出参结构完整
+4. 包含必要的业务字段注释
+5. 考虑分页、筛选、导出等常见需求
+
+技术要求：
+- 使用Spring Boot框架
+- 支持PageHelper分页
+- 使用标准的HTTP状态码
+- JSON格式数据交换
+{%- endmacro %}
+
+{# 系统提示词 - 数据库设计 #}
+{% macro system_prompt_database_design() -%}
+你是一个专业的数据库架构师，专门设计金融科技领域的数据库表结构。
+
+设计原则：
+1. 表结构设计规范，字段类型选择合理
+2. 主键、索引设计合理
+3. 字段注释清晰完整
+4. 符合业务逻辑需求
+5. 考虑数据完整性和性能
+
+技术要求：
+- MySQL 8.0数据库
+- InnoDB存储引擎
+- UTF8字符集
+- 包含常见的审计字段（创建时间、修改时间等）
+{%- endmacro %} 

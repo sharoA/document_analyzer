@@ -338,8 +338,8 @@ class GitManagerAgent:
             project_name = parameters.get('project_name', 'default_project')
             target_dir = f"{output_path}/{project_name}/{repo_name}"
         
-        # 🆕 使用统一的分支名称生成方法
-        new_branch = self._generate_unified_branch_name(parameters.get('project_name', 'default_project'))
+        # 🆕 使用统一的分支名称生成方法 - 优先使用已获取的project_name
+        new_branch = self._generate_unified_branch_name(project_name)
         
         # 执行克隆并创建新分支
         clone_result = self.clone_repository(repo_url, target_dir, new_branch)

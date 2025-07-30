@@ -1,0 +1,135 @@
+{% macro project_header(project_name, version="V0.1") -%}
+设计文档 - {{ project_name }}{{ version }}
+{%- endmacro %}
+
+{% macro system_architecture(project_intro, build_goal, tech_stack) -%}
+1. 系统架构设计
+1.1 项目介绍
+{{ project_intro }}
+建设目标及路线：{{ build_goal }}
+
+1.2 功能需求说明
+{% if functional_requirements %}
+{% for req in functional_requirements %}
+1.2.{{ loop.index }} {{ req.name }}
+调整说明：{{ req.description }}
+{% if req.change_type == "修改" %}
+- {{ req.details | join('\n- ') }}
+{% elif req.change_type == "新增" %}
+新增功能：
+- {{ req.details | join('\n- ') }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+1.3 总体架构
+采用微服务架构模式，实现松耦合、高可扩展的系统设计：
+- 涉及{{ services | length }}个后端服务：
+{% for service in services %}
+{{ loop.index }}. {{ service.name }}：{{ service.service_name }}
+{% endfor %}
+
+- 涉及{{ databases | length }}个数据库：
+{% for db in databases %}
+{{ loop.index }}. {{ db.name }}：{{ db.type }}
+{% endfor %}
+
+1.4 技术栈选型
+{% for key, value in tech_stack.items() %}
+- {{ key }}：{{ value }}
+{% endfor %}
+{%- endmacro %}
+
+{% macro service_design(services) -%}
+2. 服务设计
+
+{% for service in services %}
+2.{{ loop.index }} {{ service.name }} ({{ service.service_name }})
+职责：{{ service.responsibilities | join('、') }}
+
+2.{{ loop.index }}.1 核心模块：
+{% for module in service.modules %}
+- {{ module }}
+{% endfor %}
+
+2.{{ loop.index }}.2 API设计：
+{% for api in service.apis %}
+2.{{ loop.index }}.2.{{ loop.index }} {{ api.type }}接口：
+uri: {{ api.method }} {{ api.uri }}
+method: {{ api.method }}
+description: {{ api.description }}
+
+入参示例：
+{{ api.request_example | tojson(indent=2) }}
+
+返参示例：
+{{ api.response_example | tojson(indent=2) }}
+
+{% if api.special_requirements %}
+特殊要求：
+{% for req in api.special_requirements %}
+{{ loop.index }}、{{ req }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+
+{% if service.database_tables %}
+2.{{ loop.index }}.3 数据库表设计：
+{% for table in service.database_tables %}
+{{ table.create_sql }}
+{% endfor %}
+{% else %}
+2.{{ loop.index }}.3 数据库表设计：无
+{% endif %}
+
+2.{{ loop.index }}.4 本次项目依赖服务：
+{% if service.dependencies %}
+{% for dep in service.dependencies %}
+依赖服务名称：{{ dep }}
+{% endfor %}
+{% else %}
+依赖服务名称：无
+{% endif %}
+
+{% endfor %}
+{%- endmacro %}
+
+{% macro execution_requirements(execution_data) -%}
+3 执行要求
+3.1 涉及服务范围
+{{ execution_data.service_scope }}
+{% for service in execution_data.services %}
+{{ loop.index }}. {{ service.name }}：{{ service.service_name }}，git地址：{{ service.git_url }}
+{% endfor %}
+
+3.2 涉及数据库范围
+{{ execution_data.data_scope }}
+{% for db in execution_data.databases %}
+3.2.{{ loop.index }} {{ db.name }}：{{ db.type }}
+{% if db.config %}
+数据库配置
+{% for key, value in db.config.items() %}
+  {{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+
+3.3 涉及接口范围
+{{ execution_data.scope_interface }}
+{%- endmacro %}
+
+{# 完整文档模板 #}
+{% macro complete_design_document(project_name, version, project_data) -%}
+{{ project_header(project_name, version) }}
+{{ system_architecture(
+    project_data.project_intro, 
+    project_data.build_goal, 
+    project_data.tech_stack
+) }}
+
+{{ service_design(project_data.services) }}
+
+{{ execution_requirements(project_data.execution) }}
+{%- endmacro %}

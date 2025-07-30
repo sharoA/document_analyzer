@@ -408,7 +408,7 @@ redis:
         "output_path": str(analyzer.git_base_path),
         "existing_project_path": selected_project['path'] if selected_project else None,
         "target_branch": "feature/optimization",
-        "project_task_id": "1231000001"
+        "project_task_id": "1231000002"
     }
     
     print(f"\n🚀 调用增强版API: {api_url}")
@@ -515,7 +515,7 @@ def test_langgraph_api():
         "document_content": document_content,
         "project_name": project_name,
         "use_langgraph": True,
-        "project_task_id": "1231000001"
+        "project_task_id": "1231000002"
     }
     
     print(f"🚀 调用API: {api_url}")

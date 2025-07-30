@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 class KnowledgeBaseInitializer:
     """知识库初始化器"""
     
-    def __init__(self, knowledge_base_path: str = "D:\\knowledge_base"):
+    def __init__(self, knowledge_base_path: str = "/Users/renyu/Documents/knowledge_base"):
         """
         初始化知识库处理器
         

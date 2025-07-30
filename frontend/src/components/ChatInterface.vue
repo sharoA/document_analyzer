@@ -20,17 +20,12 @@
         <div class="history-section">
           <h3>需求文档智能分析</h3>
           <p class="section-subtitle">文档解析专家</p>
-        </div>
-        
-        <div class="task-description">
-          <h4>智能对话助手</h4>
-          <p>专业的需求分析、访谈提纲生成和问卷设计助手</p>
-          
-          <div class="feature-tips">
+           <div class="feature-tips">
             <p>💡 可以上传文档进行基于文档内容的智能对话</p>
-            <p>📎 支持 Word、PDF、TXT、Markdown 格式文档</p>
+            <p>📎 支持 Word、PDF 格式文档</p>
           </div>
         </div>
+        
       </div>
 
       <!-- 聊天消息区域 -->
@@ -177,7 +172,7 @@
                 <el-timeline-item
                   v-for="step in processingSteps"
                   :key="step.id"
-                  :type="step.status"
+                  :type="getTimelineItemType(step.status)"
                   :timestamp="step.timestamp"
                 >
                   <div class="step-content">
@@ -326,31 +321,6 @@
               <div class="results-container">
                 <el-scrollbar height="100%" class="analysis-scrollbar">
                   <div class="result-content">
-                  <!-- 文件基本信息 -->
-                  <el-card class="info-card" v-if="analysisResult">
-                    <template #header>
-                      <h5>当前文件基本信息</h5>
-                    </template>
-                    <el-descriptions :column="2" border size="small">
-                      <el-descriptions-item label="文件名称">
-                        {{ getAnalysisFileName() }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="文件类型">
-                        {{ getAnalysisFileType() }}
-                        
-                      </el-descriptions-item>
-                      <el-descriptions-item label="子类型">
-                        {{ analysisResult.fileFormat.subType || '未知' }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="文件大小">
-                        {{ uploadedFile ? formatFileSize(uploadedFile.size) : formatFileSize(analysisResult.fileFormat.basicInfo?.fileSize || 0) }}
-                      </el-descriptions-item>
-                      <el-descriptions-item label="字符数">
-                        {{ getAnalysisCharacterCount() }}
-                      </el-descriptions-item>
-                    </el-descriptions>
-                  </el-card>
-
 
                   <!-- 文档结构摘要 -->
                   <el-card class="info-card" v-if="analysisResult && analysisResult.documentStructure?.contentSummary">
@@ -369,7 +339,7 @@
                         <el-descriptions-item label="功能数量">
                           {{ analysisResult.documentStructure.contentSummary.functionCount || 0 }}
                         </el-descriptions-item>
-                        <el-descriptions-item label="API数量">
+                        <el-descriptions-item label="API预估数量">
                           {{ analysisResult.documentStructure.contentSummary.apiCount || 0 }}
                         </el-descriptions-item>
                         <el-descriptions-item label="数据库变更">
@@ -443,7 +413,7 @@
                             <template #default="scope">
                               <el-tag v-for="(pos, index) in scope.row.positions" 
                                      :key="index" 
-                                     size="mini" 
+                                     size="small" 
                                      type="info"
                                      style="margin: 1px;">
                                 {{ pos }}
@@ -461,14 +431,14 @@
                              class="cluster-item">
                           <div class="cluster-header">
                             <span class="cluster-name">{{ cluster.clusterName }}</span>
-                            <el-tag size="mini" type="warning">
+                            <el-tag size="small" type="warning">
                               相关度: {{ (parseFloat(cluster.coherenceScore) * 100).toFixed(0) }}%
                             </el-tag>
                           </div>
                           <div class="cluster-keywords">
                             <el-tag v-for="(keyword, kidx) in cluster.keywords" 
                                    :key="kidx" 
-                                   size="mini" 
+                                   size="small" 
                                    style="margin: 2px;">
                               {{ keyword }}
                             </el-tag>
@@ -500,15 +470,6 @@
                                size="small" 
                                style="margin: 2px 4px 2px 0;">
                           {{ audience }}
-                        </el-tag>
-                      </el-descriptions-item>
-                      <el-descriptions-item label="使用模型" v-if="analysisResult.notes">
-                        <el-tag v-for="(audience, index) in analysisResult.notes" 
-                               :key="index" 
-                               type="primary" 
-                               size="small" 
-                               style="margin: 2px 4px 2px 0;">
-                               {{ analysisResult.notes }}
                         </el-tag>
                       </el-descriptions-item>
                     </el-descriptions>
@@ -810,9 +771,9 @@
         </el-tab-pane>
 
         <!-- 设计方案 -->
-        <el-tab-pane label="设计方案" name="design">
+        <el-tab-pane label="设计方案（后端）" name="design">
           <div class="tab-content">
-            <div v-if="!analysisResult || !analysisResult.markdownContent" class="empty-state">
+            <div v-if="!analysisResult && !wsStore.currentParsingTask?.id" class="empty-state">
               <el-empty description="暂无设计方案">
                 <el-button v-if="!uploadedFile" type="primary" @click="activeTab = 'preview'">
                   上传文档开始分析
@@ -824,133 +785,21 @@
               </el-empty>
             </div>
             
-            <div v-else class="design-plan-content">
-              <!-- Markdown设计报告 -->
-              <el-card class="info-card">
-                <template #header>
-                  <div class="markdown-header">
-                    <h5>📋 {{ getAnalysisFileName() }} - 设计报告</h5>
-                    <el-button-group size="small">
-                      <el-button v-if="!isEditingMarkdown" @click="toggleEditMode" type="warning">
-                        <el-icon><Edit /></el-icon>
-                        编辑报告
-                      </el-button>
-                      <el-button v-if="isEditingMarkdown" @click="saveMarkdownContent" type="success" :loading="isSavingMarkdown">
-                        <el-icon><Check /></el-icon>
-                        保存修改
-                      </el-button>
-                      <el-button v-if="isEditingMarkdown" @click="cancelEditMode" type="info">
-                        <el-icon><Close /></el-icon>
-                        取消编辑
-                      </el-button>
-                      <el-button @click="copyMarkdownContent">
-                        <el-icon><DocumentCopy /></el-icon>
-                        复制报告
-                      </el-button>
-                      <el-button @click="downloadMarkdownContent">
-                        <el-icon><Download /></el-icon>
-                        下载Markdown
-                      </el-button>
-                      <el-button @click="generateCode" :loading="isGeneratingCode" type="success">
-                        <el-icon><Edit /></el-icon>
-                        生成代码
-                      </el-button>
-                    </el-button-group>
-                  </div>
-                </template>
-                
-                <!-- 编辑模式 -->
-                <div v-if="isEditingMarkdown" class="markdown-editor-container">
-                  <el-row :gutter="16" style="height: 70vh;">
-                    <!-- 编辑器 -->
-                    <el-col :span="12">
-                      <div class="editor-panel">
-                        <div class="editor-header">
-                          <h6>📝 Markdown编辑器</h6>
-                          <el-tooltip content="支持标准Markdown语法">
-                            <el-icon><QuestionFilled /></el-icon>
-                          </el-tooltip>
-                        </div>
-                        <el-input
-                          v-model="editingMarkdownContent"
-                          type="textarea"
-                          :rows="25"
-                          placeholder="请输入Markdown内容..."
-                          resize="none"
-                          class="markdown-editor"
-                          @input="onMarkdownEdit"
-                        />
-                      </div>
-                    </el-col>
-                    
-                    <!-- 预览 -->
-                    <el-col :span="12">
-                      <div class="preview-panel">
-                        <div class="editor-header">
-                          <h6>👁️ 实时预览</h6>
-                          <el-tooltip content="编辑内容的实时预览">
-                            <el-icon><View /></el-icon>
-                          </el-tooltip>
-                        </div>
-                        <el-scrollbar max-height="calc(70vh - 50px)" class="preview-scrollbar">
-                          <div class="markdown-preview-edit" v-html="renderMarkdown(editingMarkdownContent)"></div>
-                        </el-scrollbar>
-                      </div>
-                    </el-col>
-                  </el-row>
-                  
-                  <!-- 编辑工具栏 -->
-                  <div class="editor-toolbar">
-                    <el-button-group size="small">
-                      <el-button @click="insertMarkdownSyntax('**', '**')" title="加粗">
-                        <el-icon><Document /></el-icon>
-                        粗体
-                      </el-button>
-                      <el-button @click="insertMarkdownSyntax('*', '*')" title="斜体">
-                        <el-icon><Edit /></el-icon>
-                        斜体
-                      </el-button>
-                      <el-button @click="insertMarkdownSyntax('## ', '')" title="标题">
-                        <el-icon><Promotion /></el-icon>
-                        标题
-                      </el-button>
-                      <el-button @click="insertMarkdownSyntax('- ', '')" title="列表">
-                        <el-icon><List /></el-icon>
-                        列表
-                      </el-button>
-                      <el-button @click="insertMarkdownSyntax('`', '`')" title="代码">
-                        <el-icon><Edit /></el-icon>
-                        代码
-                      </el-button>
-                    </el-button-group>
-                    
-                    <div class="editor-stats">
-                      <span>字符数: {{ editingMarkdownContent.length }}</span>
-                      <span>行数: {{ editingMarkdownContent.split('\n').length }}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- 查看模式 -->
-                <div v-else class="markdown-content">
-                  <el-scrollbar max-height="70vh" class="markdown-content-scrollbar">
-                    <div class="markdown-preview" v-html="renderMarkdown(analysisResult.markdownContent)"></div>
-                  </el-scrollbar>
-                </div>
-                
-                <!-- 操作按钮 -->
-                <div class="markdown-actions" style="margin-top: 16px; text-align: center; padding: 16px; border-top: 1px solid #e4e7ed;">
-                  <el-button type="primary" @click="analyzeWithAI">
-                    <el-icon><Promotion /></el-icon>
-                    智能处理
-                  </el-button>
-                  <el-button @click="clearResult">
-                    <el-icon><Delete /></el-icon>
-                    清空结果
-                  </el-button>
-                </div>
-              </el-card>
-             
+            <div v-else class="design-form-content">
+              <!-- 表单模式的设计方案 -->
+              {{ console.log('🔍 ChatInterface - 准备渲染DesignPlanForm:', { 
+                currentParsingTask: wsStore.currentParsingTask, 
+                taskId: wsStore.currentParsingTask?.id,
+                analysisResult: analysisResult 
+              }) || '' }}
+              <DesignPlanForm 
+                ref="designFormRef"
+                :task-id="wsStore.currentParsingTask?.id"
+                :task-status="wsStore.currentParsingTask?.status"
+                :initial-data="getFormDataFromAnalysis()"
+                @save="handleFormSave"
+                @change="handleFormChange"
+              />
             </div>
           </div>
         </el-tab-pane>
@@ -1073,12 +922,13 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import DocumentPreview from './DocumentPreview.vue'
+import DesignPlanForm from './DesignPlanForm.vue'
 import MarkdownIt from 'markdown-it'
 import { exportToPDF, exportAnalysisResultToPDF, exportPageScreenshotToPDF, exportSimplePageToPDF, exportDOMContentToPDF } from '../utils/pdfExport'
 
 // 创建独立的axios实例作为备用
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8082',
+  baseURL: window.location.origin, // 使用当前域名，确保通过Vite代理
   timeout: 900000, // 15分钟超时，适应代码生成等长时间任务
   headers: {
     'Content-Type': 'application/json',
@@ -1105,6 +955,10 @@ const isSavingMarkdown = ref(false)
 
 // 代码生成相关状态
 const isGeneratingCode = ref(false)
+
+// 表单相关状态
+const designFormRef = ref(null)
+const currentFormData = ref({})
 
 // WebSocket store
 const wsStore = useWebSocketStore()
@@ -1167,6 +1021,19 @@ const parsingStatusText = computed(() => {
     default: return '未知状态'
   }
 })
+
+// Timeline item type映射函数 - 将内部状态映射到Element Plus有效的type值  
+const getTimelineItemType = (status) => {
+  switch (status) {
+    case 'pending': return 'info'
+    case 'processing': return 'warning'  
+    case 'success': return 'success'
+    case 'completed': return 'success'
+    case 'failed': return 'danger'
+    case 'error': return 'danger'
+    default: return 'primary'
+  }
+}
 
 // 方法
 const scrollToBottom = () => {
@@ -2501,6 +2368,54 @@ const getTotalChangesCount = () => {
   
   // 现在每个change_analyses项目就是一个变更，直接返回长度
   return analysisResult.value.contentAnalysis.change_analysis.change_analyses.length
+}
+
+// 表单相关方法
+const getFormDataFromAnalysis = () => {
+  if (!analysisResult.value?.markdownContent) {
+    return {}
+  }
+  
+  // 从现有的analysisResult中提取表单数据
+  // 这里先返回空对象，后续根据实际数据结构调整
+  return currentFormData.value || {}
+}
+
+const handleFormSave = async (saveData) => {
+  try {
+    // 获取当前任务ID
+    const taskId = wsStore.currentParsingTask?.id
+    if (!taskId) {
+      ElMessage.error('无法获取任务ID，请重新分析文档')
+      return
+    }
+    
+    // 保存表单数据和生成的markdown到后端
+    const response = await apiClient.put(`/api/file/design-form/${taskId}`, {
+      form_data: saveData.form_data,
+      markdown_content: saveData.markdown_content
+    })
+    
+    if (response.data.success) {
+      // 更新本地分析结果
+      if (analysisResult.value) {
+        analysisResult.value.markdownContent = saveData.markdown_content
+        analysisResult.value.formData = saveData.form_data
+      }
+      
+      ElMessage.success('设计方案保存成功！')
+    } else {
+      ElMessage.error('保存失败: ' + (response.data.error || '未知错误'))
+    }
+  } catch (error) {
+    console.error('保存表单失败:', error)
+    ElMessage.error('保存失败: ' + (error.response?.data?.error || error.message || '网络错误'))
+  }
+}
+
+const handleFormChange = (formData) => {
+  // 实时保存表单数据
+  currentFormData.value = formData
 }
 </script>
 
@@ -4592,6 +4507,14 @@ const getTotalChangesCount = () => {
   .design-stats {
     margin-top: 16px;
     flex-shrink: 0;
+  }
+
+  // 表单内容样式
+  .design-form-content {
+    height: calc(100vh - 80px);
+    overflow-y: auto;
+    padding: 16px;
+    background: #f8f9fa;
   }
 }
 </style> 

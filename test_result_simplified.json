@@ -1,0 +1,88 @@
+{
+  "success": true,
+  "timestamp": "2025-07-28T11:16:09.869880",
+  "service": "AIAnalyzerService",
+  "data": {
+    "markdown_content": "设计文档 - 测试项目V0.1\n1. 系统架构设计\n1.1 项目介绍\n这是一个测试项目，用于验证AI分析器的输出格式。\n建设目标及路线。优化系统架构，提升开发效率。\n\n1.2 功能需求说明\n1.2.1 核心功能优化\n调整说明:本期对核心功能进行优化调整。\n\n1.3 总体架构\n采用微服务架构模式，实现松耦合、高可扩展的系统设计：\n- 涉及2个后端服务：\n1. 用户服务：user-service\n2. 业务服务：business-service\n\n1.4 技术栈选型\n- 后端框架：Spring Boot 2.7.x + Spring Cloud 2021.x\n- 数据访问：MyBatis Plus 3.5.x\n- 数据库：MySQL 8.0\n- 缓存：Redis 6.0\n\n2. 服务设计\n2.1 用户服务 (user-service)\n职责：用户管理、权限控制\n\n2.1.1 核心模块：\n- 用户管理模块\n\n2.1.2 API设计：\n2.1.2.1 新增接口：\nuri : GET /api/v1/users\nmethod: GET\ndescription:获取用户列表\n\n2.1.3 数据库表设计：\nCREATE TABLE users (\n  id BIGINT PRIMARY KEY AUTO_INCREMENT,\n  username VARCHAR(50) UNIQUE NOT NULL\n);\n\n2.1.4 本次项目依赖服务：\n依赖服务名称：无\n\n3 执行要求\n3.1 涉及服务范围\n本次涉及的服务范围：\n1. 用户服务：user-service，git地址：http://localhost:30000/ls/user-service.git\n\n3.2 涉及数据库范围\n本次涉及的数据库范围：\n3.2.1 用户数据库：MySQL\n\n3.3 涉及接口范围\n本次新增接口，已经按服务范围进行划分，详见设计文档2服务设计部分。",
+    "generation_metadata": {
+      "generation_timestamp": "2025-07-28T11:16:09.869843",
+      "template_version": "combined_document_demo_v1.0",
+      "generator": "DesignDocumentGenerator"
+    },
+    "design_data": {
+      "project_name": "业务系统优化",
+      "version": "V0.1",
+      "content_analysis": {
+        "data": {
+          "change_analysis": {
+            "change_analyses": [
+              {
+                "changeType": "新增",
+                "componentName": "用户管理功能",
+                "description": "新增用户列表查询功能"
+              }
+            ]
+          }
+        }
+      },
+      "parsing_result": {
+        "data": {
+          "fileFormat": {
+            "fileName": "test_requirements.docx",
+            "primaryType": "需求文档",
+            "technicalDetails": {
+              "charCount": 1000
+            },
+            "basicInfo": {
+              "language": "中文"
+            }
+          },
+          "documentStructure": {
+            "contentSummary": {
+              "abstract": "这是一个用户管理系统的需求文档",
+              "functionCount": 3,
+              "functionName": [
+                "用户注册",
+                "用户登录",
+                "用户列表"
+              ],
+              "apiCount": 2,
+              "apiName": [
+                "POST /users",
+                "GET /users"
+              ]
+            },
+            "contentKeyWord": {
+              "primaryKeywords": [
+                "用户管理",
+                "权限控制",
+                "接口设计"
+              ],
+              "semanticClusters": [
+                "用户服务",
+                "认证授权"
+              ]
+            }
+          }
+        }
+      },
+      "business_requirements": {}
+    },
+    "architecture_diagram": {
+      "type": "mermaid",
+      "syntax": "graph TD\n    Frontend[\"前端(Vue2)\"]\n    Gateway[\"API网关\"]\n    Frontend --> Gateway",
+      "components": {
+        "services": [],
+        "databases": []
+      }
+    }
+  },
+  "metadata": {
+    "analysis_method": "DesignDocumentGenerator直接生成",
+    "framework": "简化版AI分析流程",
+    "compliance": "遵循combined_document_demo.txt模板规范",
+    "analysis_duration": 0.0038869380950927734,
+    "template_source": "大模型智能生成",
+    "markdown_generated": true
+  }
+}
