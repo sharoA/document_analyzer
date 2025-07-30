@@ -741,8 +741,20 @@ def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensi
                 progress_callback=progress_callback
             )
             
-            # 保存AI分析结果到Redis
-            redis_task_storage.save_ai_analysis(task.id, ai_result)
+            # 检查AI分析结果是否成功
+            analysis_logger.info(f"🔍 AI分析结果检查: {task.id}, success={ai_result.get('success')}, 结果类型={type(ai_result)}")
+            if not ai_result.get("success", False):
+                analysis_logger.error(f"❌ AI分析服务返回失败: {task.id}, 错误={ai_result.get('error', '未知错误')}, 完整结果={str(ai_result)[:500]}")
+                raise ValueError(f"AI分析服务返回失败: {ai_result.get('error', '未知错误')}")
+            
+            # 尝试保存AI分析结果到Redis（允许失败）
+            try:
+                redis_task_storage.save_ai_analysis(task.id, ai_result)
+                analysis_logger.info(f"✅ AI分析结果已保存到Redis: {task.id}")
+            except Exception as redis_error:
+                analysis_logger.warning(f"⚠️ AI分析结果保存到Redis失败（不影响任务状态）: {redis_error}")
+            
+            # 无论Redis保存是否成功，都要更新任务状态为完成
             task.update_progress(100, "AI分析完成", "ai_analyzed")
             analysis_logger.info(f"✅ AI分析完成: {task.id}")
             
@@ -1594,7 +1606,7 @@ def get_analysis_progress_v2(task_id):
                 "error": "任务不存在"
             }), 404
         
-        # 计算各阶段进度
+        # 计算各阶段进度（只保留3个阶段）
         stages = {
             "document_parsing": {
                 "title": "文档解析",
@@ -1637,7 +1649,7 @@ def get_analysis_progress_v2(task_id):
             stages["content_analysis"]["progress"] = task.progress if task.status == "content_analyzing" else 100
             stages["content_analysis"]["message"] = get_latest_description(task) if task.status == "content_analyzing" else "内容分析完成"
             
-        if task.status in ["ai_analyzing", "ai_analyzed", "document_generating", "document_generated", "fully_completed"]:
+        if task.status in ["ai_analyzing", "ai_analyzed", "fully_completed"]:
             stages["document_parsing"]["status"] = "completed"
             stages["document_parsing"]["progress"] = 100
             stages["document_parsing"]["message"] = "文档解析完成"
@@ -1649,13 +1661,8 @@ def get_analysis_progress_v2(task_id):
             stages["ai_analysis"]["status"] = "running" if task.status == "ai_analyzing" else "completed"
             stages["ai_analysis"]["progress"] = task.progress if task.status == "ai_analyzing" else 100
             stages["ai_analysis"]["message"] = get_latest_description(task) if task.status == "ai_analyzing" else "AI分析完成"
-            
-        if task.status in ["document_generating", "document_generated", "fully_completed"]:
-            stages["document_generation"]["status"] = "running" if task.status == "document_generating" else "completed"
-            stages["document_generation"]["progress"] = task.progress if task.status == "document_generating" else 100
-            stages["document_generation"]["message"] = get_latest_description(task) if task.status == "document_generating" else "文档生成完成"
         
-        # 计算整体进度
+        # 计算整体进度（基于3个阶段）
         total_progress = 0
         completed_stages = 0
         
@@ -1666,7 +1673,7 @@ def get_analysis_progress_v2(task_id):
             elif stage["status"] == "running":
                 total_progress += stage["progress"]
         
-        overall_progress = total_progress // 4
+        overall_progress = total_progress // 3  # 改为3个阶段
         
         # 确定整体状态
         overall_status = "pending"
@@ -1692,7 +1699,10 @@ def get_analysis_progress_v2(task_id):
         })
         
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         logger.error(f"获取V2进度失败: {e}")
+        logger.error(f"详细错误信息: {error_details}")
         return jsonify({
             "success": False,
             "error": f"获取进度失败: {str(e)}"
@@ -1742,7 +1752,18 @@ def run_full_analysis_pipeline(task: FileParsingTask):
         
         # 检查AI分析是否成功
         if task.status != "ai_analyzed":
-            logger.error(f"AI分析失败: {task.id}")
+            logger.error(f"AI分析失败: {task.id}, 当前状态: {task.status}, 错误信息: {task.error}")
+            # 即使AI分析状态不是ai_analyzed，如果form_data已经生成，也应该继续
+            try:
+                form_data_check = redis_task_storage.redis_manager.get(f"form_data:{task.id}")
+                if form_data_check:
+                    logger.info(f"检测到form_data已生成，继续完成流程: {task.id}")
+                    task.update_progress(100, "完整分析流程完成", "fully_completed")
+                    logger.info(f"完整分析流程成功完成: {task.id}")
+                    analysis_logger.info(f"🎉 完整分析流程完成: {task.id}")
+                    return
+            except Exception as check_error:
+                logger.error(f"检查form_data时出错: {check_error}")
             return
         
         # AI分析完成即完成所有流程（form_data已在AI分析阶段生成并保存）
