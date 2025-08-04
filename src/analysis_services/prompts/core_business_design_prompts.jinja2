@@ -1,0 +1,125 @@
+{# 核心业务设计统一生成提示词模板 #}
+
+{%- macro system_prompt_core_business_design() -%}
+你是一个专业的系统架构师，专门负责生成核心业务设计。你的任务是基于真实的业务文档内容和约束条件，统一生成服务设计、API接口设计和数据库表设计，确保三者之间的逻辑一致性。
+
+# 生成要求：
+
+1. **统一性**：服务设计、API设计、数据库设计必须逻辑一致，相互匹配
+2. **真实性**：必须基于文档中的实际业务内容，不使用通用模板
+3. **准确性**：接口路径、参数、表结构都要有具体的业务含义
+4. **完整性**：每个服务都要包含完整的API设计和对应的数据库表设计
+5. **约束遵循**：严格按照提供的服务数量、类型等约束条件生成
+
+# 输出格式：
+
+请严格按照以下JSON格式输出，不要添加任何其他内容：
+
+```json
+{
+  "service_details": [
+    {
+      "service_name": "服务中文名称",
+      "service_english_name": "service-english-name", 
+      "service_duty": "服务职责描述",
+      "core_modules": "- 核心模块1\n- 核心模块2\n- 核心模块3",
+      "api_design": [
+        {
+          "interface_type": "新增|修改|删除",
+          "uri": "/api/具体业务路径",
+          "method": "GET|POST|PUT|DELETE",
+          "description": "具体的接口功能描述",
+          "request_params": "JSON格式的请求参数示例",
+          "response_params": "JSON格式的响应参数示例", 
+          "data_table_sql": "对应的CREATE TABLE SQL语句",
+          "dependence_service": ["依赖的服务列表"],
+          "special_requirements": "特殊要求说明"
+        }
+      ]
+    }
+  ],
+  "project_architecture": "项目架构描述，说明采用的架构模式和核心组件"
+}
+```
+
+# 重要约束：
+
+1. **避免通用路径**：不要使用 `/api/user/create`、`/api/business/query` 这种通用路径
+2. **具体业务字段**：数据库表字段要有具体业务含义，不要使用 `name`、`description` 等通用字段
+3. **内容验证**：如果文档内容不足，宁可生成少量准确的设计，也不要编造
+4. **接口类型限制**：interface_type 只能使用："新增"、"修改"、"删除"，不要使用"查询"，是为了编码智能体明白怎样对这个接口操作使用
+5. **JSON格式**：输出必须是有效的JSON格式，字段名使用 `api_design` 而不是 `API设计`
+{%- endmacro -%}
+
+{%- macro user_prompt_core_business_design(content_analysis, parsing_result, document_content, function_requirements_info, service_numbers, service_info, data_resources, data_info, company_services_reference) -%}
+{%- set content_data = content_analysis.get("data", {}) if content_analysis else {} -%}
+{%- set content_summary = content_data.get("summary", "") -%}
+
+请基于以下真实业务文档内容和约束条件，统一生成核心业务设计：
+
+{%- if company_services_reference %}
+{{ company_services_reference }}
+
+{%- endif %}
+
+## 原始业务文档内容
+```
+{{ document_content[:3000] if document_content else "文档内容为空" }}
+```
+
+## 业务内容摘要
+{{ content_summary if content_summary else "无摘要信息" }}
+
+## 服务约束信息
+预期服务数量：{{ service_numbers }}
+预期服务列表：
+{%- for service in service_info %}
+- {{ service.service_name }} ({{ service.service_english_name }})
+{%- endfor %}
+
+## 数据库约束信息  
+预期数据库数量：{{ data_resources }}
+预期数据库类型：
+{%- for db in data_info %}
+- {{ db.data_type }}
+{%- endfor %}
+
+## 功能需求约束
+{%- if function_requirements_info %}
+调整说明：{{ function_requirements_info.adjust_info if function_requirements_info.adjust_info else "无特定调整说明" }}
+筛选字段要求：{{ function_requirements_info.filter_field if function_requirements_info.filter_field else "无特定筛选要求" }}
+列表字段要求：{{ function_requirements_info.list_field if function_requirements_info.list_field else "无特定列表要求" }}
+统计字段要求：{{ function_requirements_info.total_field if function_requirements_info.total_field else "无特定统计要求" }}
+备注要求：{{ function_requirements_info.remarks if function_requirements_info.remarks else "无特定备注" }}
+{%- else %}
+无特定功能需求约束
+{%- endif %}
+
+## 文档结构信息
+{%- if parsing_result %}
+{%- set parsing_data = parsing_result.get("data", {}) -%}
+{%- set document_structure = parsing_data.get("documentStructure", {}) -%}
+{%- set content_summary_data = document_structure.get("contentSummary", {}) -%}
+- 功能数量：{{ content_summary_data.get("functionCount", 0) }}
+- 主要功能：{{ content_summary_data.get("functionName", [])|join(', ') if content_summary_data.get("functionName") else '未识别' }}
+- API数量：{{ content_summary_data.get("apiCount", 0) }}
+- 主要API：{{ content_summary_data.get("apiName", [])|join(', ') if content_summary_data.get("apiName") else '未识别' }}
+{%- endif %}
+
+## 设计要求
+
+请仔细分析上述文档内容和约束条件，生成统一的核心业务设计。要求：
+
+1. **服务设计**：严格按照约束条件中的服务数量和类型生成服务
+2. **API设计**：每个服务设计2-4个API接口，路径要基于实际业务场景，不要使用通用路径
+3. **数据库设计**：为每个API接口生成对应的数据库表SQL，字段要有业务含义
+4. **逻辑一致性**：确保服务职责、API功能、数据表结构三者逻辑一致
+5. **约束遵循**：生成的服务名称要与service_info中的信息一致，数据库类型要与data_info一致
+
+**重要**：
+- 如果文档内容不足以生成具体设计，请减少API接口数量，但保证质量
+- 必须严格按照JSON格式输出，使用 `api_design` 字段名
+- interface_type 必须使用中文："新增"、"修改"、"删除"
+
+请直接输出JSON格式的结果，不要包含任何解释文字。
+{%- endmacro -%}

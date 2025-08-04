@@ -30,16 +30,8 @@
             <el-input 
               v-model="formData.project_intro.background" 
               type="textarea" 
-              :rows="4"
+              :rows="8"
               placeholder="请描述项目背景和问题"
-            />
-          </el-form-item>
-          <el-form-item label="建设目标">
-            <el-input 
-              v-model="formData.project_intro.goal" 
-              type="textarea" 
-              :rows="2"
-              placeholder="请描述建设目标及路线"
             />
           </el-form-item>
         </div>
@@ -50,7 +42,7 @@
           <div v-for="(requirement, index) in formData.function_requirements" :key="index" class="requirement-item">
             <div class="requirement-header">
               <h5>1.2.{{ index + 1 }} {{ requirement.name }}</h5>
-              <el-button type="danger" size="small" @click="removeRequirement(index)">删除</el-button>
+              <!-- <el-button type="danger" size="small" @click="removeRequirement(index)">删除</el-button> -->
             </div>
             
             <el-form-item label="功能名称">
@@ -92,11 +84,11 @@
                     <el-input v-model="field.rules" placeholder="规则" />
                   </el-col>
                   <el-col :span="2">
-                    <el-button type="danger" size="small" @click="removeField(requirement.filter_fields, fieldIndex)">删除</el-button>
+                    <!-- <el-button type="danger" size="small" @click="removeField(requirement.filter_fields, fieldIndex)">删除</el-button> -->
                   </el-col>
                 </el-row>
               </div>
-              <el-button type="primary" size="small" @click="addField(requirement, 'filter_fields')">添加筛选字段</el-button>
+              <!-- <el-button type="primary" size="small" @click="addField(requirement, 'filter_fields')">添加筛选字段</el-button> -->
             </el-form-item>
 
             <!-- 列表字段 -->
@@ -113,11 +105,11 @@
                     <el-input v-model="field.rules" placeholder="规则" />
                   </el-col>
                   <el-col :span="4">
-                    <el-button type="danger" size="small" @click="removeField(requirement.list_fields, fieldIndex)">删除</el-button>
+                    <!-- <el-button type="danger" size="small" @click="removeField(requirement.list_fields, fieldIndex)">删除</el-button> -->
                   </el-col>
                 </el-row>
               </div>
-              <el-button type="primary" size="small" @click="addField(requirement, 'list_fields')">添加列表字段</el-button>
+              <!-- <el-button type="primary" size="small" @click="addField(requirement, 'list_fields')">添加列表字段</el-button> -->
             </el-form-item>
 
             <el-form-item label="备注">
@@ -130,7 +122,7 @@
             </el-form-item>
           </div>
           
-          <el-button type="primary" @click="addRequirement">添加功能需求</el-button>
+          <!-- <el-button type="primary" @click="addRequirement">添加功能需求</el-button> -->
         </div>
 
         <!-- 1.3 总体架构 -->
@@ -160,11 +152,11 @@
                 <el-input v-model="service.service_english_name" placeholder="服务英文名" />
               </el-col>
               <el-col :span="4">
-                <el-button type="danger" size="small" @click="removeService(index)">删除</el-button>
+                <!-- <el-button type="danger" size="small" @click="removeService(index)">删除</el-button> -->
               </el-col>
             </el-row>
           </div>
-          <el-button type="primary" size="small" @click="addService">添加服务</el-button>
+          <!-- <el-button type="primary" size="small" @click="addService">添加服务</el-button> -->
 
           <el-form-item label="数据库数量">
             <el-input-number v-model="formData.data_resources" :min="1" />
@@ -185,11 +177,11 @@
                 <el-input v-model="db.description" placeholder="数据库描述" />
               </el-col>
               <el-col :span="4">
-                <el-button type="danger" size="small" @click="removeDatabase(index)">删除</el-button>
+                <!-- <el-button type="danger" size="small" @click="removeDatabase(index)">删除</el-button> -->
               </el-col>
             </el-row>
           </div>
-          <el-button type="primary" size="small" @click="addDatabase">添加数据库</el-button>
+          <!-- <el-button type="primary" size="small" @click="addDatabase">添加数据库</el-button> -->
         </div>
 
         <!-- 1.4 技术栈选型 -->
@@ -212,7 +204,7 @@
         <div v-for="(service, serviceIndex) in formData.service_designs" :key="serviceIndex" class="service-design-item">
           <div class="service-design-header">
             <h4>2.{{ serviceIndex + 1 }} {{ service.service_name }} ({{ service.service_english_name }})</h4>
-            <el-button type="danger" size="small" @click="removeServiceDesign(serviceIndex)">删除服务</el-button>
+            <!-- <el-button type="danger" size="small" @click="removeServiceDesign(serviceIndex)">删除服务</el-button> -->
           </div>
 
           <el-form-item label="服务职责">
@@ -234,27 +226,35 @@
             <div v-for="(api, apiIndex) in service.apis" :key="apiIndex" class="api-item">
               <div class="api-header">
                 <h6>接口 {{ apiIndex + 1 }}</h6>
-                <el-button type="danger" size="small" @click="removeApi(service.apis, apiIndex)">删除接口</el-button>
+                <!-- <el-button type="danger" size="small" @click="removeApi(service.apis, apiIndex)">删除接口</el-button> -->
               </div>
 
               <el-row :gutter="10">
                 <el-col :span="6">
                   <el-form-item label="接口类型">
-                    <el-select v-model="api.interface_type" placeholder="接口类型">
+                    <el-select v-model="api.interface_type" placeholder="接口类型" clearable>
                       <el-option label="新增" value="新增" />
                       <el-option label="修改" value="修改" />
                       <el-option label="删除" value="删除" />
                     </el-select>
+                    <!-- 调试信息 -->
+                    <div style="font-size: 12px; color: #999; margin-top: 4px;">
+                      当前值: {{ api.interface_type || '空' }}
+                    </div>
                   </el-form-item>
                 </el-col>
                 <el-col :span="6">
                   <el-form-item label="请求方法">
-                    <el-select v-model="api.method" placeholder="请求方法">
+                    <el-select v-model="api.method" placeholder="请求方法" clearable>
                       <el-option label="GET" value="GET" />
                       <el-option label="POST" value="POST" />
                       <el-option label="PUT" value="PUT" />
                       <el-option label="DELETE" value="DELETE" />
                     </el-select>
+                    <!-- 调试信息 -->
+                    <div style="font-size: 12px; color: #999; margin-top: 4px;">
+                      当前值: {{ api.method || '空' }}
+                    </div>
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
@@ -295,7 +295,7 @@
                 />
               </el-form-item>
             </div>
-            <el-button type="primary" size="small" @click="addApi(service)">添加接口</el-button>
+            <!-- <el-button type="primary" size="small" @click="addApi(service)">添加接口</el-button> -->
           </div>
 
           <el-form-item label="数据库表SQL">
@@ -314,7 +314,7 @@
             />
           </el-form-item>
         </div>
-        <el-button type="primary" @click="addServiceDesign">添加服务设计</el-button>
+        <!-- <el-button type="primary" @click="addServiceDesign">添加服务设计</el-button> -->
       </div>
 
       <!-- 3. 执行要求 -->
@@ -340,11 +340,11 @@
                 <el-input v-model="service.gitlab" placeholder="Git地址" />
               </el-col>
               <el-col :span="4">
-                <el-button type="danger" size="small" @click="removeExecutionService(index)">删除</el-button>
+                <!-- <el-button type="danger" size="small" @click="removeExecutionService(index)">删除</el-button> -->
               </el-col>
             </el-row>
           </div>
-          <el-button type="primary" size="small" @click="addExecutionService">添加服务</el-button>
+          <!-- <el-button type="primary" size="small" @click="addExecutionService">添加服务</el-button> -->
         </div>
 
         <!-- 3.2 涉及数据库范围 -->
@@ -377,11 +377,11 @@
                 </el-form-item>
               </el-col>
               <el-col :span="4">
-                <el-button type="danger" size="small" @click="removeExecutionDatabase(index)">删除</el-button>
+                <!-- <el-button type="danger" size="small" @click="removeExecutionDatabase(index)">删除</el-button> -->
               </el-col>
             </el-row>
           </div>
-          <el-button type="primary" size="small" @click="addExecutionDatabase">添加数据库配置</el-button>
+          <!-- <el-button type="primary" size="small" @click="addExecutionDatabase">添加数据库配置</el-button> -->
         </div>
 
         <!-- 3.3 涉及接口范围 -->
@@ -402,7 +402,7 @@
       <div class="form-actions">
         <el-button type="primary" size="large" @click="saveForm" :loading="isSaving">保存设计方案</el-button>
         <el-button size="large" @click="previewMarkdown">预览Markdown</el-button>
-        <el-button size="large" @click="resetForm">重置表单</el-button>
+        <!-- <el-button size="large" @click="resetForm">重置表单</el-button> -->
         <el-button type="success" size="large" @click="generateCode" :loading="isGeneratingCode" :disabled="!props.taskId">
           <el-icon><Tools /></el-icon>
           生成代码
@@ -424,7 +424,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Tools, Loading } from '@element-plus/icons-vue'
 import MarkdownIt from 'markdown-it'
@@ -526,6 +526,22 @@ const md = new MarkdownIt({
   linkify: true,
   typographer: true
 })
+
+// 映射接口类型到前端下拉框选项
+const mapInterfaceType = (backendType) => {
+  const typeMap = {
+    '新增': '新增', 
+    '修改': '修改',
+    '删除': '删除',
+    'CREATE': '新增',
+    'UPDATE': '修改', 
+    'DELETE': '删除',
+    'POST': '新增',
+    'PUT': '修改',
+    'PATCH': '修改'
+  }
+  return typeMap[backendType] || '新增'
+}
 
 // 转换分析结果数据到表单数据结构（适配新的API响应格式）
 const convertAnalysisDataToFormData = (analysisData) => {
@@ -799,31 +815,35 @@ const convertBackendDataToFormData = (backendData) => {
       
       // 处理API设计数据 - 将后端的API设计转换为前端期望的apis数组
       let apis = []
-      if (service.API设计 && Array.isArray(service.API设计)) {
-        console.log(`✅ 发现API设计数组，长度: ${service.API设计.length}`)
-        apis = service.API设计.map((apiItem, apiIndex) => {
+      if (service.api_design && Array.isArray(service.api_design)) {
+        console.log(`✅ 发现API设计数组，长度: ${service.api_design.length}`)
+        apis = service.api_design.map((apiItem, apiIndex) => {
           console.log(`  - API ${apiIndex + 1}:`, apiItem)
           return {
-            interface_type: apiItem.interface_type || '查询',
+            interface_type: mapInterfaceType(apiItem.interface_type),
             uri: apiItem.uri || '',
             method: apiItem.method || 'GET',
             description: apiItem.description || '',
-            request_params: apiItem.request_params || '{}',
-            response_params: apiItem.response_params || '{}',
+            request_params: typeof apiItem.request_params === 'object' ? 
+              JSON.stringify(apiItem.request_params, null, 2) : (apiItem.request_params || '{}'),
+            response_params: typeof apiItem.response_params === 'object' ? 
+              JSON.stringify(apiItem.response_params, null, 2) : (apiItem.response_params || '{}'),
             special_requirements: apiItem.special_requirements || ''
           }
         })
-      } else if (service.API设计 && typeof service.API设计 === 'object') {
-        console.log('⚠️ API设计是对象而不是数组:', service.API设计)
+      } else if (service.api_design && typeof service.api_design === 'object') {
+        console.log('⚠️ API设计是对象而不是数组:', service.api_design)
         // 如果API设计是单个对象
-        const apiItem = service.API设计
+        const apiItem = service.api_design
         apis = [{
-          interface_type: apiItem.interface_type || '查询',
+          interface_type: mapInterfaceType(apiItem.interface_type),
           uri: apiItem.uri || '',
           method: apiItem.method || 'GET', 
           description: apiItem.description || '',
-          request_params: apiItem.request_params || '{}',
-          response_params: apiItem.response_params || '{}',
+          request_params: typeof apiItem.request_params === 'object' ? 
+            JSON.stringify(apiItem.request_params, null, 2) : (apiItem.request_params || '{}'),
+          response_params: typeof apiItem.response_params === 'object' ? 
+            JSON.stringify(apiItem.response_params, null, 2) : (apiItem.response_params || '{}'),
           special_requirements: apiItem.special_requirements || ''
         }]
       }
@@ -832,10 +852,10 @@ const convertBackendDataToFormData = (backendData) => {
       if (apis.length === 0) {
         console.log('⚠️ 没有找到API设计，创建默认API')
         apis = [{
-          interface_type: '查询',
-          uri: `/api/${(service.service_english_name || 'service').replace('-', '/')}/list`,
-          method: 'GET',
-          description: `${service.service_name || '服务'}数据查询接口`,
+          interface_type: '新增',
+          uri: `/api/${(service.service_english_name || 'service').replace('-', '/')}/create`,
+          method: 'POST',
+          description: `${service.service_name || '服务'}数据新增接口`,
           request_params: '{\n  "page": 1,\n  "size": 10\n}',
           response_params: '{\n  "success": true,\n  "data": [],\n  "total": 0\n}',
           special_requirements: '需要登录权限验证'
@@ -850,9 +870,9 @@ const convertBackendDataToFormData = (backendData) => {
         service_duty: service.service_duty || '',
         core_modules: service.core_modules || '',
         apis: apis, // 添加转换后的APIs数组
-        data_table_sql: service.API设计 && service.API设计[0] ? service.API设计[0].data_table_sql || '' : '',
-        dependence_service: service.API设计 && service.API设计[0] && service.API设计[0].dependence_service ? 
-          (Array.isArray(service.API设计[0].dependence_service) ? service.API设计[0].dependence_service.join(', ') : service.API设计[0].dependence_service) : ''
+        data_table_sql: service.api_design && service.api_design[0] ? service.api_design[0].data_table_sql || '' : '',
+        dependence_service: service.api_design && service.api_design[0] && service.api_design[0].dependence_service ? 
+          (Array.isArray(service.api_design[0].dependence_service) ? service.api_design[0].dependence_service.join(', ') : service.api_design[0].dependence_service) : ''
       }
       
       console.log(`✅ 第${index + 1}个服务转换完成:`, convertedService)
@@ -912,7 +932,21 @@ const updateFormDataReactively = (newData) => {
       apisCount: s.apis ? s.apis.length : 0,
       apis: s.apis
     })))
-    formData.value.service_designs = [...newData.service_designs] // 使用展开运算符确保响应式
+    
+    // 深度克隆数据以确保响应式更新
+    const clonedServiceDesigns = JSON.parse(JSON.stringify(newData.service_designs))
+    formData.value.service_designs = clonedServiceDesigns
+    
+    // 添加额外的调试信息
+    console.log('🔍 service_designs更新后验证:')
+    formData.value.service_designs.forEach((service, index) => {
+      console.log(`  服务${index + 1}: ${service.service_name}`)
+      if (service.apis && service.apis.length > 0) {
+        service.apis.forEach((api, apiIndex) => {
+          console.log(`    API${apiIndex + 1}: interface_type="${api.interface_type}", method="${api.method}"`)
+        })
+      }
+    })
   }
   
   // 对其他字段使用递归更新
@@ -981,10 +1015,17 @@ const loadFormData = async () => {
       const convertedData = convertBackendDataToFormData(loadedData)
       console.log('🔄🔄🔄 转换后的表单数据:', convertedData)
       
-      // 使用优化的响应式更新方法
-      updateFormDataReactively(convertedData)
-      
-      console.log('✅✅✅ 表单数据已更新到formData.value:', formData.value)
+        // 使用优化的响应式更新方法
+  updateFormDataReactively(convertedData)
+  
+  // 强制触发Vue响应式更新
+  nextTick(() => {
+    console.log('⚡ 强制触发响应式更新')
+    // 触发Vue的深度响应式检查
+    formData.value = { ...formData.value }
+  })
+  
+  console.log('✅✅✅ 表单数据已更新到formData.value:', formData.value)
       ElMessage.success('表单数据加载成功')
     } else {
       console.log('⚠️⚠️⚠️ API返回失败')
@@ -1174,16 +1215,16 @@ const generateProjectIntroSection = () => {
   let markdown = '1. 系统架构设计\n\n'
   
   // 1.1 项目介绍
-  markdown += '1.1 项目介绍\n'
+  markdown += '1.1 项目介绍\n\n'
   markdown += `${formData.value.project_intro.background}\n`
-  markdown += `建设目标及路线。${formData.value.project_intro.goal}\n\n`
+  
   
   return markdown
 }
 
 // 生成功能需求说明部分
 const generateFunctionRequirementsSection = () => {
-  let markdown = '1.2 功能需求说明\n'
+  let markdown = '1.2 功能需求说明\n\n'
   formData.value.function_requirements.forEach((req, index) => {
     markdown += `1.2.${index + 1} ${req.name}\n`
     markdown += `调整说明:${req.adjust_info}\n`

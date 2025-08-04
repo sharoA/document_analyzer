@@ -173,12 +173,17 @@ class AnalysisServiceManager:
     
     async def ai_analyze(self, task_id: str, content_analysis: Dict[str, Any], 
                         parsing_result: Dict[str, Any] = None, 
-                        progress_callback: Callable = None) -> Dict[str, Any]:
+                        progress_callback: Callable = None, document_content: str = None) -> Dict[str, Any]:
         """执行AI智能分析"""
         input_data = {
             "content_analysis": content_analysis,
             "parsing_result": parsing_result or {}
         }
+        
+        # 临时方案：如果有原始文档内容，直接传递
+        if document_content:
+            input_data["document_content"] = document_content
+            
         return await self.ai_analyzer.analyze(task_id, input_data, progress_callback)
     
     def parse_document_sync(self, task_id: str, file_content: str, 
@@ -195,10 +200,10 @@ class AnalysisServiceManager:
     
     def ai_analyze_sync(self, task_id: str, content_analysis: Dict[str, Any], 
                         parsing_result: Dict[str, Any] = None,
-                        progress_callback: Callable = None) -> Dict[str, Any]:
+                        progress_callback: Callable = None, document_content: str = None) -> Dict[str, Any]:
         """执行AI智能分析 - 同步版本"""
         import asyncio
-        return asyncio.run(self.ai_analyze(task_id, content_analysis, parsing_result, progress_callback))
+        return asyncio.run(self.ai_analyze(task_id, content_analysis, parsing_result, progress_callback, document_content))
     
     def _generate_analysis_summary(self, parsing_result: Dict, content_result: Dict, 
                                  ai_result: Dict) -> Dict[str, Any]:

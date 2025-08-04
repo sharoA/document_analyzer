@@ -87,6 +87,12 @@
 - 文档类型：{{ file_format.get("primaryType", "需求文档") }}
 - 文档摘要：{{ content_summary.get("abstract", "系统功能优化需求") }}
 
+## 原始文档内容分析
+{%- if parsing_result.get("text_content") %}
+关键业务内容（前2000字）：
+{{ parsing_result.get("text_content", "")[:2000] }}
+{%- endif %}
+
 ## 功能需求列表
 功能数量：{{ content_summary.get("functionCount", 0) }}
 主要功能：{{ function_names|join(', ') if function_names else '系统功能优化' }}
@@ -105,6 +111,8 @@ API数量：{{ content_summary.get("apiCount", 0) }}
 变更分析详情：
 {%- for change in change_analyses %}
 {{ loop.index }}. {{ change.get("changeType", "优化") }} - {{ change.get("componentName", "功能模块" + loop.index|string) }}: {{ change.get("description", "功能优化") }}
+   变更原因: {{ change.get("changeReason", "业务需求") }}
+   影响范围: {{ change.get("changeItems", [])|join(', ') if change.get("changeItems") else "待确定" }}
 {%- endfor -%}
 {%- else -%}
 暂无具体变更分析，基于文档内容进行系统优化设计
@@ -112,19 +120,25 @@ API数量：{{ content_summary.get("apiCount", 0) }}
 
 ## 生成要求
 
-请基于上述信息生成完整的技术设计文档，要求：
+请基于上述**真实的文档内容和分析结果**生成完整的技术设计文档，要求：
 
-1. **智能分析需求**：从功能列表和变更分析中提取核心业务需求
-2. **合理架构设计**：设计2-3个微服务，包含用户服务、业务服务等
-3. **具体技术选型**：使用Spring Boot + MySQL + Redis技术栈
-4. **详细接口设计**：为每个服务设计具体的API接口，包含完整的URL、参数、返回值
-5. **数据库设计**：提供具体的CREATE TABLE语句
-6. **部署配置**：提供MySQL和Redis的连接配置
+1. **深度理解需求**：仔细分析原始文档内容，提取真实业务需求
+2. **精准服务设计**：根据实际功能需求设计服务，服务名称要反映真实业务
+3. **具体接口设计**：
+   - API路径要基于实际业务场景，不要使用/api/user/create这种通用路径
+   - 接口描述要准确反映文档中提到的具体功能
+   - 请求参数要包含文档中明确提到的业务字段
+   - 响应参数要符合实际业务返回需求
+4. **真实数据库设计**：
+   - 表名要基于文档中的实际业务实体
+   - 字段设计要反映文档中提到的具体数据需求
+   - 不要使用id、name这种通用字段，要有业务含义
+5. 需要进行一致性检查：检查设计文档内部逻辑一致性
+6. 需要进行完整性评估：确保所有必要组件都已设计
+7. 需要进行可行性分析：评估技术方案的可实现性
+8. **准确技术选型**：基于文档中提到的技术要求或业务复杂度选择合适技术栈
 
-请直接输出符合格式的markdown文档，确保：
-- 内容充实完整，没有空段落
-- 服务设计具体可行
-- API接口设计详细
-- 数据库表结构合理
-- 格式严格符合要求
+**重要**：如果文档内容不足以生成具体设计，请在相应部分明确说明"需要进一步明确需求"，不要编造不存在的功能。
+
+请直接输出符合格式的markdown文档，确保内容真实准确，避免模板化的通用设计。
 {%- endmacro -%}

@@ -1,0 +1,4 @@
+2025-07-30 19:03:09 - src.corder_integration.langgraph.nodes.git_management_node - ERROR - ❌ 任务 task_001 执行失败: 未从任务中提取到Git仓库URL
+2025-07-30 19:03:09 - src.corder_integration.langgraph.nodes.git_management_node - ERROR - ❌ 任务 task_002 执行失败: repo_url参数缺失且无法从git_extraction结果中获取
+2025-07-30 19:03:09 - src.corder_integration.langgraph.workflow_orchestrator - ERROR - 工作流执行失败: Recursion limit of 100 reached without hitting a stop condition. You can increase the limit by setting the `recursion_limit` config key.
+For troubleshooting, visit: https://python.langchain.com/docs/troubleshooting/errors/GRAPH_RECURSION_LIMIT

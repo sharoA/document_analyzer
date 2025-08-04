@@ -17,7 +17,17 @@ class ContentAnalyzerService(BaseAnalysisService):
     def __init__(self, llm_client=None, vector_db=None):
         super().__init__(llm_client, vector_db)
         # 初始化向量模型 - 使用bge-large-zh（1024维，中文优化）
-        self.embedding_model = SentenceTransformer('BAAI/bge-large-zh')
+        try:
+            # 设置离线模式，优先使用本地缓存
+            import os
+            os.environ['TRANSFORMERS_OFFLINE'] = '1'
+            os.environ['HF_HUB_OFFLINE'] = '1'
+            
+            self.embedding_model = SentenceTransformer('BAAI/bge-large-zh')
+            self.logger.info("✅ 向量模型初始化成功 (离线模式)")
+        except Exception as e:
+            self.logger.error(f"❌ 向量模型初始化失败: {e}")
+            self.embedding_model = None
         # 初始化Weaviate客户端
         self.weaviate_client = get_weaviate_client()
         # 添加向量缓存机制，避免重复计算

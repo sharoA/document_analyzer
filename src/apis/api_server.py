@@ -706,7 +706,7 @@ def process_content_analysis(task: FileParsingTask, parsing_result: dict):
         task.status = "failed"
         task.update_progress(task.progress, error_msg, "failed")
 
-def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensive", content_analysis_result: dict = None, parsing_result: dict = None):
+def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensive", content_analysis_result: dict = None, parsing_result: dict = None, document_content: str = None):
     """处理AI分析任务 - 使用分析服务模块"""
     try:
         # 检查前置条件 - 允许 ai_analyzing 状态（V2流程中已经预先设置了状态）
@@ -734,11 +734,22 @@ def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensi
             
             # 从内容分析结果中提取数据
             content_data = content_analysis_result
+            
+            # 临时方案：如果有原始文档内容，直接传递给AI分析器
+            input_data = {
+                "content_analysis": content_data,
+                "parsing_result": parsing_result
+            }
+            if document_content:
+                input_data["document_content"] = document_content
+                analysis_logger.info(f"传递原始文档内容进行AI分析，长度: {len(document_content)}")
+            
             ai_result = analysis_service_manager.ai_analyze_sync(
                 task_id=task.id,
                 content_analysis=content_data,
                 parsing_result=parsing_result,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+                document_content=document_content
             )
             
             # 检查AI分析结果是否成功
@@ -1257,11 +1268,21 @@ def ai_analyze(task_id):
             crud_operations = data.get("crud_operations", {})
             analysis_type = data.get("analysis_type", "comprehensive")
             
+            # 获取解析结果和原始文档内容
+            parsing_result = redis_task_storage.get_parsing_result(task_id) or {}
+            document_content = None
+            if task.file_path and os.path.exists(task.file_path):
+                try:
+                    document_content = extract_text_from_file(task.file_path)
+                    logger.info(f"获取原始文档内容用于AI分析，长度: {len(document_content)}")
+                except Exception as e:
+                    logger.warning(f"获取原始文档内容失败: {e}")
+            
             logger.info(f"✅ AI分析前置条件检查通过，开始AI分析: {task_id}")
             logger.info(f"🔍 接收到内容分析结果: CRUD操作={len(crud_operations.get('operations', []))}")
             
             # 异步开始AI分析，传入内容分析结果和CRUD操作
-            executor.submit(process_ai_analysis, task, analysis_type, content_analysis_result, parsing_result)
+            executor.submit(process_ai_analysis, task, analysis_type, content_analysis_result, parsing_result, document_content)
             
             return jsonify({
                 "success": True,
@@ -1748,7 +1769,17 @@ def run_full_analysis_pipeline(task: FileParsingTask):
         
         # 阶段3: AI设计方案
         task.update_progress(70, "开始AI设计方案", "ai_analyzing")
-        process_ai_analysis(task, "comprehensive", content_analysis, parsing_result)
+        
+        # 临时方案：获取原始文档内容直接传递给AI分析
+        document_content = None
+        if task.file_path and os.path.exists(task.file_path):
+            try:
+                document_content = extract_text_from_file(task.file_path)
+                logger.info(f"获取原始文档内容用于AI分析，长度: {len(document_content)}")
+            except Exception as e:
+                logger.warning(f"获取原始文档内容失败: {e}")
+        
+        process_ai_analysis(task, "comprehensive", content_analysis, parsing_result, document_content)
         
         # 检查AI分析是否成功
         if task.status != "ai_analyzed":

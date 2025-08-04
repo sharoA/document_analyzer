@@ -12,6 +12,8 @@ from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 import os
 from .base_service import BaseAnalysisService
+from .core_business_generator import CoreBusinessGenerator
+from .config.company_services_config import get_company_services_config
 
 
 class DesignDocumentGenerator(BaseAnalysisService):
@@ -20,6 +22,8 @@ class DesignDocumentGenerator(BaseAnalysisService):
     def __init__(self, llm_client=None, vector_db=None):
         super().__init__(llm_client, vector_db)
         self.template_loader = self._init_template_loader()
+        # 初始化核心业务生成器
+        self.core_business_generator = CoreBusinessGenerator(llm_client, vector_db)
         
     def _init_template_loader(self):
         """初始化Jinja2模板加载器"""
@@ -52,23 +56,15 @@ class DesignDocumentGenerator(BaseAnalysisService):
         try:
             self._log_analysis_start(task_id, "设计文档生成", 0)
             
-            # Step 1: 生成设计文档数据结构
-            design_data =  self._generate_design_data(
-                business_requirements, content_analysis, parsing_result
-            )
             
-            # Step 2: 使用模板生成最终文档
-            design_document =  self._render_design_document(design_data)
+            self.logger.info(f"parsing_result: {parsing_result}")
+            self.logger.info(f"content_analysis: {content_analysis}")
             
-            # Step 3: 生成补充的架构图 ----当前版本不生成架构图
-            # architecture_diagram =  self._generate_architecture_diagram(design_data)
             
-            # Step 4: 生成表单数据结构
-            form_data =  self._generate_form_data(design_data, content_analysis, parsing_result)
+            # 生成表单数据结构
+            form_data =  self._generate_form_data(content_analysis, parsing_result)
             
             result = {
-                "markdown_content": design_document,
-                "design_data": design_data,
                 # "architecture_diagram": architecture_diagram,
                 "form_data": form_data,
                 "design_document_metadata": {
@@ -144,113 +140,155 @@ class DesignDocumentGenerator(BaseAnalysisService):
             self.logger.error(f"标准文档生成失败: {e}")
             raise
     
-    def _generate_architecture_diagram(self, design_data: Dict) -> Dict:
-        """生成架构图数据"""
-        
-        services = design_data.get("services", [])
-        databases = design_data.get("databases", [])
-        
-        # 生成Mermaid格式的架构图
-        mermaid_syntax = self._build_mermaid_diagram(services, databases)
-        
-        return {
-            "type": "mermaid",
-            "syntax": mermaid_syntax,
-            "components": {
-                "services": [{"name": s.get("name"), "type": "service"} for s in services],
-                "databases": [{"name": d.get("name"), "type": "database"} for d in databases]
-            }
-        }
+   
     
-    def _generate_form_data(self, design_data: Dict, content_analysis: Dict, parsing_result: Dict) -> Dict:
-        """生成符合表单模板的结构化数据"""
+    def _generate_form_data(self, content_analysis: Dict, parsing_result: Dict) -> Dict:
+        """生成符合表单模板的结构化数据（调整后的版本）"""
         try:
             # 从content_analysis和parsing_result中提取关键信息
             content_summary = content_analysis.get("data", {}).get("summary", "")
-            crud_operations = content_analysis.get("data", {}).get("crud_analysis", {}).get("operations", [])
+            # 从parsing_result中提取文档内容 - 修正字段路径
             document_content = parsing_result.get("text_content", "")
+            if not document_content:
+                # 尝试从其他可能的字段路径获取文档内容
+                document_structure = parsing_result.get("data", {}).get("documentStructure", {})
+                content_summary_data = document_structure.get("contentSummary", {})
+                abstract = content_summary_data.get("abstract", "")
+                if abstract:
+                    document_content = abstract
+                else:
+                    # 如果仍然没有内容，使用parsing_result的整体信息
+                    document_content = str(parsing_result)[:2000]  # 截取前2000字符
             
-            # 提取项目名称
-            project_name = self._extract_project_name(document_content)
+            self.logger.info(f"提取到文档摘要长度: {len(content_summary)}, 文档内容长度: {len(document_content)}")
+            self.logger.info(f"文档内容前2000字符: {document_content[:2000]}")
             
-            # 构建表单数据结构
-            form_data = {
-                "project_name": project_name,
-                "project_info": self._generate_project_info(document_content, content_summary, crud_operations),
-                "function_requirements_info": self._generate_function_requirements(crud_operations, content_summary, document_content),
-                "project_architecture": self._generate_project_architecture(design_data, content_summary, document_content),
-                "service_numbers": self._count_services(design_data),
-                "service_info": self._generate_service_info(design_data, crud_operations),
-                "data_resources": self._count_data_resources(design_data),
-                "data_info": self._generate_data_info(design_data),
-                "technology": self._generate_technology_stack(design_data),
-                "service_details": self._generate_service_details(design_data, crud_operations, content_summary, document_content),
-                "execution": self._generate_execution_requirements(design_data)
-            }
             
-            return form_data
+            # 提取项目名称（从文件名中提取）
+            project_name = self._extract_project_name(parsing_result)
+            
+            # 第一步：生成功能需求说明  
+            function_requirements_info = self._generate_function_requirements(content_summary, document_content)
+            
+            # 让LLM选择服务并同时获取company_services_config内相关的信息
+            result = self._generate_service_info(content_analysis, document_content)
+            service_info = result["service_info"]
+            service_numbers = result["service_count"]
+            data_resources = result["data_resources"] 
+            data_info = result["data_info"]
+            
+            self.logger.info(f"生成约束条件 - 服务数量: {service_numbers}, 数据库数量: {data_resources}")
+            
+            # 第二步：使用核心业务生成器统一生成核心设计
+            try:
+                core_design = self.core_business_generator.generate_core_business_design(
+                    content_analysis=content_analysis,
+                    parsing_result=parsing_result,
+                    document_content=document_content,
+                    function_requirements_info=function_requirements_info,
+                    service_numbers=service_numbers,
+                    service_info=service_info,
+                    data_resources=data_resources,
+                    data_info=data_info
+                )
+                
+                self.logger.info("核心业务设计统一生成成功")
+                
+                # 第三步：构建完整的表单数据结构
+                form_data = {
+                    "project_name": project_name,
+                    "project_info": self._generate_project_info(document_content),
+                    "function_requirements_info": function_requirements_info,
+                    "project_architecture": core_design.get("project_architecture", "采用微服务架构模式"),
+                    "service_numbers": service_numbers,
+                    "service_info": service_info,
+                    "data_resources": data_resources,
+                    "data_info": data_info,
+                    "technology": self._get_default_tech_stack(),
+                    "service_details": core_design.get("service_details", []),  # 使用统一生成的结果
+                    "execution": self._generate_execution_requirements(core_design)
+                }
+                
+                self.logger.info(f"表单数据生成完成，包含{len(form_data.get('service_details', []))}个服务设计")
+                return form_data
+                
+            except Exception as core_error:
+                self.logger.error(f"核心业务生成失败: {core_error}")
+                # 核心业务生成失败时抛出异常，不使用回退方案
+                raise Exception(f"核心业务设计生成失败: {str(core_error)}")
             
         except Exception as e:
             self.logger.error(f"生成表单数据失败: {e}")
-            # 返回基础表单数据结构
-            return self._get_default_form_data()
+            raise
     
-    def _extract_project_name(self, document_content: str) -> str:
-        """从文档内容中提取项目名称"""
-        lines = document_content.split('\n')
-        for line in lines[:10]:  # 检查前10行
-            if any(keyword in line for keyword in ['项目', '需求', '系统', '平台']):
-                # 提取可能的项目名称
-                if '需求文档' in line:
-                    project_name = line.replace('需求文档', '').strip()
-                    if project_name:
-                        return project_name
-                elif '设计文档' in line:
-                    project_name = line.replace('设计文档', '').strip()
-                    if project_name:
-                        return project_name
-        return "业务系统优化项目"
+    def _extract_project_name(self, parsing_result: Dict) -> str:
+        """从上传文件名中提取项目名称"""
+        try:
+            # 从parsing_result中获取文件名
+            file_format = parsing_result.get("data", {}).get("fileFormat", {})
+            filename = file_format.get("fileName", "")
+            
+            if not filename:
+                return "业务系统优化项目"
+            
+            # 去掉文件扩展名
+            import re
+            name_without_ext = re.sub(r'\.[^.]*$', '', filename)
+            
+            # 直接返回去掉扩展名的文件名，如果为空则返回默认值
+            return name_without_ext.strip() if name_without_ext.strip() else "业务系统优化项目"
+            
+        except Exception:
+            return "业务系统优化项目"
     
-    def _generate_project_info(self, document_content: str, content_summary: str, crud_operations: list) -> str:
+    def _generate_project_info(self, document_content: str) -> str:
         """LLM生成项目介绍信息"""
         try:
             prompt = f"""
-基于以下业务文档内容，生成简洁专业的项目介绍信息：
+你是一个文档内容提取器，你的任务是从文档中准确提取指定内容，不能添加任何文档中没有的内容。
 
-文档内容摘要：
-{content_summary}
+文档原文：
+{document_content}
 
-主要业务操作：
-{', '.join([f"{op.get('type', '')}: {op.get('description', '')}" for op in crud_operations])}
+提取任务：
+从上述文档中找到"需求背景"、"项目背景"、"背景"、"项目介绍"或类似章节，将该章节的完整内容提取出来。
 
-文档原文（前1000字）：
-{document_content[:1000]}
+提取规则：
+1. 只提取文档中已有的内容，不能增加、修改或重新组织
+2. 保持原文的表述和格式
+3. 重点关注描述项目起因、现状问题、业务需求的段落
+4. 如果找到多个背景相关章节，提取最主要的一个
+5. 如果没有找到相关章节，返回"未找到需求背景内容"
 
-要求：
-1. 生成100-200字的项目介绍
-2. 包含项目背景、建设目标、核心价值
-3. 语言简洁专业，符合技术文档规范
-4. 避免空泛描述，体现具体业务场景
-
-请只返回项目介绍内容，不要包含其他解释文字。
+输出要求：
+- 直接输出提取的原文内容
+- 不要添加任何解释、总结或补充说明
+- 不要包含章节标题编号
 """
             
             if self.llm_client:
                 response = self.llm_client.chat(
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.3
+                    temperature=0.0
                 )
                 
                 project_info = response.strip()
+                
+                self.logger.info(f"LLM生成项目介绍信息: {project_info}")
+                
+                # 如果LLM返回没有找到内容，使用默认内容
+                if project_info == "未找到需求背景内容" or not project_info:
+                    return "项目旨在优化现有业务系统，提升用户体验和系统性能。"
+                
                 return project_info
             else:
-                return content_summary[:300] if content_summary else "项目旨在优化现有业务系统，提升用户体验和系统性能。"
+                return "llm未找到项目，旨在优化现有业务系统，提升用户体验和系统性能。"
                 
         except Exception as e:
             self.logger.error(f"LLM生成项目介绍失败: {e}")
-            return content_summary[:300] if content_summary else "项目旨在优化现有业务系统，提升用户体验和系统性能。"
+            return "项目旨在优化现有业务系统，提升用户体验和系统性能。"
     
-    def _generate_function_requirements(self, crud_operations: list, content_summary: str, document_content: str) -> Dict:
+    def _generate_function_requirements(self, content_summary: str, document_content: str) -> Dict:
         """LLM生成功能需求信息"""
         try:
             prompt = f"""
@@ -258,9 +296,6 @@ class DesignDocumentGenerator(BaseAnalysisService):
 
 文档内容摘要：
 {content_summary}
-
-主要业务操作：
-{', '.join([f"{op.get('type', '')}: {op.get('description', '')}" for op in crud_operations])}
 
 文档原文（前1500字）：
 {document_content[:1500]}
@@ -302,13 +337,13 @@ class DesignDocumentGenerator(BaseAnalysisService):
                     return function_requirements
                 except json.JSONDecodeError as e:
                     self.logger.error(f"解析LLM返回的JSON失败: {e}")
-                    return self._get_default_function_requirements(crud_operations, content_summary)
+                    return self._get_default_function_requirements([], content_summary)
             else:
-                return self._get_default_function_requirements(crud_operations, content_summary)
+                return self._get_default_function_requirements([], content_summary)
                 
         except Exception as e:
             self.logger.error(f"LLM生成功能需求失败: {e}")
-            return self._get_default_function_requirements(crud_operations, content_summary)
+            return self._get_default_function_requirements([], content_summary)
     
     def _get_default_function_requirements(self, crud_operations: list, content_summary: str) -> Dict:
         """获取默认功能需求信息"""
@@ -335,85 +370,152 @@ class DesignDocumentGenerator(BaseAnalysisService):
             "remarks": "按照业务需求进行功能调整和优化"
         }
     
-    def _generate_project_architecture(self, design_data: Dict, content_summary: str, document_content: str) -> str:
-        """LLM生成项目架构描述"""
-        try:
-            prompt = f"""
-基于以下业务文档内容，生成详细的项目架构设计描述：
 
-文档内容摘要：
-{content_summary}
-
-文档原文（前1500字）：
-{document_content[:1500]}
-
-设计数据参考：
-{str(design_data)[:500]}
-
-请生成项目架构描述，要求：
-1. 200-300字的架构描述
-2. 包含架构模式选择（如微服务、单体、分层等）
-3. 包含关键技术组件（数据库、缓存、消息队列等）
-4. 说明架构的核心特点（高可用、可扩展、安全性等）
-5. 体现具体业务场景和技术选型理由
-6. 语言专业、条理清晰
-
-请只返回架构描述内容，不要包含其他解释文字。
-"""
-            
-            if self.llm_client:
-                response = self.llm_client.chat(
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.3
-                )
-                
-                architecture = response.strip()
-                return architecture
-            else:
-                return self._get_default_project_architecture(design_data)
-                
-        except Exception as e:
-            self.logger.error(f"LLM生成项目架构失败: {e}")
-            return self._get_default_project_architecture(design_data)
-    
-    def _get_default_project_architecture(self, design_data: Dict) -> str:
-        """获取默认项目架构描述"""
-        tech_stack = design_data.get("tech_stack", {})
-        backend_framework = tech_stack.get("后端框架", "Spring Boot + Spring Cloud")
-        database = tech_stack.get("数据库", "MySQL")
-        cache = tech_stack.get("缓存", "Redis")
-        
-        return f"采用{backend_framework}微服务架构，使用{database}作为主数据库，{cache}作为缓存层，确保系统的高可用性和可扩展性。"
     
     def _count_services(self, design_data: Dict) -> int:
         """统计服务数量"""
         services = design_data.get("services", [])
         return max(len(services), 2)  # 至少2个服务
     
-    def _generate_service_info(self, design_data: Dict, crud_operations: list) -> list:
-        """生成服务信息"""
-        services = design_data.get("services", [])
+    def _generate_service_info(self, content_analysis: Dict, document_content: str) -> dict:
+        """使用LLM从公司现有服务中智能选择合适的服务，返回完整信息"""
+        # 获取公司现有服务配置
+        company_config = get_company_services_config()
+        existing_services = company_config.get_existing_services()
+        
+        if not existing_services:
+            raise Exception("无法获取公司服务配置，请检查company_services.yaml文件")
+        
+        # 使用LLM选择服务 - 从content_analysis中提取crud_operations或使用空列表
+        crud_operations = content_analysis.get("data", {}).get("crud_operations", [])
+        llm_result = self._llm_select_services(content_analysis, existing_services, document_content)
+        
+        if not llm_result:
+            raise Exception("LLM服务选择失败")
+        
+        # 从LLM返回结果中提取服务信息
+        service_info = llm_result.get("service_info", [])
+        service_count = llm_result.get("service_count", len(service_info))
+        
+        if not service_info:
+            raise Exception("LLM未选择任何服务")
+        
+        # 从配置文件中获取每个服务的data_resources并统计
+        all_data_resources = []
+        for service in service_info:
+            # 在existing_services中查找对应的服务
+            for existing_service in existing_services:
+                if (existing_service.get("service_name") == service.get("service_name") or 
+                    existing_service.get("service_english_name") == service.get("service_english_name")):
+                    # 从配置文件中获取data_resources
+                    data_resources = existing_service.get("data_resources", [])
+                    if isinstance(data_resources, list):
+                        all_data_resources.extend(data_resources)
+                    elif isinstance(data_resources, str):
+                        all_data_resources.append(data_resources)
+                    break
+        
+        # 统计数据库类型并去重
+        unique_data_types = list(set(all_data_resources))
+        data_info = [{"data_type": data_type.lower()} for data_type in unique_data_types]
+        
+        return {
+            "service_info": service_info,
+            "service_count": service_count,
+            "data_resources": len(unique_data_types),
+            "data_info": data_info
+        }
+    
+    def _llm_select_services(self, content_analysis: Dict, existing_services: list, document_content: str) -> Dict:
+        """使用LLM从现有服务中选择最合适的服务"""
+        try:
+            if not self.llm_client:
+                self.logger.warning("LLM客户端不可用，跳过智能服务选择")
+                return None
+                
+            # 加载服务选择模板
+            if not self.template_loader:
+                self.logger.warning("模板加载器不可用，跳过智能服务选择")
+                return None
+                
+            template = self.template_loader.get_template('service_selection_prompts.jinja2')
+            
+            # 生成系统提示词
+            system_prompt = template.module.system_prompt_service_selection()
+            
+       
+            # 生成用户提示词  
+            user_prompt = template.module.user_prompt_service_selection(
+                document_content=document_content,
+                content_analysis=content_analysis,
+                existing_services=existing_services
+            )
+            
+            self.logger.info(f"发送给LLM的用户提示词: {user_prompt[:500]}...")
+            self.logger.info(f"文档内容长度: {len(document_content)}, 现有服务数量: {len(existing_services)}")
+            
+            # 调用LLM
+            response = self.llm_client.chat(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1
+            )
+            
+            self.logger.info(f"LLM服务选择原始响应: {response}")
+            
+            # 解析响应
+            try:
+                import json
+                result_text = response.strip()
+                # 清理可能的markdown格式
+                if result_text.startswith('```json'):
+                    result_text = result_text.replace('```json', '').replace('```', '').strip()
+                elif result_text.startswith('```'):
+                    result_text = result_text.replace('```', '').strip()
+                
+                self.logger.info(f"清理后的JSON文本: {result_text}")
+                result = json.loads(result_text)
+                self.logger.info(f"解析后的结果: {result}")
+            except json.JSONDecodeError as e:
+                self.logger.error(f"解析LLM返回的JSON失败: {e}")
+                raise Exception(f"服务选择响应格式错误: {e}")
+            
+            if result and "selected_services" in result:
+                return {
+                    "service_info": [
+                        {
+                            "service_name": service.get("service_name", ""),
+                            "service_english_name": service.get("service_english_name", "")
+                        }
+                        for service in result["selected_services"]
+                    ],
+                    "service_count": result.get("service_count", len(result["selected_services"]))
+                }
+            
+            raise Exception("LLM未返回有效的服务选择结果")
+            
+        except Exception as e:
+            self.logger.error(f"LLM服务选择失败: {e}")
+            return None
+    
+    def _generate_default_service_info_from_existing(self, existing_services: list) -> list:
+        """从现有服务中选择默认服务（当LLM不可用时）"""
         service_info = []
         
-        if services:
-            for service in services:
-                service_info.append({
-                    "service_name": service.get("name", "业务服务"),
-                    "service_english_name": service.get("english_name", "business-service")
-                })
-        else:
-            # 基于CRUD操作推断服务
-            if any(op.get("type") == "CREATE" for op in crud_operations):
-                service_info.append({
-                    "service_name": "用户服务",
-                    "service_english_name": "user-center-service"
-                })
+        # 简单选择前2个现有服务
+        for service in existing_services[:2]:
             service_info.append({
-                "service_name": "业务服务",
-                "service_english_name": "business-service"
+                "service_name": service.get("service_name", ""),
+                "service_english_name": service.get("service_english_name", "")
             })
         
         return service_info
+    
+    def _generate_default_service_info(self, crud_operations: list) -> list:
+        """当没有公司服务配置时返回空列表，让LLM自己决定"""
+        return []
     
     def _count_data_resources(self, design_data: Dict) -> int:
         """统计数据资源数量"""
@@ -443,215 +545,7 @@ class DesignDocumentGenerator(BaseAnalysisService):
         """生成技术栈信息"""
         return design_data.get("tech_stack", self._get_default_tech_stack())
     
-    def _generate_table_sql(self, service_name: str, crud_operations: list, content_summary: str) -> str:
-        """AI生成数据库表SQL"""
-        try:
-            # 构建提示词
-            prompt = f"""
-基于以下业务需求，为{service_name}生成对应的MySQL数据库表结构（CREATE TABLE语句）：
-
-业务背景：
-{content_summary}
-
-CRUD操作需求：
-{', '.join([f"{op.get('type', '')}: {op.get('description', '')}" for op in crud_operations])}
-
-要求：
-1. 生成完整的CREATE TABLE语句
-2. 包含合理的字段类型、长度、约束
-3. 添加适当的索引
-4. 使用utf8mb4字符集
-5. 包含id主键、创建时间、更新时间等通用字段
-6. 字段要有中文注释
-
-请只返回SQL语句，不要包含其他解释文字。
-"""
-            
-            if self.llm_client:
-                response = self.llm_client.chat(
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.1
-                )
-                
-                sql_content = response.strip()
-                # 清理可能的markdown格式
-                if sql_content.startswith('```sql'):
-                    sql_content = sql_content.replace('```sql', '').replace('```', '').strip()
-                elif sql_content.startswith('```'):
-                    sql_content = sql_content.replace('```', '').strip()
-                
-                return sql_content
-            else:
-                return f"-- {service_name}相关数据表SQL（需要根据具体业务需求设计表结构）"
-                
-        except Exception as e:
-            self.logger.error(f"AI生成SQL失败: {e}")
-            return f"-- {service_name}相关数据表SQL（AI生成失败，需要手动设计）"
-
-    def _generate_api_design(self, service_type: str, crud_operations: list, content_summary: str, document_content: str) -> list:
-        """LLM生成API接口设计"""
-        try:
-            prompt = f"""
-基于以下业务文档内容，为{service_type}生成详细的API接口设计：
-
-文档内容摘要：
-{content_summary}
-
-主要业务操作：
-{', '.join([f"{op.get('type', '')}: {op.get('description', '')}" for op in crud_operations])}
-
-文档原文（前1500字）：
-{document_content[:1500]}
-
-请为{service_type}生成API接口设计，返回JSON数组格式：
-[
-  {{
-    "interface_type": "接口类型（新增/查询/修改/删除）",
-    "uri": "具体的API路径，如/api/user/create",
-    "method": "HTTP方法（GET/POST/PUT/DELETE）",
-    "description": "详细的接口功能描述，50-100字",
-    "request_params": "详细的请求参数JSON结构，包含具体字段和类型",
-    "response_params": "详细的响应参数JSON结构，包含具体字段和类型",
-    "special_requirements": "特殊要求说明，包含验证、权限、性能等要求，50-100字"
-  }}
-]
-
-要求：
-1. 基于实际业务文档内容生成
-2. API路径要具体、符合RESTful规范
-3. 请求/响应参数要详细、真实，包含具体的业务字段
-4. 接口描述要准确反映业务功能
-5. 生成2-4个核心API接口
-6. 特殊要求要考虑实际开发场景
-
-请只返回JSON数组内容，不要包含其他解释文字。
-"""
-            
-            if self.llm_client:
-                response = self.llm_client.chat(
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.3
-                )
-                
-                try:
-                    import json
-                    result_text = response.strip()
-                    # 清理可能的markdown格式
-                    if result_text.startswith('```json'):
-                        result_text = result_text.replace('```json', '').replace('```', '').strip()
-                    elif result_text.startswith('```'):
-                        result_text = result_text.replace('```', '').strip()
-                    
-                    api_designs = json.loads(result_text)
-                    return api_designs if isinstance(api_designs, list) else [api_designs]
-                except json.JSONDecodeError as e:
-                    self.logger.error(f"解析LLM返回的API设计JSON失败: {e}")
-                    return self._get_default_api_design(service_type, crud_operations)
-            else:
-                return self._get_default_api_design(service_type, crud_operations)
-                
-        except Exception as e:
-            self.logger.error(f"LLM生成API设计失败: {e}")
-            return self._get_default_api_design(service_type, crud_operations)
-    
-    def _get_default_api_design(self, service_type: str, crud_operations: list) -> list:
-        """获取默认API设计"""
-        apis = []
-        for op in crud_operations:
-            op_type = op.get("type", "")
-            op_desc = op.get("description", "")
-            
-            if op_type == "CREATE" and service_type == "用户":
-                apis.append({
-                    "interface_type": "新增",
-                    "uri": "/api/user/create",
-                    "method": "POST",
-                    "description": f"新增{op_desc}",
-                    "request_params": "{}",
-                    "response_params": "{}",
-                    "special_requirements": "数据校验和权限控制"
-                })
-            elif op_type == "READ" and service_type == "业务":
-                apis.append({
-                    "interface_type": "查询",
-                    "uri": "/api/business/query",
-                    "method": "GET",
-                    "description": f"查询{op_desc}",
-                    "request_params": "{}",
-                    "response_params": "{}",
-                    "special_requirements": "分页查询和缓存优化"
-                })
-        
-        return apis if apis else [{
-            "interface_type": "查询",
-            "uri": f"/api/{service_type.lower()}/list",
-            "method": "GET",
-            "description": f"{service_type}数据查询",
-            "request_params": "{}",
-            "response_params": "{}",
-            "special_requirements": "基础CRUD操作"
-        }]
-
-    def _generate_service_details(self, design_data: Dict, crud_operations: list, content_summary: str = "", document_content: str = "") -> list:
-        """生成详细服务设计"""
-        service_details = []
-        
-        # 为用户服务生成SQL和API
-        user_sql = self._generate_table_sql("用户管理", crud_operations, content_summary)
-        user_apis = self._generate_api_design("用户", crud_operations, content_summary, document_content)
-        
-        # 为业务服务生成SQL和API
-        business_sql = self._generate_table_sql("业务数据", crud_operations, content_summary)
-        business_apis = self._generate_api_design("业务", crud_operations, content_summary, document_content)
-        
-        # 为API设计添加SQL信息
-        for api in user_apis:
-            api["data_table_sql"] = user_sql
-            api["dependence_service"] = ["auth-service"]
-            
-        for api in business_apis:
-            api["data_table_sql"] = business_sql
-            api["dependence_service"] = ["user-service"]
-        
-        # 用户服务
-        service_details.append({
-            "service_name": "用户服务",
-            "service_english_name": "user-center-service",
-            "service_duty": "用户管理、权限控制、角色管理",
-            "core_modules": "- 用户注册模块\n- 权限管理模块\n- 角色管理模块",
-            "API设计": user_apis if user_apis else [{
-                "interface_type": "新增",
-                "uri": "/api/user/create",
-                "method": "POST",
-                "description": "用户注册",
-                "request_params": "{}",
-                "response_params": "{}",
-                "data_table_sql": user_sql,
-                "dependence_service": ["auth-service"],
-                "special_requirements": "密码加密和手机验证"
-            }]
-        })
-        
-        # 业务服务
-        service_details.append({
-            "service_name": "业务服务",
-            "service_english_name": "business-service",
-            "service_duty": "核心业务逻辑处理",
-            "core_modules": "- 业务数据模块\n- 业务流程模块",
-            "API设计": business_apis if business_apis else [{
-                "interface_type": "查询",
-                "uri": "/api/business/query",
-                "method": "GET",
-                "description": "业务数据查询",
-                "request_params": "{}",
-                "response_params": "{}",
-                "data_table_sql": business_sql,
-                "dependence_service": ["user-service"],
-                "special_requirements": "数据权限控制"
-            }]
-        })
-        
-        return service_details
+   
     
     def _generate_execution_requirements(self, design_data: Dict) -> Dict:
         """生成执行要求"""
@@ -666,40 +560,7 @@ CRUD操作需求：
             "scope_interface": "本次新增接口，已经按服务范围进行划分，详见设计文档2服务设计部分。"
         }
     
-    def _get_default_form_data(self) -> Dict:
-        """获取默认表单数据"""
-        return {
-            "project_name": "业务系统优化项目",
-            "project_info": "项目旨在优化现有业务系统，提升用户体验和系统性能。",
-            "function_requirements_info": {
-                "adjust_info": "根据业务需求进行系统功能调整和优化",
-                "filter_field": "支持按条件筛选查询",
-                "list_field": "列表展示相关数据字段",
-                "total_field": "统计汇总相关字段",
-                "remarks": "按照业务需求进行功能调整和优化"
-            },
-            "project_architecture": "采用Spring Boot + Spring Cloud微服务架构，使用MySQL作为主数据库，Redis作为缓存层。",
-            "service_numbers": 2,
-            "service_info": [
-                {"service_name": "用户服务", "service_english_name": "user-center-service"},
-                {"service_name": "业务服务", "service_english_name": "business-service"}
-            ],
-            "data_resources": 2,
-            "data_info": [
-                {"data_type": "mysql"},
-                {"data_type": "redis"}
-            ],
-            "technology": self._get_default_tech_stack(),
-            "service_details": [],
-            "execution": {
-                "service_scope": "本次没有新增服务，服务范围为：",
-                "services": [],
-                "data_scope": "本次没有新增数据库，数据库范围为：",
-                "databases": [],
-                "scope_interface": "本次新增接口，已经按服务范围进行划分，详见设计文档2服务设计部分。"
-            }
-        }
-
+   
     def _build_mermaid_diagram(self, services: list, databases: list) -> str:
         """构建Mermaid格式架构图"""
         
@@ -738,35 +599,7 @@ CRUD操作需求：
         
         return '\n'.join(lines)
     
-    def _validate_and_enhance_design_data(self, design_data: Dict, business_requirements: Dict) -> Dict:
-        """验证并增强设计数据"""
-        
-        # 确保必要字段存在
-        if "project_name" not in design_data:
-            # 从业务需求中推断项目名称
-            functional_reqs = business_requirements.get("functional_requirements", [])
-            if functional_reqs:
-                first_req = functional_reqs[0]
-                design_data["project_name"] = first_req.get("name", "业务需求优化")
-            else:
-                design_data["project_name"] = "业务系统优化"
-        
-        # 确保技术栈完整
-        if "tech_stack" not in design_data or not design_data["tech_stack"]:
-            design_data["tech_stack"] = self._get_default_tech_stack()
-        
-        # 确保服务列表存在
-        if "services" not in design_data:
-            design_data["services"] = []
-        
-        # 确保数据库列表存在  
-        if "databases" not in design_data:
-            design_data["databases"] = self._get_default_databases()
-        
-        # 根据业务需求补充功能需求
-        design_data["functional_requirements"] = business_requirements.get("functional_requirements", [])
-        
-        return design_data
+ 
     
     def _get_default_tech_stack(self) -> Dict[str, str]:
         """获取默认技术栈"""
@@ -788,30 +621,7 @@ CRUD操作需求：
             "开发语言版本": "java 1.8"
         }
     
-    def _get_default_databases(self) -> list:
-        """获取默认数据库配置"""
-        return [
-            {
-                "name": "用户数据库",
-                "type": "MySQL",
-                "config": {
-                    "url": "jdbc:mysql://localhost:6446/dbwebappdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8&useUnicode=true",
-                    "username": "dbwebapp", 
-                    "password": "dbwebapp",
-                    "driver-class-name": "com.mysql.cj.jdbc.Driver"
-                }
-            },
-            {
-                "name": "缓存",
-                "type": "Redis",
-                "config": {
-                    "host": "localhost",
-                    "port": "6379",
-                    "db": "0", 
-                    "password": "''"
-                }
-            }
-        ]
+
     
    
     
@@ -849,25 +659,7 @@ CRUD操作需求：
             self.logger.error(f"LLM调用失败: {str(e)}")
             return None
 
-    def _parse_json_response(self, response: str, step_name: str) -> Dict:
-        """解析JSON响应，包含错误处理"""
-        try:
-            # 尝试提取JSON部分
-            if "```json" in response:
-                json_start = response.find("```json") + 7
-                json_end = response.find("```", json_start)
-                json_str = response[json_start:json_end].strip()
-            else:
-                json_str = response.strip()
-            
-            return json.loads(json_str)
-        except json.JSONDecodeError as e:
-            self.logger.error(f"{step_name}JSON解析失败: {str(e)}")
-            return {
-                "error": f"JSON解析失败: {str(e)}",
-                "raw_response": response,
-                "step": step_name
-            }
+    
 
     def analyze(self, task_id: str, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """实现基类的抽象方法 - 暂时为空实现"""

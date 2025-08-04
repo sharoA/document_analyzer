@@ -69,7 +69,7 @@ c.列表字段：
 
 2.1.2 API设计：
 2.1.2.1 新增接口：
-uri : GET /general/multiorgManage/queryCompanyUnitList    
+uri :  /general/multiorgManage/queryCompanyUnitList    
 method: GET
 description:查询企业组织单元列表
 入参示例：

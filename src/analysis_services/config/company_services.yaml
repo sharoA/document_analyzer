@@ -1,0 +1,58 @@
+# 公司现有服务配置文件
+# 用于为AI生成的设计方案提供参考和命名规范
+
+
+# 现有服务列表
+existing_services:
+  - service_name: "用户中心服务"
+    service_english_name: "usercenter-basic-general"
+    git_repository: "http://localhost:30000/ls/zqyl-user-center-service.git"
+    description: "负责用户管理、权限控制、角色管理、登录认证、组织单元管理、用户信息管理"
+    business_domain: "用户管理"
+    data_resources: "mysql"
+    
+  - service_name: "链数服务"
+    service_english_name: "zqyl-ls"
+    git_repository: "http://localhost:30000/ls/zqyl-ls.git"
+    description: "处理订单创建、修改、查询、状态管理等业务逻辑"
+    business_domain: "订单业务"
+    data_resources: "oracle"
+    
+  - service_name: "确权服务"
+    service_english_name: "crlc-open"
+    git_repository: "http://localhost:30000/ls/crcl-open.git"
+    description: "链数及云信确权业务、开立业务、查询及开立链数额度及云信额度"
+    business_domain: "支付财务"
+    data_resources: "oracle"
+    
+  # - service_name: "通知服务"
+  #   service_english_name: "notification-service"
+  #   git_repository: "https://github.com/yiju/notification-service.git"
+  #   description: "负责消息推送、邮件发送、短信通知、系统公告"
+  #   business_domain: "消息通知"
+    
+  # - service_name: "文件管理服务"
+  #   service_english_name: "file-management-service"
+  #   git_repository: "https://github.com/yiju/file-management-service.git"
+  #   description: "处理文件上传、下载、存储、权限管理"
+  #   business_domain: "文件存储"
+    
+  # - service_name: "数据分析服务"
+  #   service_english_name: "data-analytics-service"
+  #   git_repository: "https://github.com/yiju/data-analytics-service.git" 
+  #   description: "提供数据统计、报表生成、业务分析功能"
+  #   business_domain: "数据分析"
+
+# 命名规范
+naming_conventions:
+  service_pattern: "{business-domain}-service"
+  repository_pattern: "https://github.com/yiju/{service-english-name}.git"
+  database_table_pattern: "t_{service_prefix}_{table_name}"
+  api_path_pattern: "/api/{service-domain}/{operation}"
+
+# 技术规范
+tech_standards:
+  git_branch_strategy: "feature/dev/test/master"
+  service_port_range: "8000-8999"
+  database_naming: "snake_case"
+  api_naming: "kebab-case"

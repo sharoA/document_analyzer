@@ -1,1251 +1,0 @@
-2025-07-25 17:58:59,218 - src.resource.config - INFO - 配置文件加载成功: /Users/renyu/Documents/ai_project/document_analyzer/config.yaml
-2025-07-25 17:58:59,246 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/meta "HTTP/1.1 200 OK"
-2025-07-25 17:58:59,988 - httpx - INFO - HTTP Request: GET https://pypi.org/pypi/weaviate-client/json "HTTP/1.1 200 OK"
-2025-07-25 17:59:00,204 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/.well-known/ready "HTTP/1.1 200 OK"
-2025-07-25 17:59:00,205 - src.utils.weaviate_helper - INFO - 成功连接到 Weaviate: localhost:8080
-2025-07-25 17:59:00,205 - __main__ - INFO - ✅ Weaviate 客户端初始化成功
-2025-07-25 17:59:00,228 - sentence_transformers.SentenceTransformer - INFO - Use pytorch device_name: mps
-2025-07-25 17:59:00,229 - sentence_transformers.SentenceTransformer - INFO - Load pretrained SentenceTransformer: BAAI/bge-large-zh
-2025-07-25 17:59:10,815 - __main__ - INFO - ✅ 嵌入模型加载成功 (bge-large-zh, 1024维，中文优化)
-2025-07-25 17:59:10,815 - __main__ - INFO - ✅ 文本分割器初始化成功
-2025-07-25 17:59:10,815 - __main__ - INFO - ✅ 组件初始化完成
-2025-07-25 17:59:10,815 - __main__ - INFO - 🚀 开始使用优化策略初始化需求文档向量库...
-2025-07-25 17:59:10,815 - __main__ - INFO - 📋 分段策略配置: {'min_chunk_length': 50, 'max_chunk_length': 800, 'overlap_length': 100, 'merge_threshold': 150}
-2025-07-25 17:59:10,815 - __main__ - INFO - 🗑️ 开始清空需求文档相关数据...
-2025-07-25 17:59:10,819 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:10,849 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/720c021c-9f51-4a16-a773-05309fddd159 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,849 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/41c4d5fa-0b0c-4a3a-9bd4-63307c19d755 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,850 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d206331f-a6a4-4076-92dc-44e84296817e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,851 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/30df4f0f-2dc2-4a52-9a25-2556b41e7870 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,851 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9a4fed02-6b38-4fff-9ae5-2bd16b75040c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,852 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/32c725e0-d205-46d1-83c6-b1ceed898207 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,853 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/16d2afdf-e98b-4594-b975-0fb6a60ecf57 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,853 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/145fcffa-4c19-40a2-8729-09a8b56970a7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,854 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ac16a897-c50d-4c89-982d-8bebaa676c25 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,854 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ee417905-bbc7-4daf-9171-e441154f09cb "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,855 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f8b9aaaf-d687-45bb-8dbe-555ef83358d3 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,855 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/58c2ac81-c0fc-4d9d-b6e6-56532086c9c9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,856 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/bf56e40c-71e0-4a7a-9c3d-47c212dac4a4 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,856 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/43923255-f5e2-4d06-9cad-e0e79ce44be6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,857 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ad30d1b9-6af3-4b3f-ad1e-60a6547a128d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,858 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/24695b52-63c4-435c-9f34-b765604efedf "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,858 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/fc3ba190-46c1-483a-b008-2797d8b6fef0 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,859 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/594f2f98-8ff4-428b-bbdc-8dbefc1ecfdc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,860 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/bbf4c94e-caac-46a0-9b20-1c0db562a4f1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,860 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/51828d8b-a13e-4902-bb2e-21cadf8a536e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,861 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f31eb6a6-680e-4b39-bfe6-4c1ce5ed7b9a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,861 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0c8b34ca-2a7d-4a7b-8542-2bf0527209ff "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,862 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b3a1428e-69bf-458d-9995-da479e265890 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,862 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f82bc871-a99e-43fd-b928-9cffad967105 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,863 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4b51ed17-3376-45da-babb-5c3742c9e89a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,864 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e3f0136f-7e6c-4958-af73-3fa4554d665f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,864 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e5c82e85-7be2-4161-9c22-1d900c224a9f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,865 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/460cfdc2-068c-4d1e-bd3f-9fff5f920778 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,865 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/fef1e7b3-a29d-43a5-b81b-16c9b646d31b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,866 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/aa50f748-e60e-40b2-9e73-f581845acdcc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,867 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/538ab7dc-6391-4483-8bea-993ee542782b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,867 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cabe31a2-08aa-4427-af35-25dd1a3eec9c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,868 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/609357fd-34fd-40a9-926b-1a6013a81d88 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,868 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b42fda46-345e-45ff-8d76-978e9f3af786 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,869 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a02e380a-6eb9-436c-8f0e-f7f1c9b27f84 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,869 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/42e2ffdd-bfe2-463b-b28d-d9063c5f2a49 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,870 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6e40ec6b-6dfd-454a-accb-49c3c1a4746a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,871 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/62bfcbd4-ddf2-4d02-a100-313bed62cdbe "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,871 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/03c42f5a-1fb2-4943-8b2d-8079478c2d19 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,872 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/608669c1-f2aa-42c5-93c9-461bce59a239 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,873 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/2b487474-e36a-4aee-a585-a90891df2ea1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,873 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/35853864-435d-43b8-b906-fcea19a98008 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,874 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d8baa397-b180-4a7f-bae6-26e5be0a95b5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,874 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e28cc9bd-d249-4a16-8300-4df184f3e77f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,875 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8df49cf1-8b43-4305-9c28-e900dc2628df "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,875 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ab58d763-0157-492f-b90a-a04cae568deb "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,876 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7d815703-7038-429d-85df-5f1e3524cd11 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,877 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/95653d9f-20f4-4a44-b023-015424e11b9b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,877 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8d805f70-8c1b-4a21-83e9-d5c0c7633837 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,878 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/834b7c1b-1ebc-4607-9d18-46adebe2a1b3 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,878 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/98ff007e-6918-4f4d-8f7e-060423e3bf6c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,879 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f202ddd5-0e1f-410e-b307-fd42839a3b04 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,880 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a235a7f3-877a-48e2-97dc-20c72f9763fd "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,880 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/876416e9-9071-4dbf-b2a9-627cf6d2055a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,881 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7887f840-01d3-4e59-8078-c3ee39a32e2d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,882 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a50eef42-3bf7-4b03-bcf7-c132208a3abb "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,882 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5f1a455a-c087-4988-8a07-f5dbd75b11d6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,883 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/59cc1751-cb53-47cb-aba5-3dcbe69bed96 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,884 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c9ca5408-a05d-432d-b780-f78be3268fe8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,884 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0e98bf21-a08f-450a-b920-bcc08bfe2280 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,888 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4a46a3e8-7226-48ca-99ba-1f1a97ab93f7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,889 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a8b9bef5-48ea-4190-a75a-bc517f43f37f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,890 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/74f2ea6d-64a9-45da-b19e-141d5125b236 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,891 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a4a2ca46-123f-4429-9ff2-7651009904c4 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,892 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/841a4972-531b-44ee-bff5-8ebfecbe5a5c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,893 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a532ec3a-886a-4737-91ba-b5336368bb0d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,893 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/66b60069-01f6-4d37-983a-9186ee731349 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,894 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/36a69af2-0b73-4b83-86b4-6ced24fd372d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,894 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b8a6fb10-c88a-4c1c-8e9c-95201e9eedda "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,895 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/97953b8f-b747-404c-9fcd-b2327415145c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,896 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/03c10db7-62b5-4c3c-8572-8d51aa863c54 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,896 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/360c8d78-60bd-4cfc-9251-d8e3467a1d75 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,897 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/25b9c99c-390f-4497-af8e-15d495e162b7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,897 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e70ef4f5-cd57-455e-a61e-790a25a09ec8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,898 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5e19fb44-1732-4bf4-8720-fa2e5186c9ce "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,899 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8c6f5768-d4a6-4e28-853d-cedb4673d50d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,899 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/087d389d-37a5-4d24-98eb-5f9cd9e3fd3b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,900 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ca218484-6344-4aa7-8cfc-756512a9f856 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,900 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/23fe9b47-05da-4fd6-ac3b-6cfcee02333d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,901 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9168189f-3e0b-47f5-a59f-c0d00e2a69e9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,902 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cb99d517-6804-4d62-8ffd-1b0c59b961a2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,902 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/11fe4e30-4e50-44b6-8f0f-8c9288f1a46d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,903 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d62a61c9-43fc-4122-9b11-7fa28c137ab2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,903 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5e94b597-bbfe-4db7-be4d-220f3beefe53 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,904 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/28132f76-c2f6-4846-8a13-37011d24be9f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,905 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b6ec02be-c389-4b4f-b922-cb04690a8207 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,905 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5ae1969e-b658-4f7b-8043-6297cfa03e4a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,906 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/565b9c51-2a82-4b47-ba6e-936b5b6d15c2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,906 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/578b0c0c-8e1b-4e6f-95b9-3dd12add7d1e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,907 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a7d1c38a-d3aa-41d7-af4f-18e472685e46 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,908 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3b896b09-3383-4e54-a486-047aeb564e5d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,908 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/bb6cdae3-0b10-4097-ad59-77da462a6771 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,909 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ed3d7979-e794-4f56-8f4c-e8edbc0fb936 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,909 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6844a1f8-95f7-463c-b8f4-dab2fc8d8f27 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,910 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f8a17a88-6f1a-4bda-9668-822907e04413 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,911 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3f684b75-be7f-4bdf-a2eb-f62736086b53 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,911 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e1c53ecc-6089-4006-8373-073ac382d201 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,912 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/660f9d85-ad7e-42c4-a39e-caa1eade1810 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,912 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/fc367596-d510-48ee-8683-8bfafc715fe5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,913 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b7b822f1-d736-4d10-8b95-174d29c473b0 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,914 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b5214502-4c0b-43b1-aa5b-b59161e2a0a1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,914 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f80c03aa-c75c-42dc-8bf5-081810bb47c4 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,915 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6781bbec-f4ee-46fc-b3ab-2a9fb7a4868b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,916 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a44d92ec-443b-4ac4-bc61-354376378581 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,916 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cb2ec9f9-16a8-461c-827a-49fb548ec1fe "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,917 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/bcf7cbfa-75f6-4d90-9145-f57664821f9e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,917 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1342d2eb-04d0-4f87-95f8-a0190dd0d990 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,918 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/145248a7-3107-48b2-ae8a-0448860680b4 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,918 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4b0a9c9b-5619-4573-abee-04dca835bd08 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,919 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e0e97d68-3bd4-41b4-beb4-27b963cc32d5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,920 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/2f65fc59-7906-457b-85d8-5537a57ee1f8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,920 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6411d254-dc08-48fc-a4db-0e48485e11b9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,921 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/019d601c-022f-429c-b18e-9e835d5e38c9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,921 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1330028c-b5ef-4705-a273-61cdb773f105 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,922 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/bd24f1f0-d888-4328-8579-14f20a11dc60 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,922 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3f9a28ad-b146-4d4f-bce8-f893bbafa9ef "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,923 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/025ceb9f-84c6-44d5-8bf5-8eae9c8bd014 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,924 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/24fdaab1-f49e-4c56-8ad1-9755b5c5cd88 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,924 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8a3045e8-c19f-44f1-85df-21dd4ea7a055 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,925 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3f2e206b-2d8b-4668-ab91-9e21671141a9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,926 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/02c1b61d-6140-4649-8e3d-ca3a1c5a9895 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,926 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b587d99e-2eb0-46a4-9420-cb0bef3ef09f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,927 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0ba72401-5efe-4eec-9b26-35781388261c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,928 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7f805c80-1706-4cb7-909c-80c59c772772 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,929 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c9ed11b5-9c16-40cd-b097-adc8a017c26a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,929 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/23f33fd1-f316-46c3-a53b-8a7b6a76f9a8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,930 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d4ce6e54-6966-45d4-8e78-579030643ae2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,930 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b7b7958e-a4ae-4a24-8986-54fe887c81a9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,931 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6b2bf3a0-b1d6-4d34-889b-d43172802cf7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,932 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ea96f3b0-034f-42fa-b227-7a7fcc3ae88d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,932 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9ef19f7f-d262-4b13-bdf6-84b1b7c491ff "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,933 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/48b0a15e-be36-45b3-8396-d88254e06b89 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,934 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/15f64ed0-8fa9-4967-b533-454eaeee2c0b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,934 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0d9e47b7-2c33-458b-8509-1b8b515d047d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,935 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/870dae18-d757-488c-bf99-76373ddb6245 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,936 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f00842b0-1ed4-4714-b687-296aca21ccbe "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,936 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f96a3b5f-31c4-4e4e-9a32-1a81185b8110 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,937 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/55fad50f-4ac0-42b8-a00f-169d709a553f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,937 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cac68531-74b8-4752-8904-ebd648d05b20 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,938 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e985e2b4-dd04-4d41-a4f0-c411ec280819 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,939 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d6292457-4814-4c19-8dc0-8a5aceaca8db "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,939 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d8e2ebe3-5b6c-45d9-bc55-75b99b6e5d89 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,940 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/895ba8a6-3628-4c56-809b-4c029baad3e0 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,940 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d919df32-fa76-4496-a826-177f095e4052 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,941 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4d751094-5db4-4935-abb4-b273a34e9f3a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,942 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/38fcfc19-b053-4f98-af24-0c0d4e7b0a47 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,942 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0fe3f9a9-66a8-43a1-bc48-4b92c466d7b7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,943 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0551d46c-efc2-4527-b412-b80512fb0275 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,944 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/599a4237-0cb7-405a-998a-d2c95c730600 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,944 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cf506cf8-dc75-460b-a333-c7afb9907bc5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,945 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0848e0ac-0c16-47d1-bcae-65058b898afa "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,945 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ecd20bcf-f883-4a4a-94e6-84566d6ad4b0 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,946 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/19ec317c-2930-4da2-8906-cbb3fe33ebb3 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,946 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d4d0a455-308c-4b39-b9d4-691ef1db4156 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,947 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/82817c19-fa35-4f07-b9e7-55c81f1ddb72 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,948 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b6f3c53a-cb44-4b8d-ae72-f95882652434 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,948 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/08c9cb0b-45a4-47a2-ae0b-0aa7d83a563f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,949 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/32e1554d-255f-4aee-887a-c68bf4823f8e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,949 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1a1eaa6e-2074-4284-a056-0297d23856d5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,950 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8655b9db-1e63-45b3-9086-8e2301648600 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,950 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/50a693ce-a539-4576-98d0-ceef794494e7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,951 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/66c92870-df5d-48e4-a229-a6f888d97d90 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,952 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5a612876-8c98-4b65-aa4b-7dafa93593ea "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,952 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/415533f5-7faa-4ca6-b402-200d702c372f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,953 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ce8747a2-eaef-4bb5-8d4c-409be01c9865 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,953 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/38f61d99-a5ee-48cf-b68a-77de10352171 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,954 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4c3079c6-a133-40f1-a22d-29616aa90a5e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,955 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5d1c7a4f-5dcf-410f-b117-a634e00e10aa "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,955 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7ff0f06d-1cd7-48b9-a10a-493faee20efb "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,956 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/aab9553d-a67c-4d05-b087-5499e944b1c5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,956 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e8cde789-b845-4f9d-ab08-9239a1aedecb "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,957 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4a9bd2f6-5fbe-416a-a9ea-d0833010fc95 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,958 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/39a9ee5e-33e9-43a4-bf2f-768d30a7b904 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,958 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8cdb83f1-af13-4cc9-90b3-9c1b91ccb07c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,959 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a7271914-a201-4f0a-9671-8e8030ed76df "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,960 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/dcc2842d-d401-4ab9-9344-f441514cbf9c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,960 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1cbf085a-d751-4417-a148-4c44fc5544b7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,961 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e429aeb0-267d-48c8-a476-84d8b9c9ff43 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,962 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d1cd2058-a346-4146-918d-061ac96b1382 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,962 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/15904dd7-8e2d-4aea-8207-44d25d545f2d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,963 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7ed1b71e-e558-4548-886b-1149729cb8b6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,963 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9b18dd69-2197-4a80-8116-807c74fea5c8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,964 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7a1a1f3b-0fcb-4853-a147-d1b3168f4e3e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,965 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9e9aa1f9-e75b-40e6-9001-72d09a992152 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,965 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/92ed58c0-7d9b-42a5-884e-dbe355173969 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,966 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3e524f52-6dfa-4c94-866d-4b950c155760 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,967 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5d43dd36-db32-458d-981d-ff4690d95c9d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,967 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a40049bf-b7d9-4789-aa70-84b100eedeac "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,968 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/88542420-953e-4777-b0f4-15a88857e47e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,969 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d0ae98f7-a133-409a-a9c6-6c5f94d57b3b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,970 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/387d1888-377c-4fe9-9842-4e63aef81fbb "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,970 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/aa32778d-73a8-44be-bb5f-77f1d6aa2ccc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,971 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6c0ec7df-e0d3-4188-9297-c38cbb3b6cab "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,972 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/11673b4a-32f1-47cb-8c60-51179c437e29 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,972 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/dd3e249e-b81d-4d57-b9b9-43696819be19 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,973 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/aaa05aec-c62c-4af1-bb09-535fd0fbb44b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,974 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/78bd020a-e211-496d-bf22-af32d0e6bdfd "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,974 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/140fcf50-ca4d-4360-89d6-e2adf0c371fc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,975 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/149c8952-6af8-4582-8e5b-05ead85cc55b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,975 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/63d33687-1f7b-4be0-9a86-ba67e9fd69ef "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,976 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/2e6db0af-751e-434a-9cfa-35802f86ca74 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,977 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a2b492cb-66d6-4d17-858f-dba7e94bf2db "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,977 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/12c76846-37dc-4f3c-8102-1f112b89799e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,978 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/310e56ec-03ba-4365-8004-0f088c74cd59 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,979 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e7365264-1d67-47ab-9fbf-f2b80396fba4 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,979 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3d8e3291-af2d-4e6e-89da-69b8f224fc28 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,980 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7cd39520-5759-4731-b5d0-5919f451e5d5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,981 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6483f036-8184-4a58-8251-3ce1ccea16ce "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,981 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c4a52bd7-fb06-4946-b329-8ab63d135e72 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,982 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f92783af-b2d9-445a-88e9-2df62110f5aa "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,983 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0f903cc2-af22-4913-b790-88cf081ee7b1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:10,984 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3c0a745a-17ad-4cc9-ac66-e4f5dd7aa86a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,072 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ca38c25a-e310-4a4b-94c7-31cf0712c815 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,073 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/51f070f0-9e34-4eba-ac44-795c3419e775 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,074 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/2fac145e-e0dc-4107-926e-01063be16de9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,075 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d7671821-f247-4922-add9-11a0ecee9eae "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,076 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a79500d9-4ed2-44e3-ab0c-240be5c47fc4 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,076 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d8010106-e9d7-4861-802f-cd59cb7c3507 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,077 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6b38bc2d-d5b0-4801-a55b-a0a2bb2333c2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,077 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d9494b2b-abcc-46a2-ba13-8a57bce1f8bc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,078 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/667ae064-3e77-4d6f-ae58-cca465106569 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,079 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/833e622e-436c-4304-bfca-80373b5738f2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,079 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7ea14dcc-4f24-4748-9f7b-97da43142d0b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,080 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/2b1fac2a-502a-4bfb-bbc1-587c8abd5577 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,080 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/75364d59-730f-424e-a041-fdad35548847 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,081 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/bccce02b-6d76-4bbd-a547-9648ad1508d7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,081 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8f4e2dac-0c47-4c22-903e-e0a4d639a8e6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,082 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e6b30736-cd22-49c0-b22d-34c3acc971a4 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,082 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/aa7907a3-a16a-4839-b4e4-a458cf1af8fe "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,083 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d6a955bf-e828-4af0-8340-430781ac17f1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,083 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d2179613-c52a-4f86-9fac-f3ae880c21ca "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,084 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8eb80073-fdad-47fb-b8a1-cd45cf490429 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,084 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/fcc2a4c0-1ed1-4d1f-8d1d-45499962be8d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,085 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/254aeac0-fad2-44b2-8fae-53d8bd985237 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,085 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/600319b1-8d65-44c1-89b3-43710bfbd28a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,086 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/863a0fa3-174e-4e43-80de-960138f38822 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,086 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a5d99d92-6f29-4b61-845d-0c67509f11cd "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,087 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/de7ffd60-f8b5-45ed-835c-91064e92cbd4 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,087 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/33c11349-7d60-4240-bf8b-4a9255561b00 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,088 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cc781ccc-0026-4cdc-b0a9-5d6509cac5eb "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,088 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/71bd50f7-eabe-49ad-87b2-105e4002a2a2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,089 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/04e3a05b-e6e0-44aa-ae15-03b627c9195d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,089 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7c0146ef-ca5a-41f8-adf0-f146bef177c7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,090 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cdbc781f-84d4-400a-ae15-823fcd7d92f1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,090 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b6960fcd-2018-4cf9-92fb-4724e304143d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,091 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/406eee3f-e46e-4c0b-b212-fcdef565b19e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,091 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1d623876-e8ee-4aaa-80c0-156fecd1ced3 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,092 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3e7b6576-7b59-487d-af9f-ed918ff043a7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,092 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/548e8e93-cc16-4767-86c3-ddb40608b04e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,093 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/db3f51dd-7461-4974-8ddb-7016c89c64b0 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,093 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/99e6b5e0-1641-4d02-bc3d-2183f9703d26 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,094 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b0a69959-1e5f-4433-975c-00cddd09c60c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,094 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/654f7f0f-fd73-4050-aa18-9c4f5b4c825f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,095 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cb52fba3-5701-413d-8db8-7ec1e1d450be "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,095 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/23c7eebe-fef7-434d-8a2c-9e22bbeb8140 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,096 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/08683bfb-74ff-4480-bcdc-d86a128b99f8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,096 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e41cd179-32c7-44cf-b551-bb4be2a8c20f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,097 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7adf63cd-19cf-4905-852f-1ec4eee6d998 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,097 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0f4e1b45-a563-421c-96c2-f0d6820bcd9a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,098 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e48a0d57-b3c9-45dd-9ee0-57ce5bb46836 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,098 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/18efeec2-6097-40f1-87dc-0d5a663d2b19 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,099 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/20db063d-6905-4b61-b5f3-60f30d7871a8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,099 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/251f1b4e-7b0c-41f9-af96-ad5cdbf457d2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,100 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/28091659-b060-4cbc-b8a9-949706002048 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,100 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/2401db68-7d04-4a41-9d9b-f482376eb022 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,101 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/76519b03-2cca-4345-a038-f59127646b4f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,101 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3e0d8a3e-1c53-43d0-8697-49ef4a7005f8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,102 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7f93855b-50a6-4c23-94a7-6ce9c3e14246 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,102 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1b3134e4-a069-4287-ac0c-ed49b8f11ec3 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,103 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ab7f0f64-176e-408c-974b-1a5f82f2d1a7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,103 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/03589bc5-8c57-4f7d-a9f5-db166906e3af "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,104 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d9439aa3-7693-4c06-b11f-86deb1467c2b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,104 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/075ae4ba-4c18-45f5-8393-13bacf4791df "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,105 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1ffece1a-1082-4923-9451-d618787714c0 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,105 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/92a4019f-9e10-4609-843d-f9bf0d846245 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,106 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9020116c-2702-47e9-940d-d1ca253be13d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,106 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0104d8c3-7ec5-45e0-976d-3afb03558952 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,107 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a31da7e4-4fec-4ff8-9e21-ec2f76590a39 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,107 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ab2be808-96d1-4c93-a0c7-6f315ea4cc89 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,108 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/56c90f98-1bb8-48f9-88f8-cb9ec301b62c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,108 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e3c594a7-227c-459d-b687-a5b754e1b516 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,109 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d6c96053-f820-46d3-8753-782b58d8c42b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,109 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e0a02597-b5d5-47a4-8f18-6c5f607e316c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,110 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/aa11207a-a5b1-4489-915a-4a2cb508e8f8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,110 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7075ea75-88f6-44ef-bbe5-09e66ff11510 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,111 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ed35fba5-7062-4ba7-8042-58f9f93dadd6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,111 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/295d8fd1-3ce7-414b-a009-1879976d5743 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,112 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e92c2ab6-a031-480e-918e-fa3cf99af168 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,112 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0c2c0df5-f27a-445b-8b9e-fa06881433bc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,113 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0d3c1f04-855d-4c91-a699-9854d3b68dc9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,113 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/370a3a06-3b1d-4206-8b77-6efec3ae8040 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,114 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b98229b1-fe30-4719-be6e-39f6cd22dbe9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,114 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a479a382-1740-4941-8b1b-b6ce690a819c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,115 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3b9db59f-3801-4f7a-aea1-88d1d014e2dd "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,115 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b92fb60c-7dbc-4a7e-a191-8513988848c6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,116 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/33e534b1-e7bf-4e14-bddf-6d1dd634d614 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,116 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e7436a63-7a4d-4390-8a4e-603759f9831d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,117 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/801e62f1-5e82-433a-a9fe-ad7c3e303c2d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,117 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8f51232b-6112-4ece-91e9-12b619d131c2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,118 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e07debbd-f7e2-46cd-ada5-7b570df70161 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,118 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c7c355a1-16fc-4f1b-a7d5-b3633ff86a56 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,119 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/557f5ab5-02f3-4b2b-9560-e7229d0a5b19 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,120 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/eea46577-f36f-4648-abe9-f53ae35a7470 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,120 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/de910fe4-3a64-4b37-98ab-34c460869d3a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,121 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5f85877b-6d91-4642-a4a3-93bc271afd59 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,121 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/dd21c6ff-37f7-4ba1-891c-e237e7566535 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,122 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b2c900af-28db-4a56-9fd0-30d919e30e15 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,122 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d9c4f133-a3f7-4044-940b-fb826d60baf5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,123 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a39253c5-b56c-411f-aa37-59361617f83b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,123 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/2d8d2b48-2925-46d3-8c74-abe2a860124f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,124 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4414d9e6-c1f3-4db2-917a-182c3a5847c6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,124 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a560350c-e27a-4698-bd99-f97b74634d1d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,125 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/aaaeeb0b-575e-45bd-80ef-7d03428584ac "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,125 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/40abe171-4bd8-4a23-b621-c7483a9d051e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,126 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0fb08c00-e959-4b94-b03b-973dfa9d3a89 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,126 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/18d21609-6049-4f58-be66-10b4d0944962 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,127 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b9c18a99-9b65-42ab-8b44-0c0cc6ff04df "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,127 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a7643ae8-6e9b-4d08-9a05-d5ba1d6b27c1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,128 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ef75b27b-f197-4371-ac90-3271d0216fb9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,128 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c82d33ba-dd05-41ff-a64c-e7ad2e002fe0 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,129 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ab973a5d-6793-4332-bd56-048fc42bcb69 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,129 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/176dea5b-052e-4c58-a18e-d8ba376ed32a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,130 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/60d416f5-9c0a-4612-800c-bb1e3b642a88 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,130 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/16c6d5f1-8a18-4d01-a79e-ccd6f0f30e06 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,131 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b697321b-823b-4fd8-b5c7-a415d0000969 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,131 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5eda6282-1cfc-4d21-908c-03537f117aa6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,132 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9a580fce-e039-4177-924e-add763039fda "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,132 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b98bded5-3f14-44dc-84ac-1ef144e1cd4d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,133 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c0389b4b-1484-42cc-9756-cf26efa4bb53 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,133 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/bc65c5b2-a7e5-4f85-9ad5-bc164b12fa32 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,134 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8abada60-37d7-47d1-ab6b-687c93469abb "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,135 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0539ab79-2e2f-48d6-9e31-87ce9dca924b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,135 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ad65fa72-69c9-41ae-8701-1e81ccf1c382 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,136 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/30c40fc7-92ed-4c23-a092-c3dae20251d7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,136 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b2b5c7a4-3206-4869-b6d1-cf000c8c1126 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,137 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/92bdeee2-053f-423b-996c-fae4c3760280 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,137 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/96b366b0-2466-4f53-bac4-c7babf30e828 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,138 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1d91171d-c4e0-4f0a-9b5a-e00fcefe1069 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,138 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3a7e15f7-e8af-43b8-9530-66cc0d1b6d3c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,139 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/fbb0f5cb-ebd6-4785-9db4-2513df8fd004 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,139 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f47ef1ed-d7a7-4ab6-a607-ae8ed1629d42 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,140 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b29e892c-7072-43ff-a0ec-4e3c2197c6f1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,140 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5e1129ba-53d0-425b-964e-f822e1d8273b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,141 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/26b2b8f6-2ede-42cf-803f-0b4d60568d74 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,141 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c8bf655b-2d76-40a0-b676-7612c35b2964 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,142 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7967916f-ae1d-4f39-af03-ee34d2f61041 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,142 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4662daf5-546d-4d75-a386-7a0af40cac28 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,143 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c108333f-632a-48c1-83f5-72393ec3005d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,143 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/14f794e0-d783-42f4-a2df-b9385aefd286 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,144 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/2286e504-9312-4743-aa0f-f30a9924d0ea "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,144 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9dcbdada-9421-42bf-b20e-51831d51ec46 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,145 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6c9cbb2a-e084-4bf5-a075-8b49194baf22 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,145 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/539d02e7-575b-495d-8c62-2ed4dbf2984b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,146 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5f6298e0-0e9b-43cd-9f6e-76eb4507392d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,146 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/84394902-d528-4fb6-8a23-5462c06554e2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,147 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4b5ff5bb-7b0f-4ed3-9333-bae7baf20519 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,147 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e3187af1-92bc-4f05-9835-2515f3f29488 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,148 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a0e30b68-4dda-4d34-be2f-2e5d81c5bf3d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,148 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e5caead9-1eb8-4396-889a-892941e285db "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,149 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/154429a2-f2df-4ec9-b515-af272f0f245e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,150 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d3ba7879-f1af-4024-b520-68aa27d1a0d7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,150 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f68086aa-2d89-4f18-a079-9c70b3cd8b7d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,151 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a99d992e-b333-4503-9274-b228f4bba1e3 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,151 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3201325f-446c-48e7-af0c-57e5d5bae8bb "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,152 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0653255f-dfd9-4013-ac7a-3d6894f6de46 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,153 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/7e76df11-b393-4248-a0c0-b58f940762a8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,153 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d7909a7a-7353-4b5a-8011-dc4cdf98743a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,154 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/59002620-e1e8-493d-8a87-4c641887d1dc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,154 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/06448cc5-d3c8-4a79-be51-34f0c358471a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,155 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/31616421-5bbc-49a4-b202-4bb5e03b1bb8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,155 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/513eeeb1-a8b2-4edc-8e4c-2f584410aadb "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,156 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/bb8ce83c-9489-4bc7-8acc-ce4be1a20380 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,157 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5e316026-66b8-485c-b496-c2ba38828acd "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,157 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/15b1fbcc-52f2-42fe-b842-cfb82d1e9622 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,158 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6aaeed92-24a9-4c4d-bff0-c7372f42a37d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,158 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d62487a7-01d2-4ac2-a79c-d0367604aa4a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,159 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d69c0489-34a0-4905-9d56-1e1094dd5956 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,159 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e5ae8b91-158f-4dc6-9049-14360de2a888 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,160 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3fddd56b-cc4f-44f9-9f5e-ae72576d9651 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,161 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6877dae5-99f3-4634-9b2d-accb84dc03f9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,161 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/83d7bd52-9b00-4612-99cd-df1b368f79fc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,162 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4682c61b-b638-4d20-9513-6c5bd1f6f89a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,162 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d24dbe32-5af2-409e-ba5e-6632b6af89a2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,163 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3764e3a2-672e-4441-9651-09f09b9db696 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,163 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/bdc83647-aecc-48cb-ad70-2cdb87f1395f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,164 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/77a218c2-f848-48a9-88b9-fa8fd695a8a8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,164 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/26a2382b-6f9d-4b04-a951-fdd065f76c28 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,165 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/112ef3d3-4cf0-43da-a197-da98fdbd6d55 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,165 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e73f875a-9dc8-4b38-a6a4-5213acfa38e0 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,166 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f3ce1469-26f1-4c40-895d-5dab547abd3e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,166 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cfaaac8b-6c1e-4887-8147-0166ed2954a1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,167 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c745462c-fbbb-460d-a664-c08633987541 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,167 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0b822f45-6b4f-43a7-9bd9-6331debf3512 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,168 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a04ceee2-c7b5-4c31-894e-067a8b4aa5a7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,168 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6371b8a2-af28-46db-95ce-e2c441c78cbf "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,169 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/71482ce1-ca06-4817-aff7-050040661d87 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,170 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/23df6ce6-997c-4f9b-99b4-690b9c3b106d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,170 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/20901fd3-7928-4c38-8d02-090c71386b20 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,171 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/865c9661-7b04-4d2b-adaa-647376f417cf "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,171 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/239a78f1-ce5b-4599-8284-8c48164dbf81 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,172 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f28ba014-e0cb-4feb-8065-5190676ead25 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,172 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a9197afa-fc2b-4496-9557-2e9f08be6364 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,173 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cc85d027-9b78-4aff-bd31-ee54506d73c5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,173 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a350e934-50ae-455d-9e02-f775c7450f05 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,174 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/985cf0bc-ad4b-4c3b-b301-28343135e5b5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,174 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/31283f7d-a076-4c39-be9a-04077443ea4e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,175 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/dab04551-990d-4aaf-bee7-1a6d47691a0a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,175 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6aef9b6d-2a6a-4b24-acf5-9168040a6ba7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,176 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c9c7b2ae-1759-480a-9fd8-38742423f5ba "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,176 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b3eef3fd-722a-4a36-a813-12ab13ccb7bc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,177 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/844f379c-a137-42c8-9721-b853e86f2a06 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,177 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/96dfa9e5-d7c4-4928-a48a-f22cd84e3e11 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,178 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/739fcd8c-9f44-4162-93f1-2183e397ee07 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,178 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f897299e-a116-4e06-9187-bc22e9c51f16 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,179 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/2d6e614a-6d45-4719-a71d-e52aad0eff11 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,179 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/558efe21-253a-4b02-a39f-e3e4ee7ec2b1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,180 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d390534e-d479-40b7-8e58-4d3a703590c3 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,180 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0b68c685-0b09-48ba-b4f2-7a6a624e2335 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,181 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/30091a66-04de-4f68-bbaf-29c9aa16b93d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,182 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/eccfa6d7-66b6-4baa-b258-ccfd28a5fe05 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,182 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8d64ab38-e7d8-4064-9e02-24a572276b86 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,183 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ee066261-bd54-4a1e-842f-94641c07a901 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,183 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5b8aa1d2-fee9-4844-82bd-4c6df2c869b4 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,184 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b7f5d785-35ef-4c80-8cee-483a4483f092 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,184 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/0a775645-c0c0-4335-a5ba-2c11f639fabd "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,185 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4e6d55f5-2e08-4196-8641-f1eedb2d93ad "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,185 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4f9a7aa5-60b6-4da7-bc7d-ef1fa64e5100 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,186 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/01654f4e-4922-4e45-8556-9806a2c76b8a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,186 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b8bc3e44-3993-48a3-a75a-21a2abd931fc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,187 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/8c86b59b-e305-41c8-83c9-e2a241ba844c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,188 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/edccde8c-5fe4-440e-8ac3-35291774340f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,188 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a801770a-3c04-4c5b-8f8c-a4c72b9fadc8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,189 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9b85919f-e009-4e30-b63e-fb853d11246d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,189 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/84391675-4a12-4059-8780-b4b6c6f7d335 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,190 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9849ee19-256c-418e-950a-75b22b6861ca "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,190 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1862fee0-a3da-4791-9d71-7db81e3c4a71 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,191 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e0aba423-9907-41a4-9245-c3fe9cbcc828 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,191 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f6d56965-d5a5-46be-a6ed-261d4b7d4986 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,192 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b61348d6-d759-4c0c-852d-dbcfea214aee "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,193 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e6621b8e-76b0-4e08-a9d2-fc52e4e634ed "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,193 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/534b4a28-bc6d-440b-bbe9-6af4fa6abbf8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,194 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a81e222a-13a1-4cd1-8788-6bf3a27c5b0b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,194 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4507427c-5abe-4986-a458-bde04e6b6ef6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,195 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f4bf9b5e-cd93-48a3-9b83-5ab7f68acf27 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,195 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/83daf6c9-2626-43eb-8db1-08b26209190a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,196 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ede70b91-3e8d-4a33-85c3-1ad5471d91fa "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,197 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/17e364a3-a0b6-4250-b747-131feec04d4d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,198 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/e4ba432f-15bd-4136-ae7c-3289a19c82c7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,198 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/94687610-4557-4d9a-8bcd-baa625e6750f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,199 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/9b3ff0b5-227c-49e5-aabe-b4513f23ead1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,199 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/533e474a-4b73-4eaf-a485-f7247bac6f9e "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,200 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/09096ad9-de0a-46f7-874d-8bb98159c4a5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,200 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c4cd7b12-1342-494f-aefe-c9db6636f060 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,201 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/dfb67170-28d0-4234-a9d2-537ed94e2705 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,202 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4448de1c-5fc1-4b68-a264-01c1404d615b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,202 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/984399dc-8d21-42f4-9eb1-5ac552aed231 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,203 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3ce2da09-8037-4a08-a836-350e5f526817 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,204 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/884b9b20-af83-4629-b6c6-49016b0dedc9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,204 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c5896ad4-0a21-4139-8452-f900895f3f4a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,205 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/aa9810a5-c1f3-4b28-9eaa-d08ad4183fd1 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,205 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1a8bae0f-b5b8-4ff3-a2f5-852cb7a332d5 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,206 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c546d45c-f721-4afc-888f-380b8d333833 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,206 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1b37c0fa-096b-482a-a00f-7eb51df23708 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,207 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/90395f91-7c46-40ae-903b-7d2e69421a53 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,207 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f8513389-1a3b-4ac3-8042-c05473a5c71a "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,208 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/54970bd9-a24a-4d48-a7fb-100b0a6fd8b8 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,208 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/c14fc28b-ca27-470c-86de-b6b4aea7ae27 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,209 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/59b82a1f-09f8-4662-95a8-f7def033f0af "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,226 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f4a0149d-f793-4bb9-8dd1-f8f1923f5517 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,226 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/f87352f1-64b0-4d79-b60c-a05773dd837d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,227 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/6f30562c-96e5-49cd-a76d-234d44c952b9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,228 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b2844728-fe70-4eff-95b4-9d949309be44 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,228 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/25dcbd49-c702-4b43-83dc-f6aa8c750193 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,229 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/3ac9f025-58b1-471e-953d-a952beab7526 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,229 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d60b2a32-1e49-410a-8172-01b35e629bd2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,230 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ead5fc2d-8f6d-4844-8340-fab6611aa167 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,231 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/07262608-cbd7-47f3-8c32-4341a9ac497b "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,231 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ebc6a683-a510-48be-b047-aefd6c97ffea "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,232 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1222fe23-af5a-497a-ae39-957d58b1a3dc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,233 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/93910a33-4d18-4907-b984-94e9daa0a539 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,233 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/198bafff-2252-4e55-a1b4-034ed67f9e3f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,234 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/d3c0af54-5ee0-40bd-8f63-c18a28a48fbc "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,234 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/4de0444e-067e-41f6-95ca-060b7472f9d0 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,235 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/23146fa4-6d3c-4609-a1dd-0d152053b607 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,236 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1adab2db-7eb2-4301-b2bd-41c8a4533839 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,236 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/5696095c-07dd-4124-b2e3-e03d91ed5fbf "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,237 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/346295c4-7e64-404c-b77e-18083b0bf74d "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,238 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cfca74c3-2cfd-4c6c-962c-00eeff624d99 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,238 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/cc72dee0-3de4-4671-8c8d-436949832a27 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,239 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/ac662dea-f8a5-4d62-b03d-d4f4008ff5f6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,240 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/2e7e8ae3-2636-40e3-9663-2cc53130ad88 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,241 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/52566638-3960-4c7f-9c5b-2df38bb347c6 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,241 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/37829856-1083-4d7b-8953-925794e3a353 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,242 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/42397f65-67d2-48e8-adbc-8089fa3d5bb7 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,243 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/14ab1474-8961-4b4c-a810-08e9bd4f1a7f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,243 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/84ebc684-bed9-442d-9b82-bf3bedaf0223 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,244 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b363cfa1-a70e-405d-b701-d65422c4765f "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,245 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/b7e45eda-adb6-4594-948d-7e3c06bc62b2 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,245 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/be709fc4-03ec-4ec8-89b9-d8d4e0c4212c "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,246 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/eb1a9bdf-afad-4a39-8234-80ac6c61c0ac "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,247 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/1da7156f-ceb0-430d-81c3-e7c6a858a757 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,248 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/42b7ebb0-6c82-4d9c-a51a-f0f471a7cdd9 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,249 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/fbe659cd-4be4-46be-a6f2-65d437b0d529 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,249 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/fab89279-ddda-492b-8d98-b40675d5e805 "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,250 - httpx - INFO - HTTP Request: DELETE http://localhost:8080/v1/objects/Document/a251abea-0f3c-49b1-a224-3557f5b87cfa "HTTP/1.1 204 No Content"
-2025-07-25 17:59:11,250 - __main__ - INFO - ✅ 删除了 505 个需求文档相关记录
-2025-07-25 17:59:11,251 - __main__ - INFO - 📁 扫描完成，找到 34 个DOCX文件
-2025-07-25 17:59:11,252 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:11,252 - __main__ - INFO - 📋 集合 Document 已存在，跳过创建
-2025-07-25 17:59:11,252 - __main__ - INFO - 🔄 处理文件 1/34: ZJJC-2187_需求文档 - 民生银行融资影像范围调整.docx
-2025-07-25 17:59:11,252 - __main__ - INFO - 📄 处理文档: ZJJC-2187_需求文档 - 民生银行融资影像范围调整.docx (0.0MB)
-2025-07-25 17:59:11,263 - __main__ - INFO - ✅ 文档处理完成: ZJJC-2187_需求文档 - 民生银行融资影像范围调整.docx (2 个段落)
-2025-07-25 17:59:11,263 - __main__ - INFO -    📏 段落长度: 最短28, 最长123, 平均75
-2025-07-25 17:59:11,263 - __main__ - INFO - 🔄 处理文件 2/34: ZJJC-1810_需求文档+-+链数对接汉口银行V0.1.docx
-2025-07-25 17:59:11,263 - __main__ - INFO - 📄 处理文档: ZJJC-1810_需求文档+-+链数对接汉口银行V0.1.docx (0.9MB)
-2025-07-25 17:59:11,288 - __main__ - INFO - ✅ 文档处理完成: ZJJC-1810_需求文档+-+链数对接汉口银行V0.1.docx (12 个段落)
-2025-07-25 17:59:11,288 - __main__ - INFO -    📏 段落长度: 最短21, 最长260, 平均97
-2025-07-25 17:59:11,288 - __main__ - INFO - 🔄 处理文件 3/34: ZJJC-2016_需求文档+-+链数对接平安银行1.3.docx
-2025-07-25 17:59:11,288 - __main__ - INFO - 📄 处理文档: ZJJC-2016_需求文档+-+链数对接平安银行1.3.docx (6.2MB)
-2025-07-25 17:59:11,336 - __main__ - INFO - ✅ 文档处理完成: ZJJC-2016_需求文档+-+链数对接平安银行1.3.docx (24 个段落)
-2025-07-25 17:59:11,336 - __main__ - INFO -    📏 段落长度: 最短48, 最长608, 平均205
-2025-07-25 17:59:11,336 - __main__ - INFO -    📊 段落分布: 短段落(<100字符):7, 长段落(>1000字符):0
-2025-07-25 17:59:11,336 - __main__ - INFO - 🔄 处理文件 4/34: LS-179_云数&链数线上开票产品需求说明书v1.3.docx
-2025-07-25 17:59:11,336 - __main__ - INFO - 📄 处理文档: LS-179_云数&链数线上开票产品需求说明书v1.3.docx (0.3MB)
-2025-07-25 17:59:11,350 - __main__ - INFO - ✅ 文档处理完成: LS-179_云数&链数线上开票产品需求说明书v1.3.docx (10 个段落)
-2025-07-25 17:59:11,350 - __main__ - INFO -    📏 段落长度: 最短21, 最长225, 平均99
-2025-07-25 17:59:11,350 - __main__ - INFO - 🔄 处理文件 5/34: LS-125_链数一期剩余优化产品需求说明书v1.3.docx
-2025-07-25 17:59:11,350 - __main__ - INFO - 📄 处理文档: LS-125_链数一期剩余优化产品需求说明书v1.3.docx (3.0MB)
-2025-07-25 17:59:11,371 - __main__ - INFO - ✅ 文档处理完成: LS-125_链数一期剩余优化产品需求说明书v1.3.docx (18 个段落)
-2025-07-25 17:59:11,371 - __main__ - INFO -    📏 段落长度: 最短20, 最长421, 平均112
-2025-07-25 17:59:11,371 - __main__ - INFO - 🔄 处理文件 6/34: LS-152_需求文档 - 北京银行一期优化V1.4.docx
-2025-07-25 17:59:11,371 - __main__ - INFO - 📄 处理文档: LS-152_需求文档 - 北京银行一期优化V1.4.docx (1.0MB)
-2025-07-25 17:59:11,398 - __main__ - INFO - ✅ 文档处理完成: LS-152_需求文档 - 北京银行一期优化V1.4.docx (13 个段落)
-2025-07-25 17:59:11,398 - __main__ - INFO -    📏 段落长度: 最短21, 最长494, 平均175
-2025-07-25 17:59:11,398 - __main__ - INFO - 🔄 处理文件 7/34: ZJJC-2180_需求文档+-+交行链数优化25.1_V0.1.docx
-2025-07-25 17:59:11,398 - __main__ - INFO - 📄 处理文档: ZJJC-2180_需求文档+-+交行链数优化25.1_V0.1.docx (0.1MB)
-2025-07-25 17:59:11,415 - __main__ - INFO - ✅ 文档处理完成: ZJJC-2180_需求文档+-+交行链数优化25.1_V0.1.docx (4 个段落)
-2025-07-25 17:59:11,415 - __main__ - INFO -    📏 段落长度: 最短39, 最长289, 平均174
-2025-07-25 17:59:11,415 - __main__ - INFO - 🔄 处理文件 8/34: ZJJC-1969_需求文档+-+建档逻辑优化V0.2.docx
-2025-07-25 17:59:11,416 - __main__ - INFO - 📄 处理文档: ZJJC-1969_需求文档+-+建档逻辑优化V0.2.docx (0.1MB)
-2025-07-25 17:59:11,425 - __main__ - INFO - ✅ 文档处理完成: ZJJC-1969_需求文档+-+建档逻辑优化V0.2.docx (4 个段落)
-2025-07-25 17:59:11,425 - __main__ - INFO -    📏 段落长度: 最短28, 最长148, 平均109
-2025-07-25 17:59:11,425 - __main__ - INFO - 🔄 处理文件 9/34: LS-111_链数确真单元产品需求说明书v1.2.docx
-2025-07-25 17:59:11,425 - __main__ - INFO - 📄 处理文档: LS-111_链数确真单元产品需求说明书v1.2.docx (1.5MB)
-2025-07-25 17:59:11,450 - __main__ - INFO - ✅ 文档处理完成: LS-111_链数确真单元产品需求说明书v1.2.docx (22 个段落)
-2025-07-25 17:59:11,450 - __main__ - INFO -    📏 段落长度: 最短22, 最长526, 平均133
-2025-07-25 17:59:11,450 - __main__ - INFO - 🔄 处理文件 10/34: ZCJC-433_需求文档 - 八局对接链数V1.5.docx
-2025-07-25 17:59:11,450 - __main__ - INFO - 📄 处理文档: ZCJC-433_需求文档 - 八局对接链数V1.5.docx (0.5MB)
-2025-07-25 17:59:11,493 - __main__ - INFO - ✅ 文档处理完成: ZCJC-433_需求文档 - 八局对接链数V1.5.docx (19 个段落)
-2025-07-25 17:59:11,493 - __main__ - INFO -    📏 段落长度: 最短30, 最长662, 平均175
-2025-07-25 17:59:11,493 - __main__ - INFO - 🔄 处理文件 11/34: LS-181_需求文档+-+民生银行协议变量补充1.0.docx
-2025-07-25 17:59:11,493 - __main__ - INFO - 📄 处理文档: LS-181_需求文档+-+民生银行协议变量补充1.0.docx (0.0MB)
-2025-07-25 17:59:11,500 - __main__ - INFO - ✅ 文档处理完成: LS-181_需求文档+-+民生银行协议变量补充1.0.docx (1 个段落)
-2025-07-25 17:59:11,500 - __main__ - INFO -    📏 段落长度: 最短39, 最长39, 平均39
-2025-07-25 17:59:11,500 - __main__ - INFO - 🔄 处理文件 12/34: ZJJC-1808_需求文档 - 链数对接民生银行V1.6.docx
-2025-07-25 17:59:11,500 - __main__ - INFO - 📄 处理文档: ZJJC-1808_需求文档 - 链数对接民生银行V1.6.docx (0.8MB)
-2025-07-25 17:59:11,531 - __main__ - INFO - ✅ 文档处理完成: ZJJC-1808_需求文档 - 链数对接民生银行V1.6.docx (16 个段落)
-2025-07-25 17:59:11,531 - __main__ - INFO -    📏 段落长度: 最短48, 最长622, 平均164
-2025-07-25 17:59:11,531 - __main__ - INFO - 🔄 处理文件 13/34: ZJJC-1475_邮储-链数对接产品需求说明书v0.2.docx
-2025-07-25 17:59:11,531 - __main__ - INFO - 📄 处理文档: ZJJC-1475_邮储-链数对接产品需求说明书v0.2.docx (1.9MB)
-2025-07-25 17:59:11,552 - __main__ - INFO - ✅ 文档处理完成: ZJJC-1475_邮储-链数对接产品需求说明书v0.2.docx (16 个段落)
-2025-07-25 17:59:11,552 - __main__ - INFO -    📏 段落长度: 最短33, 最长199, 平均87
-2025-07-25 17:59:11,552 - __main__ - INFO - 🔄 处理文件 14/34: LS-47_需求文档 - 链数接口迁移V1.11（工行）.docx
-2025-07-25 17:59:11,552 - __main__ - INFO - 📄 处理文档: LS-47_需求文档 - 链数接口迁移V1.11（工行）.docx (1.4MB)
-2025-07-25 17:59:11,581 - __main__ - INFO - ✅ 文档处理完成: LS-47_需求文档 - 链数接口迁移V1.11（工行）.docx (23 个段落)
-2025-07-25 17:59:11,581 - __main__ - INFO -    📏 段落长度: 最短28, 最长361, 平均146
-2025-07-25 17:59:11,581 - __main__ - INFO - 🔄 处理文件 15/34: LS-39_中建一局对接云数链数对接需求说明书V1.3.docx
-2025-07-25 17:59:11,581 - __main__ - INFO - 📄 处理文档: LS-39_中建一局对接云数链数对接需求说明书V1.3.docx (0.1MB)
-2025-07-25 17:59:11,593 - __main__ - INFO - ✅ 文档处理完成: LS-39_中建一局对接云数链数对接需求说明书V1.3.docx (8 个段落)
-2025-07-25 17:59:11,593 - __main__ - INFO -    📏 段落长度: 最短30, 最长169, 平均109
-2025-07-25 17:59:11,593 - __main__ - INFO - 🔄 处理文件 16/34: LS-185_链数清分优化产品需求说明书v0.2.docx
-2025-07-25 17:59:11,593 - __main__ - INFO - 📄 处理文档: LS-185_链数清分优化产品需求说明书v0.2.docx (1.2MB)
-2025-07-25 17:59:11,623 - __main__ - INFO - ✅ 文档处理完成: LS-185_链数清分优化产品需求说明书v0.2.docx (22 个段落)
-2025-07-25 17:59:11,623 - __main__ - INFO -    📏 段落长度: 最短19, 最长764, 平均191
-2025-07-25 17:59:11,623 - __main__ - INFO - 🔄 处理文件 17/34: LS-129_链数清分产品需求说明书v1.3.docx
-2025-07-25 17:59:11,623 - __main__ - INFO - 📄 处理文档: LS-129_链数清分产品需求说明书v1.3.docx (3.0MB)
-2025-07-25 17:59:11,693 - __main__ - INFO - ✅ 文档处理完成: LS-129_链数清分产品需求说明书v1.3.docx (48 个段落)
-2025-07-25 17:59:11,693 - __main__ - INFO -    📏 段落长度: 最短17, 最长524, 平均130
-2025-07-25 17:59:11,693 - __main__ - INFO - 🔄 处理文件 18/34: ZJJC-1853_需求文档 - 链数对接平安银行1.4.docx
-2025-07-25 17:59:11,693 - __main__ - INFO - 📄 处理文档: ZJJC-1853_需求文档 - 链数对接平安银行1.4.docx (6.2MB)
-2025-07-25 17:59:11,742 - __main__ - INFO - ✅ 文档处理完成: ZJJC-1853_需求文档 - 链数对接平安银行1.4.docx (24 个段落)
-2025-07-25 17:59:11,742 - __main__ - INFO -    📏 段落长度: 最短48, 最长608, 平均204
-2025-07-25 17:59:11,742 - __main__ - INFO -    📊 段落分布: 短段落(<100字符):7, 长段落(>1000字符):0
-2025-07-25 17:59:11,742 - __main__ - INFO - 🔄 处理文件 19/34: LS-28_浙商-链数对接产品需求说明书v0.2.docx
-2025-07-25 17:59:11,742 - __main__ - INFO - 📄 处理文档: LS-28_浙商-链数对接产品需求说明书v0.2.docx (1.0MB)
-2025-07-25 17:59:11,763 - __main__ - INFO - ✅ 文档处理完成: LS-28_浙商-链数对接产品需求说明书v0.2.docx (17 个段落)
-2025-07-25 17:59:11,763 - __main__ - INFO -    📏 段落长度: 最短12, 最长566, 平均115
-2025-07-25 17:59:11,763 - __main__ - INFO - 🔄 处理文件 20/34: LS-9_需求文档 - 链数接口迁移（农行）V1.4.docx
-2025-07-25 17:59:11,763 - __main__ - INFO - 📄 处理文档: LS-9_需求文档 - 链数接口迁移（农行）V1.4.docx (0.4MB)
-2025-07-25 17:59:11,786 - __main__ - INFO - ✅ 文档处理完成: LS-9_需求文档 - 链数接口迁移（农行）V1.4.docx (13 个段落)
-2025-07-25 17:59:11,786 - __main__ - INFO -    📏 段落长度: 最短29, 最长344, 平均124
-2025-07-25 17:59:11,786 - __main__ - INFO - 🔄 处理文件 21/34: LS-86_双岗及数据作废产品需求说明书v1.3.docx
-2025-07-25 17:59:11,786 - __main__ - INFO - 📄 处理文档: LS-86_双岗及数据作废产品需求说明书v1.3.docx (1.6MB)
-2025-07-25 17:59:11,825 - __main__ - INFO - 📏 段落过长(817字符)，进行二次分割: 在现有功能基础上将下方提示文案修改为“请 审核 岗位插入尾号为 **** 的Ukey操作”。
-2025-07-25 17:59:11,825 - __main__ - INFO - 📏 段落过长(967字符)，进行二次分割: 功能详情
-2025-07-25 17:59:11,825 - __main__ - INFO - ✅ 文档处理完成: LS-86_双岗及数据作废产品需求说明书v1.3.docx (33 个段落)
-2025-07-25 17:59:11,825 - __main__ - INFO -    📏 段落长度: 最短18, 最长784, 平均167
-2025-07-25 17:59:11,825 - __main__ - INFO - 🔄 处理文件 22/34: LS-20_交行-链数对接产品需求说明书v1.3.3.docx
-2025-07-25 17:59:11,825 - __main__ - INFO - 📄 处理文档: LS-20_交行-链数对接产品需求说明书v1.3.3.docx (0.6MB)
-2025-07-25 17:59:11,845 - __main__ - INFO - ✅ 文档处理完成: LS-20_交行-链数对接产品需求说明书v1.3.3.docx (10 个段落)
-2025-07-25 17:59:11,845 - __main__ - INFO -    📏 段落长度: 最短56, 最长463, 平均169
-2025-07-25 17:59:11,845 - __main__ - INFO - 🔄 处理文件 23/34: LS-60_需求文档+-+链数协议配置调整0.1.docx
-2025-07-25 17:59:11,845 - __main__ - INFO - 📄 处理文档: LS-60_需求文档+-+链数协议配置调整0.1.docx (0.1MB)
-2025-07-25 17:59:11,852 - __main__ - INFO - ✅ 文档处理完成: LS-60_需求文档+-+链数协议配置调整0.1.docx (2 个段落)
-2025-07-25 17:59:11,852 - __main__ - INFO -    📏 段落长度: 最短28, 最长311, 平均169
-2025-07-25 17:59:11,852 - __main__ - INFO - 🔄 处理文件 24/34: ZJJC-2152_浦发-链数对接产品需求说明书v0.1.docx
-2025-07-25 17:59:11,852 - __main__ - INFO - 📄 处理文档: ZJJC-2152_浦发-链数对接产品需求说明书v0.1.docx (0.8MB)
-2025-07-25 17:59:11,866 - __main__ - INFO - ✅ 文档处理完成: ZJJC-2152_浦发-链数对接产品需求说明书v0.1.docx (10 个段落)
-2025-07-25 17:59:11,866 - __main__ - INFO -    📏 段落长度: 最短36, 最长194, 平均103
-2025-07-25 17:59:11,866 - __main__ - INFO - 🔄 处理文件 25/34: LS-4_需求文档 - 北京银行直连链数V1.6.docx
-2025-07-25 17:59:11,866 - __main__ - INFO - 📄 处理文档: LS-4_需求文档 - 北京银行直连链数V1.6.docx (0.9MB)
-2025-07-25 17:59:11,910 - __main__ - INFO - 📏 段落过长(1280字符)，进行二次分割: 增加“建档规则”
-2025-07-25 17:59:11,910 - __main__ - INFO - ✅ 文档处理完成: LS-4_需求文档 - 北京银行直连链数V1.6.docx (30 个段落)
-2025-07-25 17:59:11,910 - __main__ - INFO -    📏 段落长度: 最短23, 最长779, 平均167
-2025-07-25 17:59:11,910 - __main__ - INFO - 🔄 处理文件 26/34: LS-149_需求文档+-+新增协议变量.docx
-2025-07-25 17:59:11,910 - __main__ - INFO - 📄 处理文档: LS-149_需求文档+-+新增协议变量.docx (0.0MB)
-2025-07-25 17:59:11,916 - __main__ - INFO - ✅ 文档处理完成: LS-149_需求文档+-+新增协议变量.docx (2 个段落)
-2025-07-25 17:59:11,916 - __main__ - INFO -    📏 段落长度: 最短28, 最长100, 平均64
-2025-07-25 17:59:11,917 - __main__ - INFO - 🔄 处理文件 27/34: LS-167_需求文档 - 一局对接链数V1.5.docx
-2025-07-25 17:59:11,917 - __main__ - INFO - 📄 处理文档: LS-167_需求文档 - 一局对接链数V1.5.docx (0.3MB)
-2025-07-25 17:59:11,951 - __main__ - INFO - ✅ 文档处理完成: LS-167_需求文档 - 一局对接链数V1.5.docx (12 个段落)
-2025-07-25 17:59:11,951 - __main__ - INFO -    📏 段落长度: 最短21, 最长555, 平均166
-2025-07-25 17:59:11,951 - __main__ - INFO - 🔄 处理文件 28/34: LS-71_需求文档+-+链数对接广发银行V0.3.docx
-2025-07-25 17:59:11,951 - __main__ - INFO - 📄 处理文档: LS-71_需求文档+-+链数对接广发银行V0.3.docx (18.8MB)
-2025-07-25 17:59:11,951 - __main__ - WARNING - ⚠️ 检测到大文档 (18.8MB)，启用特殊处理模式
-2025-07-25 17:59:12,038 - __main__ - INFO - 📋 超大文档处理模式: LS-71_需求文档+-+链数对接广发银行V0.3.docx
-2025-07-25 17:59:12,162 - __main__ - INFO - 📏 段落过长(1099字符)，进行二次分割: 建档增加协议签署环节
-2025-07-25 17:59:12,162 - __main__ - INFO - ✅ 文档处理完成: LS-71_需求文档+-+链数对接广发银行V0.3.docx (24 个段落)
-2025-07-25 17:59:12,162 - __main__ - INFO -    📏 段落长度: 最短21, 最长796, 平均172
-2025-07-25 17:59:12,162 - __main__ - INFO -    📊 段落分布: 短段落(<100字符):8, 长段落(>1000字符):0
-2025-07-25 17:59:12,162 - __main__ - INFO - 🔄 处理文件 29/34: LS-37_需求文档 - 链数对接中信银行1.9.docx
-2025-07-25 17:59:12,162 - __main__ - INFO - 📄 处理文档: LS-37_需求文档 - 链数对接中信银行1.9.docx (0.4MB)
-2025-07-25 17:59:12,190 - __main__ - INFO - ✅ 文档处理完成: LS-37_需求文档 - 链数对接中信银行1.9.docx (18 个段落)
-2025-07-25 17:59:12,190 - __main__ - INFO -    📏 段落长度: 最短25, 最长242, 平均120
-2025-07-25 17:59:12,190 - __main__ - INFO - 🔄 处理文件 30/34: ZJJC-2157_盛京-链数对接产品需求说明书v0.1.docx
-2025-07-25 17:59:12,190 - __main__ - INFO - 📄 处理文档: ZJJC-2157_盛京-链数对接产品需求说明书v0.1.docx (1.3MB)
-2025-07-25 17:59:12,210 - __main__ - INFO - ✅ 文档处理完成: ZJJC-2157_盛京-链数对接产品需求说明书v0.1.docx (10 个段落)
-2025-07-25 17:59:12,210 - __main__ - INFO -    📏 段落长度: 最短41, 最长256, 平均102
-2025-07-25 17:59:12,210 - __main__ - INFO - 🔄 处理文件 31/34: LS-1(YS-72)_需求文档-链数一期V1.8.docx
-2025-07-25 17:59:12,210 - __main__ - INFO - 📄 处理文档: LS-1(YS-72)_需求文档-链数一期V1.8.docx (19.9MB)
-2025-07-25 17:59:12,210 - __main__ - WARNING - ⚠️ 检测到大文档 (19.9MB)，启用特殊处理模式
-2025-07-25 17:59:12,282 - __main__ - INFO - 📋 超大文档处理模式: LS-1(YS-72)_需求文档-链数一期V1.8.docx
-2025-07-25 17:59:12,296 - __main__ - ERROR - ❌ 无法打开DOCX文件 /Users/renyu/Documents/knowledge_base/链数_LS/需求文档/LS-1(YS-72)_需求文档-链数一期V1.8.docx: "There is no item named 'NULL' in the archive"
-2025-07-25 17:59:12,296 - __main__ - INFO - 🔧 尝试使用zipfile方法恢复大文档...
-2025-07-25 17:59:12,296 - __main__ - INFO - 🔧 尝试使用zipfile方法处理损坏的大文档: LS-1(YS-72)_需求文档-链数一期V1.8.docx
-2025-07-25 17:59:12,546 - __main__ - INFO - ✅ 成功从 word/document.xml 提取文本
-2025-07-25 17:59:12,550 - __main__ - INFO - 📝 成功恢复大文档文本内容，共 745 段落
-2025-07-25 17:59:12,562 - __main__ - INFO - ✅ 大文档文本恢复成功: LS-1(YS-72)_需求文档-链数一期V1.8.docx
-2025-07-25 17:59:12,562 - __main__ - INFO - 🔄 处理文件 32/34: ZJJC-2117_需求文档 - 链数对接北农商V1.1.docx
-2025-07-25 17:59:12,563 - __main__ - INFO - 📄 处理文档: ZJJC-2117_需求文档 - 链数对接北农商V1.1.docx (1.1MB)
-2025-07-25 17:59:12,587 - __main__ - INFO - ✅ 文档处理完成: ZJJC-2117_需求文档 - 链数对接北农商V1.1.docx (9 个段落)
-2025-07-25 17:59:12,587 - __main__ - INFO -    📏 段落长度: 最短39, 最长366, 平均112
-2025-07-25 17:59:12,588 - __main__ - INFO - 🔄 处理文件 33/34: ZJJC-2096_需求文档 - 中行对接链数V1.2.docx
-2025-07-25 17:59:12,588 - __main__ - INFO - 📄 处理文档: ZJJC-2096_需求文档 - 中行对接链数V1.2.docx (1.4MB)
-2025-07-25 17:59:12,628 - __main__ - INFO - ✅ 文档处理完成: ZJJC-2096_需求文档 - 中行对接链数V1.2.docx (13 个段落)
-2025-07-25 17:59:12,628 - __main__ - INFO -    📏 段落长度: 最短37, 最长220, 平均101
-2025-07-25 17:59:12,628 - __main__ - INFO - 🔄 处理文件 34/34: LS-20_需求文档 - 应收账款转让通知回执V1.9（拆1）.docx
-2025-07-25 17:59:12,628 - __main__ - INFO - 📄 处理文档: LS-20_需求文档 - 应收账款转让通知回执V1.9（拆1）.docx (0.6MB)
-2025-07-25 17:59:12,653 - __main__ - INFO - 📏 段落过长(1352字符)，进行二次分割: 回执签署列表页（新增）
-2025-07-25 17:59:12,653 - __main__ - INFO - ✅ 文档处理完成: LS-20_需求文档 - 应收账款转让通知回执V1.9（拆1）.docx (15 个段落)
-2025-07-25 17:59:12,653 - __main__ - INFO -    📏 段落长度: 最短34, 最长774, 平均271
-2025-07-25 17:59:12,653 - __main__ - INFO - 📤 开始批量插入文档到Weaviate，总计 505 个段落...
-2025-07-25 17:59:12,656 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:12,657 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  6.42it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  6.41it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.54it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 26.17it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.96it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.16it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.83it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 21.52it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 21.53it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 31.06it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 30.61it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 24.98it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.20it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.72it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 32.51it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 71.59it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.27it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.86it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.36it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 47.15it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:13,660 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00,  9.28it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.27it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.02it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.96it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.63it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.62it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 14.92it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.60it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.32it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.17it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.91it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.98it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 23.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.28it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 23.27it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 24.41it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 21.80it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:14,667 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 19.38it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 26.42it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 23.38it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 29.23it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 33.38it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 26.80it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 24.78it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 23.22it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 29.23it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 24.11it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.35it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 30.29it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.16it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 28.93it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.00it/s]
-2025-07-25 17:59:15,669 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-2025-07-25 17:59:15,984 - __main__ - INFO - ✅ 批次 1/11 插入成功 (50 个文档)
-2025-07-25 17:59:15,986 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:15,991 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.75it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.38it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.45it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.77it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 71.99it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.05it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.13it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.54it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.34it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.92it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.60it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.58it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 30.25it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.01it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.85it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.71it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.58it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 70.18it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.24it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.59it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:16,994 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 14.32it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.39it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.38it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 65.92it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.86it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 28.13it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.59it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.99it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 23.87it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 72.51it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.62it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.16it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 14.52it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 81.04it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.13it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.34it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.96it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 71.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.88it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.84it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.68it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 26.18it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:18,001 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 43.09it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 24.18it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 32.51it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.52it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 25.81it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.60it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.68it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.59it/s]
-2025-07-25 17:59:19,006 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-2025-07-25 17:59:19,186 - __main__ - INFO - ✅ 批次 2/11 插入成功 (50 个文档)
-2025-07-25 17:59:19,189 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:19,195 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.16it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.76it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.27it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.26it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.98it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.51it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.60it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.09it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 25.78it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.04it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 21.80it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 64.24it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 52.00it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 23.38it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.50it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 53.04it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.97it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.53it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.88it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.58it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:20,201 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00,  8.98it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.97it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.78it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 30.39it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.38it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.42it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 23.41it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.71it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 70.86it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.49it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.70it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.93it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 35.29it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.76it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.76it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 33.74it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.04it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.37it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 14.42it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.09it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:21,205 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 21.79it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.61it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.63it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.41it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 69.57it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.52it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.15it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 69.72it/s]
-2025-07-25 17:59:22,212 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-2025-07-25 17:59:22,352 - __main__ - INFO - ✅ 批次 3/11 插入成功 (50 个文档)
-2025-07-25 17:59:22,355 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:22,361 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.98it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.98it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.89it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 25.64it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.72it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 21.02it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 69.45it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.21it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.88it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.25it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.15it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.39it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 24.88it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 79.07it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.90it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.45it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.28it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.57it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 26.95it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 71.26it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.72it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 21.79it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.16it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.95it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:23,368 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 35.62it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.43it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 14.88it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 14.52it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.25it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.74it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 25.12it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.88it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.21it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 26.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 27.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.72it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.87it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.02it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.20it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 77.37it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.72it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.83it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.75it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 71.90it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:24,375 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 17.12it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 70.17it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.96it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 83.91it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.11it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.10it/s]
-2025-07-25 17:59:25,383 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-2025-07-25 17:59:25,606 - __main__ - INFO - ✅ 批次 4/11 插入成功 (50 个文档)
-2025-07-25 17:59:25,610 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:25,618 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.18it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.17it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.05it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.17it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.60it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 40.55it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 69.17it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 29.22it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 77.01it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.93it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 83.95it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.47it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 67.20it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.08it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 50.86it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.00it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.22it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.06it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 66.26it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.32it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:26,621 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 11.51it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 25.18it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 59.74it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.93it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 24.88it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.08it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.84it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.16it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 82.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.09it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.08it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 32.81it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 72.65it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.68it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 24.85it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 33.40it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.71it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 32.49it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 33.09it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.37it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.96it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.95it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 67.12it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 50.49it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:27,628 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 16.15it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 21.76it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 50.37it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.89it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.57it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 81.03it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.78it/s]
-2025-07-25 17:59:28,635 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-2025-07-25 17:59:28,818 - __main__ - INFO - ✅ 批次 5/11 插入成功 (50 个文档)
-2025-07-25 17:59:28,820 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:28,824 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.65it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.63it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.32it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 71.19it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.20it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 47.85it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 30.04it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 70.95it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.46it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 71.23it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.87it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 60.92it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.57it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 69.02it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 25.12it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.61it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.11it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.17it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.65it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.78it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.02it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.72it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.53it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:29,831 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 33.08it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.86it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 29.95it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.08it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.57it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.57it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 22.86it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.52it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 49.88it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.76it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 30.26it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.20it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.06it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 21.34it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.59it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 86.23it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 64.07it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 35.11it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.62it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.39it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 35.16it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 87.94it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.78it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.03it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 33.19it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 70.34it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 64.70it/s]
-2025-07-25 17:59:30,837 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-2025-07-25 17:59:30,993 - __main__ - INFO - ✅ 批次 6/11 插入成功 (50 个文档)
-2025-07-25 17:59:30,996 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:31,002 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.84it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 55.72it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.70it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 58.33it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 68.49it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 75.65it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.25it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.02it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 24.85it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.81it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.95it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 30.64it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.68it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.62it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.81it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.60it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.75it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 35.01it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.88it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 81.09it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.97it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.69it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.48it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.12it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:32,009 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 11.96it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.99it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.07it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.69it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.12it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.19it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 50.89it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.08it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.71it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.89it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 50.76it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.69it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.69it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 20.26it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.87it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 76.45it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 35.50it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 73.96it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 35.22it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.87it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:33,013 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 75.10it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.05it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 30.89it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 58.51it/s]
-2025-07-25 17:59:33,153 - __main__ - INFO - ✅ 批次 7/11 插入成功 (50 个文档)
-2025-07-25 17:59:33,155 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:33,156 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 33.80it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.64it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 35.00it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.95it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.18it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.17it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.85it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.84it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 40.91it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.23it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 59.63it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 82.41it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.29it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 70.35it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.20it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 40.63it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 60.83it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.21it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.38it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 33.92it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 53.11it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 72.91it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 28.55it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 72.88it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.46it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.53it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.75it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:34,162 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 16.96it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.72it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.71it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.18it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.31it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.39it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 63.04it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.41it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.55it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.49it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.48it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 24.59it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.11it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.55it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.47it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.97it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.85it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.42it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 16.50it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 80.61it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.01it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 62.15it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 30.06it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 43.17it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:35,166 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 50.46it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 67.13it/s]
-2025-07-25 17:59:35,302 - __main__ - INFO - ✅ 批次 8/11 插入成功 (50 个文档)
-2025-07-25 17:59:35,303 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:35,305 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.81it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 75.06it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 46.96it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.83it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.62it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 33.91it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  7.60it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  7.59it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.52it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.28it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 14.87it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 60.69it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 78.84it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.76it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.82it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.81it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 80.65it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 65.65it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 21.83it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 28.73it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.60it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 69.84it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.45it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:36,307 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 11.27it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.36it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 39.89it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.79it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 17.44it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.21it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 65.30it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.26it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 38.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 12.64it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 78.27it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.33it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 32.80it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 14.42it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.25it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 67.61it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 40.58it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 85.24it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 69.57it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 14.64it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 40.52it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 68.18it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:37,314 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 24.36it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 45.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 83.54it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 32.18it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.69it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.76it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.38it/s]
-2025-07-25 17:59:38,319 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-2025-07-25 17:59:38,482 - __main__ - INFO - ✅ 批次 9/11 插入成功 (50 个文档)
-2025-07-25 17:59:38,485 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:38,489 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.44it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 47.22it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.84it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 29.05it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 70.44it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.86it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 59.30it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 68.40it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 28.50it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 59.15it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 72.80it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.67it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.73it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.30it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.04it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 58.38it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.83it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  5.40it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  5.40it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 57.46it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 18.78it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.95it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.04it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 70.43it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.23it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 50.40it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 45.49it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 67.46it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 60.86it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]2025-07-25 17:59:39,495 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches: 100%|██████████| 1/1 [00:00<00:00, 42.46it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 40.43it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 42.69it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.36it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 57.70it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.99it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 61.21it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 74.21it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 34.71it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 40.61it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 71.16it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 48.56it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 35.37it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 51.58it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.95it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 49.16it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.43it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.83it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  9.82it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 41.43it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 15.22it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.05it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 11.65it/s]
-2025-07-25 17:59:40,502 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-2025-07-25 17:59:40,694 - __main__ - INFO - ✅ 批次 10/11 插入成功 (50 个文档)
-2025-07-25 17:59:40,697 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/schema/Document "HTTP/1.1 200 OK"
-2025-07-25 17:59:40,703 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.63it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 13.66it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.38it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 19.19it/s]
-Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 70.10it/s]
-2025-07-25 17:59:41,711 - httpx - INFO - HTTP Request: GET http://localhost:8080/v1/nodes "HTTP/1.1 200 OK"
-2025-07-25 17:59:41,834 - __main__ - INFO - ✅ 批次 11/11 插入成功 (5 个文档)
-2025-07-25 17:59:41,835 - __main__ - INFO - 📊 最终统计:
-2025-07-25 17:59:41,835 - __main__ - INFO -    📑 总文档数: 505
-2025-07-25 17:59:41,835 - __main__ - INFO -    📏 平均长度: 380 字符
-2025-07-25 17:59:41,835 - __main__ - INFO -    📏 长度范围: 12 - 116539 字符
-2025-07-25 17:59:41,835 - __main__ - INFO -    📋 长度分布:
-2025-07-25 17:59:41,835 - __main__ - INFO -       短段落(<100字符): 226 个 (44.8%)
-2025-07-25 17:59:41,835 - __main__ - INFO -       中段落(100-399字符): 243 个 (48.1%)
-2025-07-25 17:59:41,836 - __main__ - INFO -       长段落(≥400字符): 36 个 (7.1%)
-2025-07-25 17:59:41,836 - __main__ - INFO - 🎉 优化版需求文档向量库初始化完成！
