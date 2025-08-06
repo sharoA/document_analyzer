@@ -19,7 +19,9 @@
       "service_name": "服务中文名称",
       "service_english_name": "service-english-name",
       "selection_reason": "选择这个服务的原因",
-      "data_resources": "数据库类型"
+      "data_resources": "数据库类型",
+      "gitlab": "git地址",
+      "business_domain": "业务领域"
     }
   ],
   "service_count": 2
@@ -36,27 +38,21 @@
 {%- macro user_prompt_service_selection(document_content, content_analysis, existing_services) -%}
 请根据以下业务文档内容和现有服务列表，选择最适合的服务来处理这些业务需求：
 
-## 业务文档内容摘要
-```
-{{ document_content[:2000] if document_content else "无文档内容" }}
-```
-
-## 业务操作分析
-{%- set crud_analysis = content_analysis.get('data', {}).get('change_analysis', {}) if content_analysis else {} %}      
-
+## 业务文档内容
+{{ document_content }}
 
 ## 公司现有服务列表
 {%- for service in existing_services %}
 **{{ service.service_name }}** ({{ service.service_english_name }})
 - 职责：{{ service.get('description', '无描述') }}
 - 业务领域：{{ service.get('business_domain', '无') }}
-- Git地址：{{ service.get('git_repository', '无') }}
+- Git地址：{{ service.get('gitlab', '无') }}
 
 {%- endfor %}
 
 ## 选择要求
 
-请分析上述业务内容和业务操作，从现有服务列表中选择最合适的服务：
+请分析上述业务内容，从现有服务列表中选择最合适的服务：
 
 1. **业务匹配度**：选择的服务职责要与文档中的业务需求高度匹配
 2. **功能覆盖**：确保选择的服务组合能够处理文档中提到的主要功能

@@ -19,14 +19,17 @@
 {
   "service_details": [
     {
-      "service_name": "服务中文名称",
-      "service_english_name": "service-english-name", 
-      "service_duty": "服务职责描述",
+      "service_name": "从可选服务列表中选择的服务中文名称",
+      "service_english_name": "从可选服务列表中选择的服务英文名称", 
+      "gitlab": "从可选服务列表中获取的Git地址",
+      "business_domain": "从可选服务列表中获取的业务领域",
+      "data_resources": "从可选服务列表中获取的数据资源类型",
+      "service_duty": "基于业务文档内容描述的服务职责",
       "core_modules": "- 核心模块1\n- 核心模块2\n- 核心模块3",
       "api_design": [
         {
           "interface_type": "新增|修改|删除",
-          "uri": "/api/具体业务路径",
+          "uri": "/api/{使用business_domain中的关键词}/{具体业务操作}",
           "method": "GET|POST|PUT|DELETE",
           "description": "具体的接口功能描述",
           "request_params": "JSON格式的请求参数示例",
@@ -64,18 +67,25 @@
 
 ## 原始业务文档内容
 ```
-{{ document_content[:3000] if document_content else "文档内容为空" }}
+{{ document_content[:12000] if document_content else "文档内容为空" }}
 ```
 
-## 业务内容摘要
-{{ content_summary if content_summary else "无摘要信息" }}
 
 ## 服务约束信息
 预期服务数量：{{ service_numbers }}
-预期服务列表：
+
+## 可选服务列表（请根据业务文档内容选择最匹配的服务）：
 {%- for service in service_info %}
-- {{ service.service_name }} ({{ service.service_english_name }})
+- **{{ service.service_name }}** ({{ service.service_english_name }})
+  - Git地址：{{ service.gitlab }}
+  - 业务领域：{{ service.business_domain }}
+  - 数据资源：{{ service.data_resources }}
+  - 描述：{{ service.description if service.description else '无描述' }}
 {%- endfor %}
+
+**重要说明**：请根据业务文档内容分析，从上述服务列表中选择最合适的服务，并在生成service_details时：
+1. 使用选中服务的完整信息（service_name、service_english_name、gitlab、business_domain、data_resources）
+2. 每个服务的api_design中可以根据具体业务需求选择对应的业务领域
 
 ## 数据库约束信息  
 预期数据库数量：{{ data_resources }}

@@ -68,12 +68,13 @@ class CompanyServicesConfig:
             service_name = service.get("service_name", "未知服务")
             english_name = service.get("service_english_name", "unknown")
             description = service.get("description", "无描述")
-            git_repository = service.get("git_repository", "通用")
+            gitlab = service.get("gitlab", "通用")
+            business_domain = service.get("business_domain", "通用")
             
             reference_lines.append(f"{idx}. {service_name} ({english_name})")
-            reference_lines.append(f"   业务域: {git_repository}")
+            reference_lines.append(f"   git地址: {gitlab}")
+            reference_lines.append(f"   业务域: {business_domain}")
             reference_lines.append(f"   描述: {description}")
-            
             # 添加技术信息（如果有）
             tech_info = service.get("tech_stack", {})
             if tech_info:

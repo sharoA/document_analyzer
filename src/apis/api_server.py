@@ -743,6 +743,7 @@ def process_ai_analysis(task: FileParsingTask, analysis_type: str = "comprehensi
             if document_content:
                 input_data["document_content"] = document_content
                 analysis_logger.info(f"传递原始文档内容进行AI分析，长度: {len(document_content)}")
+                analysis_logger.info(f"input_data: {input_data}")
             
             ai_result = analysis_service_manager.ai_analyze_sync(
                 task_id=task.id,

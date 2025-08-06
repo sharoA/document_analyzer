@@ -7,7 +7,7 @@
 import json
 import time
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 import os
@@ -37,16 +37,17 @@ class DesignDocumentGenerator(BaseAnalysisService):
             self.logger.warning(f"Prompts目录不存在: {prompts_dir}")
             return None
     
-    def generate_design_document(self, task_id: str, business_requirements: Dict, 
+    def generate_design_document(self, task_id: str, document_content: str,
                                      content_analysis: Dict, parsing_result: Dict) -> Dict[str, Any]:
         """
         生成设计文档
         
         Args:
             task_id: 任务ID
-            business_requirements: 业务需求分析结果
+            document_content: 原始文档内容
             content_analysis: 内容分析结果  
-            parsing_result: 文档解析结果
+            parsing_result: 文档解析结果    
+            
             
         Returns:
             设计文档生成结果
@@ -57,15 +58,14 @@ class DesignDocumentGenerator(BaseAnalysisService):
             self._log_analysis_start(task_id, "设计文档生成", 0)
             
             
-            self.logger.info(f"parsing_result: {parsing_result}")
-            self.logger.info(f"content_analysis: {content_analysis}")
-            
-            
             # 生成表单数据结构
-            form_data =  self._generate_form_data(content_analysis, parsing_result)
+            form_data =  self._generate_form_data(document_content,content_analysis, parsing_result)
+
+
+
             
             result = {
-                # "architecture_diagram": architecture_diagram,
+                # "architecture_diagram": architecture_diagram
                 "form_data": form_data,
                 "design_document_metadata": {
                     "generation_timestamp": datetime.now().isoformat(),
@@ -142,33 +142,20 @@ class DesignDocumentGenerator(BaseAnalysisService):
     
    
     
-    def _generate_form_data(self, content_analysis: Dict, parsing_result: Dict) -> Dict:
-        """生成符合表单模板的结构化数据（调整后的版本）"""
+    def _generate_form_data(self, document_content: str, content_analysis: Dict, parsing_result: Dict) -> Dict:
+        """生成符合表单模板的结构化数据, 先只根据原文档生成表单数据"""
         try:
             # 从content_analysis和parsing_result中提取关键信息
             content_summary = content_analysis.get("data", {}).get("summary", "")
-            # 从parsing_result中提取文档内容 - 修正字段路径
-            document_content = parsing_result.get("text_content", "")
-            if not document_content:
-                # 尝试从其他可能的字段路径获取文档内容
-                document_structure = parsing_result.get("data", {}).get("documentStructure", {})
-                content_summary_data = document_structure.get("contentSummary", {})
-                abstract = content_summary_data.get("abstract", "")
-                if abstract:
-                    document_content = abstract
-                else:
-                    # 如果仍然没有内容，使用parsing_result的整体信息
-                    document_content = str(parsing_result)[:2000]  # 截取前2000字符
-            
-            self.logger.info(f"提取到文档摘要长度: {len(content_summary)}, 文档内容长度: {len(document_content)}")
-            self.logger.info(f"文档内容前2000字符: {document_content[:2000]}")
-            
-            
+            self.logger.info(f"content_summary: {content_summary}")
+            self.logger.info(f"document_content: {document_content}")
+            self.logger.info(f"parsing_result: {parsing_result}")
+   
             # 提取项目名称（从文件名中提取）
             project_name = self._extract_project_name(parsing_result)
             
             # 第一步：生成功能需求说明  
-            function_requirements_info = self._generate_function_requirements(content_summary, document_content)
+            function_requirements_info = self._generate_function_requirements(document_content, content_summary)
             
             # 让LLM选择服务并同时获取company_services_config内相关的信息
             result = self._generate_service_info(content_analysis, document_content)
@@ -176,7 +163,7 @@ class DesignDocumentGenerator(BaseAnalysisService):
             service_numbers = result["service_count"]
             data_resources = result["data_resources"] 
             data_info = result["data_info"]
-            
+            self.logger.info(f"result: {result}")
             self.logger.info(f"生成约束条件 - 服务数量: {service_numbers}, 数据库数量: {data_resources}")
             
             # 第二步：使用核心业务生成器统一生成核心设计
@@ -192,7 +179,7 @@ class DesignDocumentGenerator(BaseAnalysisService):
                     data_info=data_info
                 )
                 
-                self.logger.info("核心业务设计统一生成成功")
+                self.logger.info("核心业务设计统一生成成功core_design: {core_design}")
                 
                 # 第三步：构建完整的表单数据结构
                 form_data = {
@@ -206,7 +193,7 @@ class DesignDocumentGenerator(BaseAnalysisService):
                     "data_info": data_info,
                     "technology": self._get_default_tech_stack(),
                     "service_details": core_design.get("service_details", []),  # 使用统一生成的结果
-                    "execution": self._generate_execution_requirements(core_design)
+                    "execution": self._generate_execution_requirements(core_design, service_info)
                 }
                 
                 self.logger.info(f"表单数据生成完成，包含{len(form_data.get('service_details', []))}个服务设计")
@@ -257,13 +244,13 @@ class DesignDocumentGenerator(BaseAnalysisService):
 1. 只提取文档中已有的内容，不能增加、修改或重新组织
 2. 保持原文的表述和格式
 3. 重点关注描述项目起因、现状问题、业务需求的段落
-4. 如果找到多个背景相关章节，提取最主要的一个
+4. 如果找到多个背景相关章节，合并成一个
 5. 如果没有找到相关章节，返回"未找到需求背景内容"
 
 输出要求：
 - 直接输出提取的原文内容
 - 不要添加任何解释、总结或补充说明
-- 不要包含章节标题编号
+- 不要包含章节标题编号及需求背景、项目背景、背景等标题
 """
             
             if self.llm_client:
@@ -288,40 +275,54 @@ class DesignDocumentGenerator(BaseAnalysisService):
             self.logger.error(f"LLM生成项目介绍失败: {e}")
             return "项目旨在优化现有业务系统，提升用户体验和系统性能。"
     
-    def _generate_function_requirements(self, content_summary: str, document_content: str) -> Dict:
+    def _generate_function_requirements(self, document_content: str, content_summary: str) -> list:
         """LLM生成功能需求信息"""
         try:
-            prompt = f"""
+            # 为了避免f-string中花括号冲突，使用字符串拼接
+            prompt = """
 基于以下业务文档内容，生成详细的功能需求信息：
 
-文档内容摘要：
-{content_summary}
+文档原文（前12000字）：
+""" + document_content[:12000] + """
 
-文档原文（前1500字）：
-{document_content[:1500]}
-
-请生成以下功能需求信息，返回JSON格式：
-{{
-    "adjust_info": "详细的功能调整说明，包含具体调整点和优化方向，100-200字",
-    "filter_field": "详细的筛选查询功能说明，包含具体筛选条件，50-100字",
-    "list_field": "详细的列表展示字段说明，包含关键业务字段，50-100字", 
-    "total_field": "详细的统计汇总字段说明，包含关键指标字段，50-100字",
-    "remarks": "功能需求的整体备注说明，包含实现要点和注意事项，100-150字"
-}}
+请生成以下功能需求信息，返回JSON数组格式，每个功能点一个对象：
+[
+{
+    "feature_name": "功能模块1名称",
+    "adjust_info": "详细的功能调整说明，包含具体调整点和优化方向",
+    "filter_field": "详细的筛选查询功能说明，包含具体筛选条件。格式：序号 字段名 类型格式 长度 默认值 必填 规则",
+    "list_field": "详细的列表展示字段说明，包含关键业务字段。格式：序号 字段名 类型格式 长度 默认值 必填 规则", 
+    "total_field": "详细的统计汇总字段说明，包含关键指标字段。格式：序号 字段名 类型格式 长度 默认值 必填 规则",
+    "remarks": "功能需求的整体备注说明，包含实现要点和注意事项"
+},
+{
+    "feature_name": "功能模块2名称",
+    "adjust_info": "针对模块2的具体功能调整说明",
+    "filter_field": "模块2的筛选查询功能说明，包含筛选条件字段信息",
+    "list_field": "模块2的列表展示字段说明，包含展示字段信息", 
+    "total_field": "模块2的统计汇总字段说明，包含统计字段信息",
+    "remarks": "模块2功能需求的备注说明，包含实现要点"
+}
+]
 
 要求：
-1. 基于实际业务文档内容生成
-2. 内容具体详细，避免空泛描述
-3. 符合实际项目开发需求
-4. 体现具体的业务场景和功能点
-
+1. 基于实际业务文档内容，识别不同的功能模块或业务点
+2. 每个功能模块创建一个独立的对象，不要把所有内容混在一个对象里
+3. feature_name要明确标识具体的功能模块名称
+4. 内容具体详细，避免空泛描述
+5. 符合实际项目开发需求
+6. 体现具体的业务场景和功能点
+7. 各字段内容使用简单字符串格式，不要使用markdown
+8. 字段信息格式：序号 字段名 类型格式 长度 默认值 必填 规则
+9. 保持JSON数组结构，每个功能模块一个对象，内容为普通字符串
+10. 如果文档内容涉及多个功能模块，请分别为每个模块创建对象
 请只返回JSON内容，不要包含其他解释文字。
 """
             
             if self.llm_client:
                 response = self.llm_client.chat(
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.3
+                    temperature=0.2
                 )
                 
                 try:
@@ -345,8 +346,8 @@ class DesignDocumentGenerator(BaseAnalysisService):
             self.logger.error(f"LLM生成功能需求失败: {e}")
             return self._get_default_function_requirements([], content_summary)
     
-    def _get_default_function_requirements(self, crud_operations: list, content_summary: str) -> Dict:
-        """获取默认功能需求信息"""
+    def _get_default_function_requirements(self, crud_operations: list, content_summary: str) -> list:
+        """获取默认功能需求信息 - 返回数组格式"""
         # 基于CRUD操作生成功能需求描述
         adjust_info = []
         if crud_operations:
@@ -362,13 +363,20 @@ class DesignDocumentGenerator(BaseAnalysisService):
                 elif op_type == "DELETE":
                     adjust_info.append(f"- 删除{op_desc}功能")
         
-        return {
-            "adjust_info": '\n'.join(adjust_info) if adjust_info else content_summary[:500],
-            "filter_field": "支持按条件筛选查询",
-            "list_field": "列表展示相关数据字段",
-            "total_field": "统计汇总相关字段",
-            "remarks": "按照业务需求进行功能调整和优化"
-        }
+        # 如果没有CRUD操作且content_summary为空，提供更详细的默认信息
+        default_adjust_info = '\n'.join(adjust_info) if adjust_info else (content_summary[:500] if content_summary.strip() else "根据业务文档要求，对现有系统功能进行优化调整，包括接口逻辑优化、数据校验规则调整、业务流程改进等方面的需求。")
+        
+        # 返回数组格式，包含一个默认功能模块
+        return [
+            {
+                "feature_name": "系统功能优化",
+                "adjust_info": default_adjust_info,
+                "filter_field": "支持按条件筛选查询",
+                "list_field": "列表展示相关数据字段",
+                "total_field": "统计汇总相关字段",
+                "remarks": "按照业务需求进行功能调整和优化"
+            }
+        ]
     
 
     
@@ -386,8 +394,7 @@ class DesignDocumentGenerator(BaseAnalysisService):
         if not existing_services:
             raise Exception("无法获取公司服务配置，请检查company_services.yaml文件")
         
-        # 使用LLM选择服务 - 从content_analysis中提取crud_operations或使用空列表
-        crud_operations = content_analysis.get("data", {}).get("crud_operations", [])
+        # 使用LLM选择服务 -
         llm_result = self._llm_select_services(content_analysis, existing_services, document_content)
         
         if not llm_result:
@@ -400,7 +407,7 @@ class DesignDocumentGenerator(BaseAnalysisService):
         if not service_info:
             raise Exception("LLM未选择任何服务")
         
-        # 从配置文件中获取每个服务的data_resources并统计
+        # 从配置文件中获取每个服务的data_resources并统计，同时补充业务域信息
         all_data_resources = []
         for service in service_info:
             # 在existing_services中查找对应的服务
@@ -413,6 +420,15 @@ class DesignDocumentGenerator(BaseAnalysisService):
                         all_data_resources.extend(data_resources)
                     elif isinstance(data_resources, str):
                         all_data_resources.append(data_resources)
+                    
+                    # 补充业务域信息
+                    if "business_domain" not in service and "business_domain" in existing_service:
+                        service["business_domain"] = existing_service["business_domain"]
+                    
+                    # 补充git仓库信息
+                    if "gitlab" not in service and "gitlab" in existing_service:
+                        service["gitlab"] = existing_service["gitlab"]
+                    
                     break
         
         # 统计数据库类型并去重
@@ -451,7 +467,7 @@ class DesignDocumentGenerator(BaseAnalysisService):
                 existing_services=existing_services
             )
             
-            self.logger.info(f"发送给LLM的用户提示词: {user_prompt[:500]}...")
+            self.logger.info(f"发送给LLM的用户提示词: {user_prompt[:5000]}...")
             self.logger.info(f"文档内容长度: {len(document_content)}, 现有服务数量: {len(existing_services)}")
             
             # 调用LLM
@@ -487,7 +503,9 @@ class DesignDocumentGenerator(BaseAnalysisService):
                     "service_info": [
                         {
                             "service_name": service.get("service_name", ""),
-                            "service_english_name": service.get("service_english_name", "")
+                            "service_english_name": service.get("service_english_name", ""),
+                            "gitlab": service.get("gitlab", ""),
+                            "business_domain": service.get("business_domain", "")
                         }
                         for service in result["selected_services"]
                     ],
@@ -547,9 +565,26 @@ class DesignDocumentGenerator(BaseAnalysisService):
     
    
     
-    def _generate_execution_requirements(self, design_data: Dict) -> Dict:
+    def _generate_execution_requirements(self, design_data: Dict, service_info: List[Dict] = None) -> Dict:
         """生成执行要求"""
-        services = design_data.get("services", [])
+        # 从design_data中获取service_details，并确保包含完整的服务信息
+        service_details = design_data.get("service_details", [])
+        
+        # 构建services列表，确保包含gitlab等完整信息
+        services = []
+        for service_detail in service_details:
+            service_data = {
+                "service_name": service_detail.get("service_name", ""),
+                "service_english_name": service_detail.get("service_english_name", ""),
+                "gitlab": service_detail.get("gitlab", ""),
+                "business_domain": service_detail.get("business_domain", "")
+            }
+            services.append(service_data)
+        
+        # 如果service_info存在且services为空，则使用service_info作为备选
+        if not services and service_info:
+            services = service_info
+        
         databases = design_data.get("databases", [])
         
         return {

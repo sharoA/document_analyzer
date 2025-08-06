@@ -60,6 +60,36 @@
 
             <!-- 筛选字段 -->
             <el-form-item label="筛选字段" v-if="requirement.filter_fields">
+              <el-input 
+                v-model="requirement.filter_fields" 
+                type="textarea" 
+                :rows="3"
+                placeholder="筛选字段信息"
+              />
+            </el-form-item>
+
+            <!-- 列表字段 -->
+            <el-form-item label="列表字段" v-if="requirement.list_fields">
+              <el-input 
+                v-model="requirement.list_fields" 
+                type="textarea" 
+                :rows="3"
+                placeholder="列表字段信息"
+              />
+            </el-form-item>
+
+            <!-- 统计字段 -->
+            <el-form-item label="统计字段" v-if="requirement.total_fields">
+              <el-input 
+                v-model="requirement.total_fields" 
+                type="textarea" 
+                :rows="3"
+                placeholder="统计字段信息"
+              />
+            </el-form-item>
+
+            <!-- 原来的筛选字段表格（暂时隐藏） -->
+  <!--            <el-form-item label="筛选字段详细" v-if="false && requirement.filter_fields">
               <div v-for="(field, fieldIndex) in requirement.filter_fields" :key="fieldIndex" class="field-item">
                 <el-row :gutter="10">
                   <el-col :span="4">
@@ -84,15 +114,16 @@
                     <el-input v-model="field.rules" placeholder="规则" />
                   </el-col>
                   <el-col :span="2">
+                  -->
                     <!-- <el-button type="danger" size="small" @click="removeField(requirement.filter_fields, fieldIndex)">删除</el-button> -->
-                  </el-col>
+              <!--   </el-col>
                 </el-row>
-              </div>
+              </div>-->
               <!-- <el-button type="primary" size="small" @click="addField(requirement, 'filter_fields')">添加筛选字段</el-button> -->
-            </el-form-item>
-
+            <!-- </el-form-item> -->
+          
             <!-- 列表字段 -->
-            <el-form-item label="列表字段" v-if="requirement.list_fields">
+        <!--   <el-form-item label="列表字段" v-if="requirement.list_fields">
               <div v-for="(field, fieldIndex) in requirement.list_fields" :key="fieldIndex" class="field-item">
                 <el-row :gutter="10">
                   <el-col :span="6">
@@ -104,13 +135,13 @@
                   <el-col :span="8">
                     <el-input v-model="field.rules" placeholder="规则" />
                   </el-col>
-                  <el-col :span="4">
+                  <el-col :span="4"> -->
                     <!-- <el-button type="danger" size="small" @click="removeField(requirement.list_fields, fieldIndex)">删除</el-button> -->
-                  </el-col>
+           <!--       </el-col>
                 </el-row>
-              </div>
+              </div>-->
               <!-- <el-button type="primary" size="small" @click="addField(requirement, 'list_fields')">添加列表字段</el-button> -->
-            </el-form-item>
+           <!-- </el-form-item> -->
 
             <el-form-item label="备注">
               <el-input 
@@ -227,6 +258,12 @@
               <div class="api-header">
                 <h6>接口 {{ apiIndex + 1 }}</h6>
                 <!-- <el-button type="danger" size="small" @click="removeApi(service.apis, apiIndex)">删除接口</el-button> -->
+              </div>
+
+              <!-- 显示业务领域信息 -->
+              <div v-if="service.business_domain" class="api-business-domain">
+                <span class="domain-label">业务领域：</span>
+                <span class="domain-value">{{ service.business_domain }}</span>
               </div>
 
               <el-row :gutter="10">
@@ -730,16 +767,19 @@ const convertBackendDataToFormData = (backendData) => {
   
   console.log('📋 项目介绍转换结果:', convertedData.project_intro)
   
-  // 功能需求信息转换 - 修复字段映射
+  // 功能需求信息转换 - 支持数组格式
   convertedData.function_requirements = []
-  if (backendData.function_requirements_info) {
-    const reqInfo = backendData.function_requirements_info
-    convertedData.function_requirements.push({
-      name: '功能调整需求',
-      adjust_info: reqInfo.adjust_info || reqInfo || '根据业务需求进行系统功能调整和优化',
-      filter_fields: [],
-      list_fields: [],
-      remarks: reqInfo.remarks || '按照业务需求进行功能调整和优化'
+  if (backendData.function_requirements_info && Array.isArray(backendData.function_requirements_info)) {
+    // 处理数组格式
+    backendData.function_requirements_info.forEach((item, index) => {
+      convertedData.function_requirements.push({
+        name: item.feature_name || `功能模块${index + 1}`,
+        adjust_info: item.adjust_info || '根据业务需求进行系统功能调整和优化',
+        filter_fields: item.filter_field || '',
+        list_fields: item.list_field || '',
+        total_fields: item.total_field || '',
+        remarks: item.remarks || '按照业务需求进行功能调整和优化'
+      })
     })
     console.log('📋 功能需求转换结果:', convertedData.function_requirements)
   } else {
@@ -747,8 +787,9 @@ const convertBackendDataToFormData = (backendData) => {
     convertedData.function_requirements.push({
       name: '系统优化需求',
       adjust_info: '优化现有业务功能，提升系统性能和用户体验',
-      filter_fields: [],
-      list_fields: [],
+      filter_fields: '',
+      list_fields: '',
+      total_fields: '',
       remarks: '基于现有业务场景进行针对性优化改进'
     })
   }
@@ -908,13 +949,15 @@ const convertBackendDataToFormData = (backendData) => {
     }
   }
   
-  // 确保execution.services有正确的结构
-  if (convertedData.services && Array.isArray(convertedData.services)) {
-    convertedData.execution.services = convertedData.services.map(service => ({
-      service_name: service.service_name || '',
-      service_english_name: service.service_english_name || '',
-      gitlab: '' // 添加gitlab字段
-    }))
+  // 确保execution.services有正确的结构 - 只在没有从后端获取到数据时才执行
+  if (!convertedData.execution.services || convertedData.execution.services.length === 0) {
+    if (convertedData.services && Array.isArray(convertedData.services)) {
+      convertedData.execution.services = convertedData.services.map(service => ({
+        service_name: service.service_name || '',
+        service_english_name: service.service_english_name || '',
+        gitlab: service.gitlab || '' // 保留gitlab字段
+      }))
+    }
   }
   
   console.log('🎯 最终转换结果:', convertedData)
@@ -1079,8 +1122,9 @@ const addRequirement = () => {
   formData.value.function_requirements.push({
     name: '功能调整',
     adjust_info: '',
-    filter_fields: [],
-    list_fields: [],
+    filter_fields: '',
+    list_fields: '',
+    total_fields: '',
     remarks: ''
   })
 }
@@ -1224,14 +1268,72 @@ const generateProjectIntroSection = () => {
 
 // 生成功能需求说明部分
 const generateFunctionRequirementsSection = () => {
-  let markdown = '1.2 功能需求说明\n\n'
+  let markdown = '\n1.2 功能需求说明\n\n'
   formData.value.function_requirements.forEach((req, index) => {
-    markdown += `1.2.${index + 1} ${req.name}\n`
-    markdown += `调整说明:${req.adjust_info}\n`
-    if (req.remarks) {
-      markdown += `备注：${req.remarks}\n`
+    markdown += `1.2.${index + 1} ${req.name}\n\n`
+    markdown += `**调整说明：** ${req.adjust_info}\n\n`
+    
+    // 添加筛选字段内容（表格格式）
+    if (req.filter_fields && (typeof req.filter_fields === 'string' ? req.filter_fields.trim() : req.filter_fields.length > 0)) {
+      markdown += `#### 筛选字段\n\n`
+      if (typeof req.filter_fields === 'string') {
+        markdown += `${req.filter_fields}\n\n`
+      } else if (Array.isArray(req.filter_fields)) {
+        markdown += `| 序号 | 字段名 | 类型格式 | 必填 | 默认值 | 规则说明 |\n`
+        markdown += `|------|--------|----------|------|--------|----------|\n`
+        req.filter_fields.forEach((field, fieldIndex) => {
+          const fieldName = field['字段名'] || field.name || '-'
+          const fieldType = field['类型格式'] || field.type || '-'
+          const required = field['必填'] || field.required || '-'
+          const defaultValue = field['默认值'] || field.default_value || '-'
+          const rules = field['规则'] || field.rules || '-'
+          markdown += `| ${fieldIndex + 1} | ${fieldName} | ${fieldType} | ${required} | ${defaultValue} | ${rules} |\n`
+        })
+        markdown += `\n`
+      }
     }
-    markdown += '\n'
+    
+    // 添加列表字段内容（表格格式）
+    if (req.list_fields && (typeof req.list_fields === 'string' ? req.list_fields.trim() : req.list_fields.length > 0)) {
+      markdown += `#### 列表字段\n\n`
+      if (typeof req.list_fields === 'string') {
+        markdown += `${req.list_fields}\n\n`
+      } else if (Array.isArray(req.list_fields)) {
+        markdown += `| 序号 | 字段名 | 类型格式 | 规则说明 |\n`
+        markdown += `|------|--------|----------|----------|\n`
+        req.list_fields.forEach((field, fieldIndex) => {
+          const fieldName = field['字段名'] || field.name || '-'
+          const fieldType = field['类型格式'] || field.type || '-'
+          const rules = field['规则'] || field.rules || '-'
+          markdown += `| ${fieldIndex + 1} | ${fieldName} | ${fieldType} | ${rules} |\n`
+        })
+        markdown += `\n`
+      }
+    }
+    
+    // 添加统计字段内容（表格格式）
+    if (req.total_fields && (typeof req.total_fields === 'string' ? req.total_fields.trim() : req.total_fields.length > 0)) {
+      markdown += `#### 统计字段\n\n`
+      if (typeof req.total_fields === 'string') {
+        markdown += `${req.total_fields}\n\n`
+      } else if (Array.isArray(req.total_fields)) {
+        markdown += `| 序号 | 字段名 | 类型格式 | 计算规则 |\n`
+        markdown += `|------|--------|----------|----------|\n`
+        req.total_fields.forEach((field, fieldIndex) => {
+          const fieldName = field['字段名'] || field.name || '-'
+          const fieldType = field['类型格式'] || field.type || '-'
+          const rules = field['规则'] || field.rules || '-'
+          markdown += `| ${fieldIndex + 1} | ${fieldName} | ${fieldType} | ${rules} |\n`
+        })
+        markdown += `\n`
+      }
+    }
+    
+    if (req.remarks) {
+      markdown += `**备注：** ${req.remarks}\n\n`
+    }
+    
+    markdown += `---\n\n` // 添加分隔线
   })
   
   return markdown
@@ -1239,24 +1341,39 @@ const generateFunctionRequirementsSection = () => {
 
 // 生成总体架构部分
 const generateArchitectureSection = () => {
-  let markdown = '1.3 总体架构\n'
-  markdown += `${formData.value.project_architecture}\n`
-  markdown += `- 涉及${formData.value.service_numbers}个后端服务：\n`
-  formData.value.services.forEach((service, index) => {
-    markdown += `${index + 1}. ${service.service_name}：${service.service_english_name}\n`
-  })
-  markdown += '\n- 涉及数据库：\n'
-  formData.value.databases.forEach((db, index) => {
-    markdown += `${index + 1}. ${db.description}：${db.data_type.toUpperCase()}\n`
-  })
-  markdown += '\n'
+  let markdown = '1.3 总体架构\n\n'
+  markdown += `${formData.value.project_architecture}\n\n`
+  
+  markdown += `#### 🏗️ 服务架构\n\n`
+  markdown += `**涉及服务数量：** ${formData.value.service_numbers}个\n\n`
+  
+  if (formData.value.services && formData.value.services.length > 0) {
+    markdown += `| 序号 | 服务名称 | 英文名称 |\n`
+    markdown += `|------|----------|----------|\n`
+    formData.value.services.forEach((service, index) => {
+      markdown += `| ${index + 1} | ${service.service_name} | ${service.service_english_name} |\n`
+    })
+    markdown += `\n`
+  }
+  
+  markdown += `#### 🗄️ 数据库架构\n\n`
+  if (formData.value.databases && formData.value.databases.length > 0) {
+    markdown += `| 序号 | 数据库类型 | 描述信息 |\n`
+    markdown += `|------|------------|----------|\n`
+    formData.value.databases.forEach((db, index) => {
+      markdown += `| ${index + 1} | ${db.data_type.toUpperCase()} | ${db.description || '-'} |\n`
+    })
+  } else {
+    markdown += `暂无数据库配置信息\n`
+  }
+  markdown += `\n`
   
   return markdown
 }
 
 // 生成技术栈选型部分
 const generateTechnologyStackSection = () => {
-  return `1.4 技术栈选型\n${formData.value.technology}\n\n`
+  return `1.4 技术栈选型\n\n${formData.value.technology}\n\n---\n\n`
 }
 
 // 生成服务设计部分
@@ -1264,34 +1381,43 @@ const generateServiceDesignSection = () => {
   let markdown = '2. 服务设计\n\n'
   
   formData.value.service_designs.forEach((service, serviceIndex) => {
-    markdown += `2.${serviceIndex + 1} ${service.service_name} (${service.service_english_name})\n`
-    markdown += `职责：${service.service_duty}\n\n`
+    markdown += `### 2.${serviceIndex + 1} ${service.service_name} (${service.service_english_name})\n\n`
+    markdown += `**服务职责：** ${service.service_duty}\n\n`
     
-    markdown += `2.${serviceIndex + 1}.1 核心模块：\n`
+    // 添加业务领域信息
+    if (service.business_domain) {
+      markdown += `**业务领域：** ${service.business_domain}\n\n`
+    }
+    
+    markdown += `#### 2.${serviceIndex + 1}.1 核心模块\n\n`
     markdown += `${service.core_modules}\n\n`
     
-    markdown += `2.${serviceIndex + 1}.2 API设计：\n`
+    markdown += `#### 2.${serviceIndex + 1}.2 API设计\n\n`
     if (service.apis && service.apis.length > 0) {
       service.apis.forEach((api, apiIndex) => {
-        markdown += `2.${serviceIndex + 1}.2.${apiIndex + 1} ${api.interface_type}接口：\n`
-        markdown += `uri : ${api.uri}\n`
-        markdown += `method: ${api.method}\n`
-        markdown += `description:${api.description}\n`
-        markdown += `入参示例：\n${api.request_params}\n\n`
-        markdown += `返参示例：\n${api.response_params}\n\n`
+        markdown += `**2.${serviceIndex + 1}.2.${apiIndex + 1} ${api.interface_type}接口**\n\n`
+        markdown += `- **URI：** \`${api.uri}\`\n`
+        markdown += `- **Method：** \`${api.method}\`\n`
+        markdown += `- **描述：** ${api.description}\n\n`
+        
+        markdown += `**入参示例：**\n\`\`\`json\n${api.request_params}\n\`\`\`\n\n`
+        markdown += `**返参示例：**\n\`\`\`json\n${api.response_params}\n\`\`\`\n\n`
+        
         if (api.special_requirements) {
-          markdown += `特殊要求：\n${api.special_requirements}\n\n`
+          markdown += `**特殊要求：** ${api.special_requirements}\n\n`
         }
       })
     }
     
     if (service.data_table_sql) {
-      markdown += `2.${serviceIndex + 1}.3 数据库表设计：\n`
-      markdown += `${service.data_table_sql}\n\n`
+      markdown += `#### 2.${serviceIndex + 1}.3 数据库表设计\n\n`
+      markdown += `\`\`\`sql\n${service.data_table_sql}\n\`\`\`\n\n`
     }
     
-    markdown += `2.${serviceIndex + 1}.4 本次项目依赖服务：\n`
-    markdown += `依赖服务名称：${service.dependence_service || '无'}\n\n`
+    markdown += `#### 2.${serviceIndex + 1}.4 依赖服务\n\n`
+    markdown += `**依赖服务：** ${service.dependence_service || '无'}\n\n`
+    
+    markdown += `---\n\n` // 添加分隔线
   })
   
   return markdown
@@ -1299,29 +1425,40 @@ const generateServiceDesignSection = () => {
 
 // 生成执行要求部分
 const generateExecutionRequirementsSection = () => {
-  let markdown = '3 执行要求\n\n'
+  let markdown = '3. 执行要求\n\n'
   
   // 3.1 涉及服务范围
-  markdown += '3.1 涉及服务范围\n'
-  markdown += `${formData.value.execution.service_scope}\n`
-  formData.value.execution.services.forEach((service, index) => {
-    markdown += `${index + 1}. ${service.service_name}：${service.service_english_name}，git地址：${service.gitlab}\n`
-  })
-  markdown += '\n'
+  markdown += '### 3.1 涉及服务范围\n\n'
+  markdown += `**服务范围说明：** ${formData.value.execution.service_scope}\n\n`
+  
+  if (formData.value.execution.services && formData.value.execution.services.length > 0) {
+    markdown += `#### 📦 服务清单\n\n`
+    markdown += `| 序号 | 服务名称 | 英文名称 | Git地址 |\n`
+    markdown += `|------|----------|----------|----------|\n`
+    formData.value.execution.services.forEach((service, index) => {
+      const gitUrl = service.gitlab || service.git_repository || '-'
+      markdown += `| ${index + 1} | ${service.service_name} | ${service.service_english_name} | ${gitUrl} |\n`
+    })
+    markdown += `\n`
+  }
   
   // 3.2 涉及数据库范围
-  markdown += '3.2 涉及数据库范围\n'
-  markdown += `${formData.value.execution.data_scope}\n`
+  markdown += '### 3.2 涉及数据库范围\n\n'
+  markdown += `**数据库范围说明：** ${formData.value.execution.data_scope}\n\n`
+  
   if (formData.value.execution.databases && formData.value.execution.databases.length > 0) {
+    markdown += `#### 🗄️ 数据库配置\n\n`
     formData.value.execution.databases.forEach((db, index) => {
-      markdown += `3.2.${index + 1} ${db.data_type}:\n`
-      markdown += `${db.config}\n\n`
+      markdown += `**3.2.${index + 1} ${db.data_type}**\n\n`
+      if (db.config) {
+        markdown += `\`\`\`\n${db.config}\n\`\`\`\n\n`
+      }
     })
   }
   
   // 3.3 涉及接口范围
-  markdown += '3.3 涉及接口范围\n'
-  markdown += `${formData.value.execution.scope_interface}\n`
+  markdown += '### 3.3 涉及接口范围\n\n'
+  markdown += `${formData.value.execution.scope_interface}\n\n`
   
   return markdown
 }
@@ -1741,6 +1878,28 @@ watch(() => props.taskStatus, (newStatus, oldStatus) => {
             font-size: 13px;
             font-weight: 600;
           }
+        }
+      }
+      
+      .api-business-domain {
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: #f0f9ff;
+        border-left: 3px solid #3b82f6;
+        border-radius: 4px;
+        
+        .domain-label {
+          font-weight: 600;
+          color: #1e40af;
+          margin-right: 8px;
+        }
+        
+        .domain-value {
+          color: #374151;
+          font-family: 'Monaco', 'Consolas', monospace;
+          background: #e5e7eb;
+          padding: 2px 6px;
+          border-radius: 3px;
         }
       }
     }

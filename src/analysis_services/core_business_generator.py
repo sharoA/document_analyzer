@@ -143,11 +143,52 @@ class CoreBusinessGenerator:
             )
             
             # 解析JSON响应
-            return self._parse_json_response(response, "核心业务设计生成")
+            design_result = self._parse_json_response(response, "核心业务设计生成")
+            
+            # 确保生成的service_details包含完整的服务信息
+            design_result = self._enrich_service_details(design_result, kwargs.get('service_info', []))
+            
+            return design_result
             
         except Exception as e:
             self.logger.error(f"LLM生成核心业务设计失败: {e}")
             raise
+    
+    def _enrich_service_details(self, design_result: Dict, service_info: List[Dict]) -> Dict:
+        """确保生成的service_details包含完整的服务信息"""
+        if not design_result.get('service_details') or not service_info:
+            return design_result
+        
+        service_details = design_result['service_details']
+        
+        # 为每个生成的服务补全信息
+        for service_detail in service_details:
+            service_name = service_detail.get('service_name', '')
+            service_english_name = service_detail.get('service_english_name', '')
+            
+            # 在service_info中查找匹配的服务
+            matching_service = None
+            for service in service_info:
+                if (service.get('service_name') == service_name or 
+                    service.get('service_english_name') == service_english_name):
+                    matching_service = service
+                    break
+            
+            # 如果找到匹配的服务，补全缺失的字段
+            if matching_service:
+                # 确保包含关键字段
+                if not service_detail.get('gitlab') and matching_service.get('gitlab'):
+                    service_detail['gitlab'] = matching_service['gitlab']
+                
+                if not service_detail.get('business_domain') and matching_service.get('business_domain'):
+                    service_detail['business_domain'] = matching_service['business_domain']
+                
+                if not service_detail.get('data_resources') and matching_service.get('data_resources'):
+                    service_detail['data_resources'] = matching_service['data_resources']
+                
+                self.logger.info(f"为服务 {service_name} 补全信息: gitlab={service_detail.get('gitlab')}")
+        
+        return design_result
     
     def _parse_json_response(self, response: str, step_name: str) -> Dict:
         """解析JSON响应，包含错误处理"""

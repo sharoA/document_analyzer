@@ -38,12 +38,17 @@ class AIAnalyzerService(BaseAnalysisService):
             # 提取输入数据
             content_analysis = input_data.get("content_analysis", {})
             parsing_result = input_data.get("parsing_result", {})
+
+            # 临时方案：如果有原始文档内容，直接传递给AI分析器
+            document_content = input_data.get("document_content", "")
+
+            self.logger.info(f"document_content: {document_content}")
             
             self._log_analysis_start(task_id, "AI设计文档生成", 0)
             
             # 直接使用设计文档生成器生成标准化文档
             document_result = self.design_generator.generate_design_document(
-                task_id, {}, content_analysis, parsing_result
+                task_id, document_content, content_analysis, parsing_result
             )
             
             # 构建最终结果
