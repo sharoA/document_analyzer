@@ -261,9 +261,9 @@
               </div>
 
               <!-- 显示业务领域信息 -->
-              <div v-if="service.business_domain" class="api-business-domain">
+              <div v-if="api.business_domain" class="api-business-domain">
                 <span class="domain-label">业务领域：</span>
-                <span class="domain-value">{{ service.business_domain }}</span>
+                <span class="domain-value">{{ api.business_domain }}</span>
               </div>
 
               <el-row :gutter="10">
@@ -331,6 +331,13 @@
                   placeholder="请输入特殊要求"
                 />
               </el-form-item>
+
+              <el-form-item label="依赖服务">
+                <el-input 
+                  v-model="api.dependence_service" 
+                  placeholder="请输入依赖的服务名称，多个用逗号分隔"
+                />
+              </el-form-item>
             </div>
             <!-- <el-button type="primary" size="small" @click="addApi(service)">添加接口</el-button> -->
           </div>
@@ -341,13 +348,6 @@
               type="textarea" 
               :rows="8"
               placeholder="请输入CREATE TABLE语句"
-            />
-          </el-form-item>
-
-          <el-form-item label="依赖服务">
-            <el-input 
-              v-model="service.dependence_service" 
-              placeholder="请输入依赖的服务名称，多个用逗号分隔"
             />
           </el-form-item>
         </div>
@@ -869,7 +869,10 @@ const convertBackendDataToFormData = (backendData) => {
               JSON.stringify(apiItem.request_params, null, 2) : (apiItem.request_params || '{}'),
             response_params: typeof apiItem.response_params === 'object' ? 
               JSON.stringify(apiItem.response_params, null, 2) : (apiItem.response_params || '{}'),
-            special_requirements: apiItem.special_requirements || ''
+            special_requirements: apiItem.special_requirements || '',
+            dependence_service: Array.isArray(apiItem.dependence_service) ? 
+              apiItem.dependence_service.join(', ') : (apiItem.dependence_service || ''),
+            data_table_sql: apiItem.data_table_sql || ''
           }
         })
       } else if (service.api_design && typeof service.api_design === 'object') {
@@ -885,7 +888,10 @@ const convertBackendDataToFormData = (backendData) => {
             JSON.stringify(apiItem.request_params, null, 2) : (apiItem.request_params || '{}'),
           response_params: typeof apiItem.response_params === 'object' ? 
             JSON.stringify(apiItem.response_params, null, 2) : (apiItem.response_params || '{}'),
-          special_requirements: apiItem.special_requirements || ''
+          special_requirements: apiItem.special_requirements || '',
+          dependence_service: Array.isArray(apiItem.dependence_service) ? 
+            apiItem.dependence_service.join(', ') : (apiItem.dependence_service || ''),
+          data_table_sql: apiItem.data_table_sql || ''
         }]
       }
       
@@ -899,7 +905,9 @@ const convertBackendDataToFormData = (backendData) => {
           description: `${service.service_name || '服务'}数据新增接口`,
           request_params: '{\n  "page": 1,\n  "size": 10\n}',
           response_params: '{\n  "success": true,\n  "data": [],\n  "total": 0\n}',
-          special_requirements: '需要登录权限验证'
+          special_requirements: '需要登录权限验证',
+          dependence_service: '',
+          data_table_sql: ''
         }]
       }
       
@@ -910,10 +918,9 @@ const convertBackendDataToFormData = (backendData) => {
         service_english_name: service.service_english_name || '',
         service_duty: service.service_duty || '',
         core_modules: service.core_modules || '',
+        business_domain: service.business_domain || '',
         apis: apis, // 添加转换后的APIs数组
-        data_table_sql: service.api_design && service.api_design[0] ? service.api_design[0].data_table_sql || '' : '',
-        dependence_service: service.api_design && service.api_design[0] && service.api_design[0].dependence_service ? 
-          (Array.isArray(service.api_design[0].dependence_service) ? service.api_design[0].dependence_service.join(', ') : service.api_design[0].dependence_service) : ''
+        data_table_sql: service.api_design && service.api_design[0] ? service.api_design[0].data_table_sql || '' : ''
       }
       
       console.log(`✅ 第${index + 1}个服务转换完成:`, convertedService)
@@ -1193,10 +1200,10 @@ const addServiceDesign = () => {
       description: '',
       request_params: '{}',
       response_params: '{}',
-      special_requirements: ''
+      special_requirements: '',
+      dependence_service: ''
     }], // 确保默认有一个API
-    data_table_sql: '',
-    dependence_service: ''
+    data_table_sql: ''
   })
 }
 
@@ -1215,7 +1222,8 @@ const addApi = (service) => {
     description: '',
     request_params: '{}',
     response_params: '{}',
-    special_requirements: ''
+    special_requirements: '',
+    dependence_service: ''
   })
 }
 
@@ -1384,10 +1392,7 @@ const generateServiceDesignSection = () => {
     markdown += `### 2.${serviceIndex + 1} ${service.service_name} (${service.service_english_name})\n\n`
     markdown += `**服务职责：** ${service.service_duty}\n\n`
     
-    // 添加业务领域信息
-    if (service.business_domain) {
-      markdown += `**业务领域：** ${service.business_domain}\n\n`
-    }
+    // 业务领域信息已移至API级别显示
     
     markdown += `#### 2.${serviceIndex + 1}.1 核心模块\n\n`
     markdown += `${service.core_modules}\n\n`
@@ -1396,6 +1401,12 @@ const generateServiceDesignSection = () => {
     if (service.apis && service.apis.length > 0) {
       service.apis.forEach((api, apiIndex) => {
         markdown += `**2.${serviceIndex + 1}.2.${apiIndex + 1} ${api.interface_type}接口**\n\n`
+        
+        // 添加API级别的业务领域信息
+        if (api.business_domain) {
+          markdown += `- **业务领域：** ${api.business_domain}\n`
+        }
+        
         markdown += `- **URI：** \`${api.uri}\`\n`
         markdown += `- **Method：** \`${api.method}\`\n`
         markdown += `- **描述：** ${api.description}\n\n`
@@ -1406,6 +1417,11 @@ const generateServiceDesignSection = () => {
         if (api.special_requirements) {
           markdown += `**特殊要求：** ${api.special_requirements}\n\n`
         }
+        
+        if (api.dependence_service && api.dependence_service.trim() !== '' && api.dependence_service !== '[]' && api.dependence_service !== 'null') {
+          markdown += `**依赖服务：** ${api.dependence_service}\n\n`
+        }
+        
       })
     }
     
@@ -1413,9 +1429,6 @@ const generateServiceDesignSection = () => {
       markdown += `#### 2.${serviceIndex + 1}.3 数据库表设计\n\n`
       markdown += `\`\`\`sql\n${service.data_table_sql}\n\`\`\`\n\n`
     }
-    
-    markdown += `#### 2.${serviceIndex + 1}.4 依赖服务\n\n`
-    markdown += `**依赖服务：** ${service.dependence_service || '无'}\n\n`
     
     markdown += `---\n\n` // 添加分隔线
   })

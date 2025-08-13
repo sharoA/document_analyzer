@@ -25,11 +25,19 @@ class ContentAnalyzerService(BaseAnalysisService):
             
             self.embedding_model = SentenceTransformer('BAAI/bge-large-zh')
             self.logger.info("✅ 向量模型初始化成功 (离线模式)")
+            self.embedding_enabled = True
         except Exception as e:
-            self.logger.error(f"❌ 向量模型初始化失败: {e}")
+            self.logger.warning(f"⚠️ 向量模型初始化失败: {e}，将跳过向量化功能")
             self.embedding_model = None
-        # 初始化Weaviate客户端
+            self.embedding_enabled = False
+        # 初始化Weaviate客户端 - 支持降级模式
         self.weaviate_client = get_weaviate_client()
+        if self.weaviate_client is None:
+            self.logger.warning("⚠️ Weaviate未可用，将跳过向量化相关功能")
+            self.vector_enabled = False
+        else:
+            self.vector_enabled = True
+            self.logger.info("✅ Weaviate连接成功，向量化功能可用")
         # 添加向量缓存机制，避免重复计算
         self._embedding_cache = {}
         self._cache_max_size = 1000  # 最多缓存1000个向量
@@ -92,10 +100,20 @@ class ContentAnalyzerService(BaseAnalysisService):
                 cleaned_chunks.append(cleaned_chunk)
             
             # 合并分析结果
+            # 根据实际可用功能生成分析方法描述
+            analysis_method_parts = ["LLM分析"]
+            if self.vector_enabled and self.embedding_enabled:
+                analysis_method_parts.append("向量数据库分析")
+            elif self.embedding_enabled:
+                analysis_method_parts.append("向量化分析")
+            analysis_method_parts.extend(["详细内容提取", "智能合并"])
+            
             content_result = {
                 "change_analysis": final_change_analysis,
                 "metadata": {
-                    "analysis_method": "LLM+向量数据库分析+详细内容提取+智能合并",
+                    "analysis_method": "+".join(analysis_method_parts),
+                    "vector_enabled": self.vector_enabled,
+                    "embedding_enabled": self.embedding_enabled,
                     "analysis_time": time.time() - start_time,
                     "content_length": len(document_content),
                     "chunks_count": len(structured_chunks)
@@ -131,6 +149,7 @@ class ContentAnalyzerService(BaseAnalysisService):
             结构化内容块列表
         """
         structured_chunks = []
+        processed_chunks = []  # 初始化处理后的结果列表
         
         # 按行分割文档
         lines = document_content.split('\n')
@@ -185,44 +204,85 @@ class ContentAnalyzerService(BaseAnalysisService):
         # 第二步：批量生成向量嵌入（性能优化关键）
         if temp_chunks:
             try:
-                self.logger.info(f"开始批量生成向量嵌入，共 {len(temp_chunks)} 个段落")
-                start_time = time.time()
-                
-                # 提取所有需要向量化的文本
-                texts_for_embedding = [chunk["text_for_embedding"] for chunk in temp_chunks]
-                
-                # 🚀 批量生成向量（支持缓存，一次调用处理所有文本）
-                embeddings = self._batch_get_embeddings(texts_for_embedding)
-                
-                embedding_time = time.time() - start_time
-                self.logger.info(f"批量向量生成完成，耗时: {embedding_time:.2f}秒，平均每段: {embedding_time/len(temp_chunks):.3f}秒")
-                
-                # 第三步：组装最终结果
-                for i, chunk in enumerate(temp_chunks):
-                    chunk_with_embedding = {
-                        "section": chunk["section"],
-                        "content": chunk["content"],
-                        "level": chunk["level"],
-                        "embedding": embeddings[i].tolist(),
-                        "image_refs": chunk["image_refs"]
-                    }
-                    structured_chunks.append(chunk_with_embedding)
+                # 检查向量化是否可用
+                if self.embedding_enabled and self.embedding_model is not None:
+                    self.logger.info(f"开始批量生成向量嵌入，共 {len(temp_chunks)} 个段落")
+                    start_time = time.time()
                     
+                    # 提取所有需要向量化的文本
+                    texts_for_embedding = [chunk["text_for_embedding"] for chunk in temp_chunks]
+                    
+                    # 🚀 批量生成向量（支持缓存，一次调用处理所有文本）
+                    embeddings = self._batch_get_embeddings(texts_for_embedding)
+                    
+                    embedding_time = time.time() - start_time
+                    self.logger.info(f"批量向量生成完成，耗时: {embedding_time:.2f}秒，平均每段: {embedding_time/len(temp_chunks):.3f}秒")
+                    
+                    # 第三步：组装最终结果（包含向量）
+                    for i, chunk in enumerate(temp_chunks):
+                        chunk_with_embedding = {
+                            "section": chunk["section"],
+                            "content": chunk["content"],
+                            "level": chunk["level"],
+                            "embedding": embeddings[i].tolist() if hasattr(embeddings[i], 'tolist') else embeddings[i],
+                            "image_refs": chunk["image_refs"]
+                        }
+                        processed_chunks.append(chunk_with_embedding)
+                        
+                else:
+                    # 向量化不可用，返回不包含向量的结构化内容
+                    self.logger.info(f"⚠️ 向量化不可用，返回纯结构化内容，共 {len(temp_chunks)} 个段落")
+                    for chunk in temp_chunks:
+                        chunk_without_embedding = {
+                            "section": chunk["section"],
+                            "content": chunk["content"],
+                            "level": chunk["level"],
+                            "embedding": None,  # 明确标记为None
+                            "image_refs": chunk["image_refs"]
+                        }
+                        processed_chunks.append(chunk_without_embedding)
+                
             except Exception as e:
-                self.logger.error(f"批量向量生成失败，回退到逐个处理: {e}")
-                # 回退到原始方法
-                for chunk in temp_chunks:
-                    embedding = self.embedding_model.encode(chunk["text_for_embedding"]).tolist()
-                    chunk_with_embedding = {
-                        "section": chunk["section"],
-                        "content": chunk["content"],
-                        "level": chunk["level"],
-                        "embedding": embedding,
-                        "image_refs": chunk["image_refs"]
-                    }
-                    structured_chunks.append(chunk_with_embedding)
+                self.logger.error(f"批量向量生成失败: {e}")
+                # 如果向量化失败，返回不包含向量的结构化内容
+                if self.embedding_enabled and self.embedding_model is not None:
+                    self.logger.info("尝试逐个处理向量化...")
+                    try:
+                        for chunk in temp_chunks:
+                            embedding = self.embedding_model.encode(chunk["text_for_embedding"]).tolist()
+                            chunk_with_embedding = {
+                                "section": chunk["section"],
+                                "content": chunk["content"],
+                                "level": chunk["level"],
+                                "embedding": embedding,
+                                "image_refs": chunk["image_refs"]
+                            }
+                            processed_chunks.append(chunk_with_embedding)
+                    except Exception as e2:
+                        self.logger.error(f"逐个向量化也失败: {e2}，返回无向量内容")
+                        # 最后的降级方案
+                        for chunk in temp_chunks:
+                            chunk_without_embedding = {
+                                "section": chunk["section"],
+                                "content": chunk["content"],
+                                "level": chunk["level"],
+                                "embedding": None,
+                                "image_refs": chunk["image_refs"]
+                            }
+                            processed_chunks.append(chunk_without_embedding)
+                else:
+                    # 向量化不可用，直接返回无向量内容
+                    for chunk in temp_chunks:
+                        chunk_without_embedding = {
+                            "section": chunk["section"],
+                            "content": chunk["content"],
+                            "level": chunk["level"],
+                            "embedding": None,
+                            "image_refs": chunk["image_refs"]
+                        }
+                        processed_chunks.append(chunk_without_embedding)
         
-        return structured_chunks
+        return processed_chunks
     
     def _extract_image_refs(self, content: str) -> List[str]:
         """提取内容中的图片引用"""
@@ -324,6 +384,11 @@ class ContentAnalyzerService(BaseAnalysisService):
     
     async def _find_similar_history(self, chunk: Dict[str, Any], top_k: int = 5) -> List[Dict[str, Any]]:
         """在历史知识库中查找相似内容"""
+        # 如果向量数据库不可用，直接返回空结果
+        if not self.vector_enabled or self.weaviate_client is None:
+            self.logger.debug("⚠️ 向量数据库不可用，跳过历史相似内容搜索")
+            return []
+            
         try:
             collection = self.weaviate_client.collections.get("Document")
             

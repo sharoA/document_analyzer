@@ -291,7 +291,10 @@ class LangGraphWorkflowOrchestrator:
         
         # 🎯 设置默认输出路径
         if output_path is None:
-            output_path = r"/Users/renyu/Documents/create_project"
+            from src.resource.config import ConfigManager
+            config_manager = ConfigManager()
+            coder_config = config_manager.get_coder_agent_config()
+            output_path = coder_config.get("project_root", "/Users/renyu/Documents/create_project")
         
         # 编译图形
         compiled_graph = self.graph.compile(checkpointer=self.checkpointer)

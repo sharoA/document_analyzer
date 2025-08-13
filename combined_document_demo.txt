@@ -74,21 +74,17 @@ method: GET
 description:查询企业组织单元列表
 入参示例：
 {
-  "unitCode": "sdf1",  #组织单元编号
-  "openStatus": 1 ,    #组织单元状态 1：正常；0：禁用 默认全部
-  "unitList" :[1,2,234]  #组织单元id 必传 
+  "cid": "234234234243",  #企业id 必传 
 }
 
 返参示例：
 {
   "data": [
     {
-      "unitId" : 234234 ,     #组织单元id 必传 
-      "unitTypeDicType" : 1 , #组织单元类型 1：开立，2：支付
-      "unitTypeId" : 12   ,   #组织单元类型表id 
-      "openStatus" : 1   ,    #组织单元状态  1：正常；0：禁用 默认全部
-      "unitCode" : "sdfsdfsd",#组织编号
-      "unitName" : "测试单元" #组织单元名称
+      "id" : 234234 ,     #组织单元id 必传 
+      "unitName" : "组织单元名称", #组织单元 1：开立，2：支付
+      "unitCode" : "组织单元编码"  ,   #组织单元类型表id 
+      "remark" : "备注"   ,    #组织单元状态  1：正常；0：禁用 默认全部
     }
   ]
 }

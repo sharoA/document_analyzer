@@ -1796,6 +1796,11 @@ def run_full_analysis_pipeline(task: FileParsingTask):
                     return
             except Exception as check_error:
                 logger.error(f"检查form_data时出错: {check_error}")
+                # 如果检查form_data也失败了，那就真的是失败了，不要设置为完成状态
+                logger.error(f"完整分析流程失败: {task.id}, AI分析失败且form_data检查失败")
+                task.error = f"AI分析失败: {task.error}, form_data检查失败: {str(check_error)}"
+                task.status = "failed"
+                task.update_progress(task.progress, f"分析失败: {task.error}", "failed")
             return
         
         # AI分析完成即完成所有流程（form_data已在AI分析阶段生成并保存）
@@ -1805,6 +1810,19 @@ def run_full_analysis_pipeline(task: FileParsingTask):
         
     except Exception as e:
         logger.error(f"完整分析流程失败: {task.id}, 错误: {e}")
+        # 在设置为failed之前，先检查是否已经生成了form_data
+        try:
+            form_data_check = redis_task_storage.redis_manager.get(f"form_data:{task.id}")
+            if form_data_check:
+                logger.info(f"虽然流程出现异常，但form_data已生成，视为成功: {task.id}")
+                task.update_progress(100, "完整分析流程完成", "fully_completed")
+                logger.info(f"完整分析流程成功完成: {task.id}")
+                analysis_logger.info(f"🎉 完整分析流程完成: {task.id}")
+                return
+        except Exception as check_error:
+            logger.error(f"异常处理中检查form_data失败: {check_error}")
+        
+        # 如果没有form_data或检查失败，才真正设置为failed
         task.error = f"分析流程失败: {str(e)}"
         task.status = "failed"
         task.update_progress(task.progress, f"分析失败: {str(e)}", "failed")

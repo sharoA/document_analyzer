@@ -98,7 +98,7 @@ public class LsLimitController {
 ##  代码生成要求
 1. **完整实现业务逻辑**：根据request_params、response_params、validation_rules生成完整代码
 2. **处理外部服务调用**：如果有external_call，要生成对应的Feign Client
-3. **数据验证**：根据validation_rules生成参数校验
+3. **数据验证**：根据validation_rules生成参数校验，如果没有validation_rules，要保证生成代码可用，做junit测试接口是否可以访问，如果不可以继续调整
 4. **分页处理**：如果有分页参数，要正确实现分页逻辑
 5. ** 文件名与类名一致性**：确保Java文件名与public类名完全相同
 6. ** 包名正确性**：使用正确的{{ base_package }}，避免混入其他服务的包名
@@ -258,7 +258,7 @@ replace_text(
    
    // 必须执行以下检查：
    // 1. read_file("Service接口文件路径") 
-   // 2. 在文件内容中搜索 "queryCompanyUnitListByCondition" 方法
+   // 2. 在文件内容中搜索 具体调用的方法
    // 3. 如果不存在，检查是否有相似方法如 "queryCompanyUnitList"
    // 4. 修正调用代码或建议添加缺失方法
    ```
@@ -290,7 +290,7 @@ replace_text(
    - 使用 `read_file` 重新读取生成的文件
    - 检查文件名与类名一致性
    - 验证import路径和包声明正确性
-   - **🔍 执行方法调用存在性验证（最重要）**
+   - **🔍 执行方法调用存在性验证（最重要）可是新建junit来测试对应接口，并重试调整，直到接口正常返回数据**
 6. ✅ 确认验证通过并完成任务
 
 **⛔ 严禁：只执行前4步就结束！必须完成包括方法存在性验证在内的所有6个步骤！**

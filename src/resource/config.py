@@ -91,8 +91,9 @@ class Config:
             "volcengine": {
                 "api_key": "7fcb3541-9363-4bfa-90aa-19e9f691bc25",
                 "endpoint": "https://ark.cn-beijing.volces.com/api/v3",
-                "model": "ep-20250605091804-wmw6w",
-                #"model": "ep-20250605091804-wmw6w",
+                "model": "ep-20250724094351-pnjf4",
+                #"model": "ep-20250724094351-pnjf4",  k2
+                # model: ep-20250605091804-wmw6w  v3
                 "temperature": 0.7,
                 "max_tokens": 4000
             },
@@ -383,4 +384,4 @@ def get_cache_dir() -> str:
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
     cache_dir = os.path.join(project_root, 'uploads', 'cache')
     os.makedirs(cache_dir, exist_ok=True)
-    return cache_dir 
+    return cache_dir

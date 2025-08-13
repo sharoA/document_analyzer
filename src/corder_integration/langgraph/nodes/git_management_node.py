@@ -59,8 +59,9 @@ class GitManagerAgent:
             r'https://gitlab\.local/[\w\-\./]+\.git',
             r'http://gitlab\.local/[\w\-\./]+\.git',
             r'git@gitlab\.local:[\w\-\./]+\.git',
-            # 🔧 通用Git URL模式
-            r'https?://[\w\-\.]+(?::\d+)?/[\w\-\./]+\.git',
+            # 🔧 通用Git URL模式 - 优化IP地址匹配
+            r'https?://(?:\d{1,3}\.){3}\d{1,3}(?::\d+)?/[\w\-\./]+\.git',  # IP地址格式
+            r'https?://[\w\-\.]+(?::\d+)?/[\w\-\./]+\.git',  # 域名格式
             r'git@[\w\-\.]+:[\w\-\./]+\.git',
         ]
         

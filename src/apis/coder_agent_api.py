@@ -77,7 +77,7 @@ def process_design_document() -> Union[Response, Tuple[Response, int]]:
         project_name = data.get('project_name', f'project_{int(datetime.now().timestamp())}')
         use_langgraph = data.get('use_langgraph', True)  # 默认使用LangGraph
         execute_immediately = data.get('execute_immediately', True)
-        output_path = data.get('output_path', r'D:\gitlab')  # 代码输出路径
+        output_path = data.get('output_path', r'/Users/renyu/Documents/create_project')  # 代码输出路径
         
         logger.info(f"开始处理文档: {project_name}")
         logger.info(f"项目唯一标识: {project_task_id}")

@@ -7,9 +7,10 @@ existing_services:
   - service_name: "用户中心服务"
     service_english_name: "usercenter-basic-general"
     gitlab: "http://localhost:30000/ls/zqyl-user-center-service.git"
-    description: "负责用户管理、权限控制、角色管理、登录认证、组织单元管理、用户信息管理"
+    description: "负责用户管理、企业管理、权限控制、角色管理、登录认证、组织单元管理、用户信息管理"
     business_domain: "user-basic-general"
     data_resources: "mysql"
+    service_type: "basic"
     
   - service_name: "链数服务"
     service_english_name: "zqyl-ls"
@@ -17,13 +18,15 @@ existing_services:
     description: "处理订单创建、修改、查询、状态管理等业务逻辑"
     business_domain: "链数业务"
     data_resources: "oracle"
+    service_type: "application"
     
   - service_name: "确权服务"
     service_english_name: "crlc-open"
     gitlab: "http://localhost:30000/ls/crcl-open.git"
     description: "链数及云信确权业务、开立业务、查询及开立链数额度及云信额度"
-    business_domain: "limit、credit、open"
+    business_domain: "lsLimit、credit、open"
     data_resources: "oracle"
+    service_type: "application"
     
 # 命名规范
 naming_conventions:

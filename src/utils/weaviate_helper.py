@@ -14,15 +14,18 @@ from ..resource.config import get_config
 
 logger = logging.getLogger(__name__)
 
-def get_weaviate_client() -> weaviate.WeaviateClient:
+def get_weaviate_client(raise_on_error: bool = False) -> Optional[weaviate.WeaviateClient]:
     """
     获取配置好的 Weaviate 客户端实例
     
+    Args:
+        raise_on_error: 是否在连接失败时抛出异常，默认False
+    
     Returns:
-        weaviate.WeaviateClient: 已连接的 Weaviate 客户端
+        weaviate.WeaviateClient: 已连接的 Weaviate 客户端，连接失败时返回None
         
     Raises:
-        Exception: 连接失败时抛出异常
+        Exception: 当raise_on_error=True且连接失败时抛出异常
     """
     config = get_config()
     weaviate_config = config.get_weaviate_config()
@@ -43,12 +46,16 @@ def get_weaviate_client() -> weaviate.WeaviateClient:
         if not client.is_ready():
             raise Exception("Weaviate 服务未就绪")
             
-        logger.info(f"成功连接到 Weaviate: {host}:{port}")
+        logger.info(f"✅ 成功连接到 Weaviate: {host}:{port}")
         return client
         
     except Exception as e:
-        logger.error(f"连接 Weaviate 失败: {e}")
-        raise
+        logger.warning(f"⚠️ 连接 Weaviate 失败: {e}")
+        if raise_on_error:
+            raise
+        else:
+            logger.info("🔄 系统将在无向量数据库模式下运行")
+            return None
 
 def create_default_collection(client: weaviate.WeaviateClient, 
                             collection_name: str = None) -> bool:

@@ -24,7 +24,8 @@ except ImportError:
     
     class MockSettings:
         VOLCENGINE_API_KEY = os.getenv("VOLCENGINE_API_KEY", "")
-        VOLCENGINE_MODEL_ID = os.getenv("VOLCENGINE_MODEL_ID", "ep-20250605091804-wmw6w")
+        #   VOLCENGINE_MODEL_ID = os.getenv("VOLCENGINE_MODEL_ID", "ep-20250605091804-wmw6w") v3
+        VOLCENGINE_MODEL_ID = os.getenv("VOLCENGINE_MODEL_ID", "ep-20250724094351-pnjf4")
         VOLCENGINE_BASE_URL = os.getenv("VOLCENGINE_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
         DEFAULT_TEMPERATURE = 0.7
         DEFAULT_MAX_TOKENS = 2000
@@ -440,7 +441,8 @@ def get_volcengine_client() -> VolcengineClient:
             if volcengine_config and volcengine_config.get('api_key'):
                 volcano_config = VolcengineConfig(
                     api_key=volcengine_config.get('api_key'),
-                    model_id=volcengine_config.get('model', 'ep-20250605091804-wmw6w'),
+                    #   "ep-20250605091804-wmw6w") v3
+                    model_id=volcengine_config.get('model', 'ep-20250724094351-pnjf4'),
                     base_url=volcengine_config.get('endpoint', 'https://ark.cn-beijing.volces.com/api/v3'),
                     temperature=volcengine_config.get('temperature', 0.7),
                     max_tokens=volcengine_config.get('max_tokens', 4000)
@@ -503,4 +505,4 @@ if __name__ == "__main__":
             print("❌ 火山引擎连接测试失败")
             
     except Exception as e:
-        print(f"❌ 测试失败: {e}") 
+        print(f"❌ 测试失败: {e}")

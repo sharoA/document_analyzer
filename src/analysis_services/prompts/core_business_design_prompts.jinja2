@@ -22,21 +22,21 @@
       "service_name": "从可选服务列表中选择的服务中文名称",
       "service_english_name": "从可选服务列表中选择的服务英文名称", 
       "gitlab": "从可选服务列表中获取的Git地址",
-      "business_domain": "从可选服务列表中获取的业务领域",
       "data_resources": "从可选服务列表中获取的数据资源类型",
       "service_duty": "基于业务文档内容描述的服务职责",
       "core_modules": "- 核心模块1\n- 核心模块2\n- 核心模块3",
       "api_design": [
         {
           "interface_type": "新增|修改|删除",
-          "uri": "/api/{使用business_domain中的关键词}/{具体业务操作}",
+          "business_domain": "从可选服务列表中获取的业务领域",
+          "uri": "/api/{使用business_domain中的名称}/{具体业务操作，camelCase格式}",
           "method": "GET|POST|PUT|DELETE",
-          "description": "具体的接口功能描述",
-          "request_params": "JSON格式的请求参数示例",
-          "response_params": "JSON格式的响应参数示例", 
+          "description": "具体的接口功能描述，明确说明是查询列表、详情查询、新增数据、修改数据、删除数据还是导出功能",
+          "request_params": "基于function_requirements_info中的字段要求，设计具体的请求参数JSON，包括筛选、列表、统计等字段",
+          "response_params": "基于function_requirements_info中的字段要求，设计具体的响应参数JSON，包括数据列表、分页信息、统计结果等字段", 
           "data_table_sql": "对应的CREATE TABLE SQL语句",
-          "dependence_service": ["依赖的服务列表"],
-          "special_requirements": "特殊要求说明"
+          "dependence_service": ["依赖的服务列表。重要：只有当该接口的业务逻辑确实需要调用其他服务时才填写，如需要查询用户信息、企业信息等。如果接口是纯本地操作（如简单CRUD、状态更新等），则返回空数组[]。服务名使用service_english_name格式。例：[\"usercenter-basic-general.ssss()\"]"],
+          "special_requirements": "特殊要求说明，如果是list类型接口需要注明是否需要分页功能，分页使用pageHelper"
         }
       ]
     }
@@ -50,13 +50,20 @@
 1. **避免通用路径**：不要使用 `/api/user/create`、`/api/business/query` 这种通用路径
 2. **具体业务字段**：数据库表字段要有具体业务含义，不要使用 `name`、`description` 等通用字段
 3. **内容验证**：如果文档内容不足，宁可生成少量准确的设计，也不要编造
-4. **接口类型限制**：interface_type 只能使用："新增"、"修改"、"删除"，不要使用"查询"，是为了编码智能体明白怎样对这个接口操作使用
-5. **JSON格式**：输出必须是有效的JSON格式，字段名使用 `api_design` 而不是 `API设计`
+4. **接口类型判断**：interface_type的含义是告知编码智能体该接口需要进行什么操作：
+   - "新增"：表示这是一个全新的接口，需要编码智能体从零开始创建
+   - "修改"：表示这是对已有接口的修改，编码智能体需要更新现有代码
+   - "删除"：表示需要删除某个已有接口
+   注意：不要根据需求描述中的"新增XX列表"字样来判断interface_type。"新增XX列表"指的是新增功能页面，但接口本身可能是查询功能，应该根据接口的实际作用来判断是否为新接口
+5. **导出接口特殊要求**：如果文档中明确提到导出、下载、Excel等功能，必须生成对应的导出类型接口
+6. **Java命名规范**：
+   - URI路径：使用kebab-case格式，如 `/api/user-basic-general/queryCompanyInfo`
+   - 参数命名：使用camelCase格式，如 `{"companyId": 123, "userName": "test"}`
+   - 数据库字段：使用snake_case格式，如 `company_id`, `user_name`
+7. **JSON格式**：输出必须是有效的JSON格式，字段名使用 `api_design` 而不是 `API设计`
 {%- endmacro -%}
 
 {%- macro user_prompt_core_business_design(content_analysis, parsing_result, document_content, function_requirements_info, service_numbers, service_info, data_resources, data_info, company_services_reference) -%}
-{%- set content_data = content_analysis.get("data", {}) if content_analysis else {} -%}
-{%- set content_summary = content_data.get("summary", "") -%}
 
 请基于以下真实业务文档内容和约束条件，统一生成核心业务设计：
 
@@ -80,12 +87,19 @@
   - Git地址：{{ service.gitlab }}
   - 业务领域：{{ service.business_domain }}
   - 数据资源：{{ service.data_resources }}
+  - 服务类型：{{ service.service_type }} (basic=基础服务，application=应用服务)
   - 描述：{{ service.description if service.description else '无描述' }}
 {%- endfor %}
 
-**重要说明**：请根据业务文档内容分析，从上述服务列表中选择最合适的服务，并在生成service_details时：
-1. 使用选中服务的完整信息（service_name、service_english_name、gitlab、business_domain、data_resources）
-2. 每个服务的api_design中可以根据具体业务需求选择对应的业务领域
+**重要说明**：
+1. 请根据业务文档内容分析，从上述服务列表中选择最合适的服务
+2. **服务类型说明**：
+   - `basic`：基础服务，提供基础功能支撑，如用户管理、权限控制等
+   - `application`：应用服务，处理具体业务逻辑，如订单处理、业务流程等
+3. **服务依赖关系**：如果既涉及基础服务又涉及应用服务，那么依赖关系应该是应用服务依赖基础服务
+4. **已知的服务调用关系**（请在设计中考虑这些实际调用）：
+   - 确权服务(crcl-open) 调用 用户中心服务(usercenter-basic-general) 的接口.
+5. 在生成service_details时使用选中服务的完整信息（service_name、service_english_name、gitlab、business_domain、data_resources）
 
 ## 数据库约束信息  
 预期数据库数量：{{ data_resources }}
@@ -105,31 +119,55 @@
 无特定功能需求约束
 {%- endif %}
 
-## 文档结构信息
-{%- if parsing_result %}
-{%- set parsing_data = parsing_result.get("data", {}) -%}
-{%- set document_structure = parsing_data.get("documentStructure", {}) -%}
-{%- set content_summary_data = document_structure.get("contentSummary", {}) -%}
-- 功能数量：{{ content_summary_data.get("functionCount", 0) }}
-- 主要功能：{{ content_summary_data.get("functionName", [])|join(', ') if content_summary_data.get("functionName") else '未识别' }}
-- API数量：{{ content_summary_data.get("apiCount", 0) }}
-- 主要API：{{ content_summary_data.get("apiName", [])|join(', ') if content_summary_data.get("apiName") else '未识别' }}
-{%- endif %}
 
 ## 设计要求
 
 请仔细分析上述文档内容和约束条件，生成统一的核心业务设计。要求：
 
 1. **服务设计**：严格按照约束条件中的服务数量和类型生成服务
-2. **API设计**：每个服务设计2-4个API接口，路径要基于实际业务场景，不要使用通用路径
-3. **数据库设计**：为每个API接口生成对应的数据库表SQL，字段要有业务含义
+2. **API设计**：根据需求文档中的功能需求，设计完整的CRUD操作API接口，包括查询列表、详情查询、新增、修改、删除、导出等
+3. **数据库设计**：根据需求文档中的功能需求，为每个API接口生成对应的数据库表SQL，字段要有业务含义
 4. **逻辑一致性**：确保服务职责、API功能、数据表结构三者逻辑一致
 5. **约束遵循**：生成的服务名称要与service_info中的信息一致，数据库类型要与data_info一致
+6. **服务依赖关系**：应用服务(service_type=application)应依赖基础服务(service_type=basic)
+7. **参数设计**：request_params和response_params要参考function_requirements_info返回的内容，要概括性地描述相关的业务字段
+8. **分页处理**：对于list类型的查询接口，需要在special_requirements中明确说明是否需要分页功能
+9. **导出功能识别**：重点关注文档中的导出、下载、Excel功能需求，如果存在生成对应的导出类型API接口，导出功能如果没有特殊说明，其逻辑参考查询列表接口
+10. **服务调用关系分析**：仔细分析业务流程，明确哪个服务的哪个接口会调用其他服务的接口，在dependence_service中准确填写调用关系
+11. **依赖服务条件化填充**：大多数接口都不需要依赖服务！只有在以下明确情况下才填写依赖服务：
+   - 需要查询或验证用户信息、权限信息
+   - 需要获取企业信息、组织架构信息  
+   - 需要调用其他服务的业务逻辑
+   - 需要发送通知、消息等
+   
+   **以下情况依赖服务必须为空数组[]**：
+   - 纯本地数据的CRUD操作（新增、修改、删除、查询本服务数据）
+   - 数据校验和规则处理（如bizSerialNo校验、状态验证等）
+   - 本地业务逻辑处理（如计算、统计、格式化等）
+   - 导出本服务数据
 
 **重要**：
-- 如果文档内容不足以生成具体设计，请减少API接口数量，但保证质量
+- 充分思考需求文档，根据功能需求设计完整的API接口体系，确保包含：
+  - 列表查询接口（支持筛选、分页、排序）
+  - 详情查询接口
+  - 新增接口
+  - 修改接口  
+  - 删除接口
+  - 导出接口（如文档提及）
 - 必须严格按照JSON格式输出，使用 `api_design` 字段名
-- interface_type 必须使用中文："新增"、"修改"、"删除"
-
+- interface_type 根据接口实际功能判断：
+  - 如果是系统中从未有过的全新接口功能，使用"新增"
+  - 如果是对已有接口逻辑的调整修改，使用"修改"
+  - 如果是要移除已有接口，使用"删除"
+  - 特别注意：需求中的"新增XX列表页面"不等于接口是"新增"类型，列表页面的接口通常是查询功能，要根据系统中是否已有该查询接口来判断interface_type
+- 特别注意：如果文档提及导出、下载、Excel处理等功能，务必生成导出类型的接口
+- **依赖服务填写原则**：
+  * 默认情况下，大多数接口的dependence_service都应该是空数组[]
+  * 只有当接口确实需要调用其他服务的接口时才填写具体服务名
+  * 本地数据操作、校验逻辑、状态处理等都不需要依赖服务
+  * 例如：确权申请、数据校验、状态更新等接口应返回空数组[]
 请直接输出JSON格式的结果，不要包含任何解释文字。
+** 补充业务关系**
+1.企业信息和组织单元关系信息都在用户中心服务
+
 {%- endmacro -%}

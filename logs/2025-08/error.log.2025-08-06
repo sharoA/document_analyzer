@@ -1,0 +1,35 @@
+2025-08-06 11:08:46 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: Could not connect to Weaviate:Connection to Weaviate failed. Details: .
+2025-08-06 11:08:55 - src.utils.weaviate_helper - ERROR - 连接 Weaviate 失败: Could not connect to Weaviate:Connection to Weaviate failed. Details: .
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 项目路径不存在: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 任务 task_004 执行失败: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 项目路径不存在: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/zqyl-user-center-service
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 任务 task_005 执行失败: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/zqyl-user-center-service
+2025-08-06 14:23:14 - src.apis.project_analysis_api - ERROR - ❌ 项目分析失败: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 项目路径不存在: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 任务 task_010 执行失败: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:23:14 - src.apis.project_analysis_api - ERROR - ❌ 项目分析失败: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/zqyl-user-center-service
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 项目路径不存在: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/zqyl-user-center-service
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 任务 task_011 执行失败: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/zqyl-user-center-service
+2025-08-06 14:23:14 - src.apis.project_analysis_api - ERROR - ❌ 项目分析失败: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 项目路径不存在: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 任务 task_012 执行失败: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:23:14 - src.apis.project_analysis_api - ERROR - ❌ 项目分析失败: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 项目路径不存在: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:23:14 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ 任务 task_013 执行失败: 项目路径不存在: /Users/renyu/Documents/create_project/一局对接链数优化V0/crcl-open
+2025-08-06 14:52:19 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ LLM响应JSON解析失败: Expecting value: line 1 column 1 (char 0)
+2025-08-06 15:03:04 - src.utils.volcengine_client - ERROR - 火山引擎API调用失败: Error code: 429 - {'error': {'code': 'ServerOverloaded', 'message': 'The service is currently unable to handle additional requests due to server overload, please retry later or contact with administrator if not work afterwards. Request id: 0217544637288293cdae1c3974ac2ed201a335174294e6953da9f', 'param': '', 'type': 'TooManyRequests'}}
+2025-08-06 15:03:04 - src.corder_integration.code_generator.function_calling_code_generator - ERROR - ❌ Function calling第6轮失败: Error code: 429 - {'error': {'code': 'ServerOverloaded', 'message': 'The service is currently unable to handle additional requests due to server overload, please retry later or contact with administrator if not work afterwards. Request id: 0217544637288293cdae1c3974ac2ed201a335174294e6953da9f', 'param': '', 'type': 'TooManyRequests'}}
+2025-08-06 15:05:52 - src.utils.volcengine_client - ERROR - 火山引擎API调用失败: Error code: 429 - {'error': {'code': 'ServerOverloaded', 'message': 'The service is currently unable to handle additional requests due to server overload, please retry later or contact with administrator if not work afterwards. Request id: 0217544638974263cdae1c3974ac2ed201a335174294e693e30bf', 'param': '', 'type': 'TooManyRequests'}}
+2025-08-06 15:05:52 - src.corder_integration.code_generator.function_calling_code_generator - ERROR - ❌ Function calling第1轮失败: Error code: 429 - {'error': {'code': 'ServerOverloaded', 'message': 'The service is currently unable to handle additional requests due to server overload, please retry later or contact with administrator if not work afterwards. Request id: 0217544638974263cdae1c3974ac2ed201a335174294e693e30bf', 'param': '', 'type': 'TooManyRequests'}}
+2025-08-06 15:11:31 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ LLM响应JSON解析失败: Expecting value: line 1 column 1 (char 0)
+2025-08-06 15:19:22 - src.corder_integration.langgraph.nodes.intelligent_coding_node - ERROR - ❌ LLM响应JSON解析失败: Expecting value: line 1 column 1 (char 0)
+2025-08-06 15:25:27 - src.corder_integration.code_generator.file_operation_tool_invoker - ERROR - ❌ 函数调用失败: replace_text, 错误: 未找到要替换的文本:     <select id="queryLimitSourceByCrclIds" resultType="com.yljr.crcl.limit.domain.po.LimitSourceCrcl...
+2025-08-06 15:36:35 - src.corder_integration.code_generator.file_operation_tool_invoker - ERROR - ❌ 函数调用失败: list_files, 错误: 目录不存在: src/main/java/com/yljr/crcl/limit/application/feign/company
+2025-08-06 15:38:36 - src.corder_integration.code_generator.file_operation_tool_invoker - ERROR - ❌ 函数调用失败: read_file, 错误: 文件不存在: src/main/java/com/yljr/crcl/limit/interfaces/dto/ListLsLimitByCompanyIdDto.java
+2025-08-06 15:38:49 - src.corder_integration.code_generator.file_operation_tool_invoker - ERROR - ❌ 函数调用失败: read_file, 错误: 文件不存在: src/main/java/com/yljr/crcl/open/base/excel/ExcelFormatExport.java
+2025-08-06 15:38:51 - src.corder_integration.code_generator.file_operation_tool_invoker - ERROR - ❌ 函数调用失败: read_file, 错误: 文件不存在: src/main/java/com/yljr/crcl/open/base/excel/ExcelFormatExport.java
+2025-08-06 15:48:03 - CoreBusinessGenerator - ERROR - LLM生成核心业务设计失败: 'content_data' is undefined
+2025-08-06 15:48:03 - CoreBusinessGenerator - ERROR - 核心业务设计生成失败: 'content_data' is undefined
+2025-08-06 15:48:03 - DesignDocumentGenerator - ERROR - 核心业务生成失败: 'content_data' is undefined
+2025-08-06 15:48:03 - DesignDocumentGenerator - ERROR - 生成表单数据失败: 核心业务设计生成失败: 'content_data' is undefined
+2025-08-06 15:48:03 - DesignDocumentGenerator - ERROR - 设计文档生成分析失败 - 任务ID: 57766ead-6768-40bb-b240-b283aaa79fd2, 错误: 核心业务设计生成失败: 'content_data' is undefined

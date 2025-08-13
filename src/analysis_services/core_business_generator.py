@@ -133,6 +133,8 @@ class CoreBusinessGenerator:
                 data_info=kwargs.get('data_info')
             )
             
+            self.logger.info(f"生成的用户提示词: {user_prompt}")
+            
             # 调用LLM
             response = self.llm_client.chat(
                 messages=[
